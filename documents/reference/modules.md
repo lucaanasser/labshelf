@@ -18,13 +18,16 @@ Main functions:
 - `deletePaper(paperId, deleteFiles)` — remove a paper from the library
 - `regenerateBibTeX()` — rewrite BibTeX artifacts for all papers
 
-## `packages/core/src/io/pdfImportParser.ts`
+## `packages/vscode/src/pdf/`
 
-Extracts metadata from a source PDF before the paper is stored. Accepts `IFileSystem` (not `vscode.workspace.fs` directly). Attempts to build title, cite key, authors, year, and bibliographic fields from PDF contents; falls back to CrossRef and arXiv lookups.
+PDF metadata extraction, split into focused modules:
 
-Main function:
+- `parser.ts` — `PdfImportParser` entry point; orchestrates the extraction pipeline
+- `extractor.ts` — raw text and metadata extraction from PDF bytes
+- `resolver.ts` — CrossRef and arXiv fallback lookups to complete bibliographic fields
+- `types.ts` — shared types for the PDF pipeline (`ParsedPdfMetadata`, etc.)
 
-- `PdfImportParser.parse(uri)` — read the PDF and return parsed metadata
+`PdfImportParser.parse(uri)` accepts `IFileSystem` (not `vscode.workspace.fs` directly) and returns parsed metadata including title, cite key, authors, year, and bibliographic fields.
 
 ## `packages/vscode/src/commands/registerCommands.ts`
 
@@ -48,7 +51,7 @@ Main commands:
 - `labshelf.renameCollection`
 - `labshelf.deleteCollection`
 
-## `packages/vscode/src/ui/collectionsTreeDataProvider.ts`
+## `packages/vscode/src/ui/library/libraryTreeDataProvider.ts`
 
 Builds the sidebar tree. Shows built-in virtual collections (My Library, Recently Read, Unfiled), user-created custom collections, paper count badges, and a New Collection button. Auto-refreshes on paper events.
 
@@ -60,7 +63,7 @@ Main functions:
 - `renameCollection(item)` — rename a custom collection
 - `deleteCollection(item)` — delete a custom collection
 
-## `packages/vscode/src/ui/listWebviewPanel.ts`
+## `packages/vscode/src/ui/list/listWebviewPanel.ts`
 
 Owns the central editor tab showing the paper list with a details sidebar (Zotero-style). Singleton — reused across collection switches.
 
@@ -71,7 +74,7 @@ Main responsibilities:
 - handle webview messages (open PDF, copy key, update status)
 - refresh on `paper:added`, `paper:updated`, `paper:deleted` events
 
-## `packages/vscode/src/storage/workspacePaths.ts`
+## `packages/vscode/src/storage/paths/workspacePaths.ts`
 
 Defines where LabShelf stores its data inside the workspace.
 

@@ -19,8 +19,22 @@ The VS Code extension.
 - `extension.ts` — entry point; wires all adapters and services
 - `core/` — `PaperService`, `WorkspaceLogger`
 - `db/` — `SqliteResearchDatabase` (`better-sqlite3` is only allowed here)
-- `storage/` — `VsCodeFileSystem`, `LibraryPaths`, `WorkspacePaths`
-- `ui/` — `CollectionsTreeDataProvider`, `ListWebviewPanel`, `SidebarWebviewProvider`
+- `storage/` — `VsCodeFileSystem`, split into:
+  - `paths/` — `LibraryPaths`, `WorkspacePaths`, `LibraryLocation`
+  - `data/` — `PaperDataStore`, `LibraryIndexer`, `MigrateSidecars`
+- `ui/` — webview panels and tree providers, split into:
+  - `library/` — `LibraryTreeDataProvider` (sidebar collections tree)
+  - `list/` — `ListWebviewPanel`, HTML template
+  - `sync/` — `SyncTreeDataProvider`
+- `sync/` — Google Drive sync, split into:
+  - `core/` — `SyncEngine`, `SyncDiff`, `SyncApply`, `SyncManifest`, `SyncTypes`, `TreeScan`
+  - `provider/` — `RemoteProvider`, `RemotePathResolver`
+  - `adapter/` — `SyncController`, `VsCodeLocalFileSystem`
+  - `drive/` — `GoogleDriveClient`, `GoogleDriveProvider`
+  - `auth/` — `GoogleDriveAuth`
+  - `util/` — `ConflictName`, `ContentHash`
+- `pdf/` — PDF metadata extraction: `parser.ts`, `extractor.ts`, `resolver.ts`, `types.ts`
+- `pdf-viewer/` — in-editor PDF viewer; `renderer/` subdir holds the renderer assets
 - `commands/` — `registerCommands`
 
 ## `packages/ai/`, `packages/latex/`, `packages/browser/`
