@@ -1,0 +1,52 @@
+feature:
+  name: Extension Event Bus
+  module: core
+  description: >
+    Provide a thin typed wrapper over Node's EventEmitter so the extension can
+    broadcast domain events without coupling callers to the emitter instance.
+
+architecture:
+  inputs:
+    - event name
+    - opaque event payload
+  outputs:
+    - registered listener callbacks
+    - broadcast notifications to subscribers
+  dependencies:
+    - node:events
+    - constants/events
+
+database:
+  tables_used: []
+  migrations: []
+
+events:
+  emits:
+    - paper:added
+    - paper:updated
+    - paper:deleted
+    - note:created
+    - citation:inserted
+  listens: []
+
+errors:
+  expected_failures:
+    - listener throws during dispatch
+    - invalid event payload shape at the call site
+  handling_strategy: >
+    The bus does not transform payloads or swallow listener errors. It is a
+    minimal transport layer and relies on callers to validate payloads and
+    handle their own failures.
+
+ui:
+  components: []
+
+tests:
+  unit:
+    - emit dispatches payloads to registered listeners
+    - on supports multiple listeners for the same event
+    - event names remain compatible with constants/events
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

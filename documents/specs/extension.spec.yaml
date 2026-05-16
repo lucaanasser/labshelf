@@ -1,0 +1,94 @@
+feature:
+  name: Extension Bootstrap
+  module: extension
+  description: >
+    Wire the LabShelf services together when the extension activates. Resolve
+    or create the library root, build the storage/database/service graph (including
+    PaperDataStore, LibraryIndexer, SyncController), run sidecar migration and index
+    rebuild, register commands, create the collections tree, and open the list panel
+    on demand.
+
+architecture:
+  inputs:
+    - VS Code extension activation
+    - extension context and globalState
+    - configured library root path
+    - command invocations
+  outputs:
+    - initialized service graph
+    - TreeView registration for labshelf.library
+    - command registrations for the labshelf.* namespace (including sync commands)
+    - list panel creation through labshelf.openListTab
+    - library setup wizard when no root is configured
+    - sync status bar item
+  dependencies:
+    - vscode extension API
+    - core/eventBus
+    - core/paperService
+    - core/logger
+    - storage/fileSystemService
+    - storage/libraryLocation
+    - storage/libraryPaths
+    - storage/paperDataStore
+    - storage/libraryIndexer
+    - storage/migrateSidecars
+    - db/database
+    - db/sqliteResearchDatabase
+    - io/pdf
+    - io/bibtex
+    - sync/syncController
+    - ui/libraryTreeDataProvider
+    - ui/listWebviewPanel
+    - commands/registerCommands
+
+database:
+  tables_used:
+    - papers
+    - logs
+    - annotations (cache rebuilt by LibraryIndexer)
+  migrations: []
+
+events:
+  emits: []
+  listens:
+    - paper:added (log and trigger sync debounce)
+    - paper:updated (log and trigger sync debounce)
+    - paper:deleted (trigger sync debounce)
+
+errors:
+  expected_failures:
+    - no library root configured on activation
+    - user cancels library setup wizard
+    - sqlite backend unavailable, forcing in-memory fallback
+    - library structure creation failure
+    - sync clientId not configured (SyncController shows warning on connect)
+  handling_strategy: >
+    Activation stays alive even without a configured library. When the library
+    cannot be created or SQLite fails to open, the extension logs or shows a
+    warning and falls back to the next safe behavior instead of crashing.
+    SyncController initializes without connecting; OAuth errors are surfaced
+    per-command rather than blocking activation.
+
+ui:
+  components:
+    - configuration information message on first activation
+    - configure library command entry point
+    - library tree in the activity bar
+    - list panel editor tab
+    - sync status bar item (connected/disconnected state, last sync time)
+
+tests:
+  unit:
+    - activate initializes nothing when no library is configured
+    - activate initializes services when a library root exists
+    - activate runs migrateSidecarsFromDb and indexer.rebuild() on startup
+    - configureLibrary builds the storage structure and refreshes the tree
+    - initializeDatabase falls back to in-memory storage on SQLite failure
+  integration:
+    - extension activation wires commands, tree view, list panel, and sync controller
+    - first-time configuration persists the library root and enables import flows
+    - sync.connect command triggers OAuth flow and starts periodic sync
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

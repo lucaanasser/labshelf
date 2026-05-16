@@ -1,0 +1,61 @@
+feature:
+  name: PDF Import Parser
+  module: pdf
+  description: >
+    Validate PDFs, extract embedded metadata and first-page text, detect DOI or
+    arXiv identifiers, and resolve online metadata when available.
+
+architecture:
+  inputs:
+    - source PDF URI
+  outputs:
+    - parsed metadata used by PaperService
+  dependencies:
+    - vscode workspace.fs
+    - pdfjs-dist legacy build (pdf.mjs and pdf.worker.mjs)
+    - inline DOMMatrix and navigator polyfills installed before pdfjs loads
+    - network lookup for CrossRef and arXiv identifiers
+  notes: >
+    pdfjs always parses through a worker. VSCode's extension host has no Worker
+    constructor and is not detected as Node, so pdfjs would throw
+    `No "GlobalWorkerOptions.workerSrc" specified.`. The parser loads
+    pdf.worker.mjs on the main thread and exposes it as globalThis.pdfjsWorker,
+    making pdfjs run the parser in-process without a worker URL.
+
+database:
+  tables_used: []
+  migrations: []
+
+events:
+  emits: []
+  listens: []
+
+errors:
+  expected_failures:
+    - non-PDF file header
+    - unreadable or corrupt PDF bytes
+    - online lookup failure for DOI or arXiv metadata
+    - pdfjs worker module fails to load on the main thread
+  handling_strategy: >
+    Invalid input fails fast with a thrown error. Network lookup failures
+    degrade gracefully by falling back to local metadata. The pdfjs worker is
+    registered on the main thread before getDocument runs, so document parsing
+    never depends on resolving a worker URL.
+
+ui:
+  components: []
+
+tests:
+  unit:
+    - header validation rejects non-PDF input
+    - embedded metadata extraction
+    - DOI and arXiv identifier detection
+    - citeKey generation from metadata and file stem
+    - main-thread pdfjs worker is registered on globalThis before parsing
+  integration:
+    - enriched PDF import parsing from a real sample file
+    - extension-host PDF.js parsing runs without a worker URL
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

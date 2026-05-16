@@ -1,0 +1,75 @@
+feature:
+  name: Core Library
+  module: core
+  description: >
+    Import PDFs into a local-first paper library and persist metadata.
+    Supports single-PDF import via addPaperFromUri and batch import via
+    addPapersFromUris from a list of file URIs or folder URIs. Batch import
+    expands folders recursively, filters to .pdf files, processes each PDF
+    individually, and isolates failures so one bad item does not abort the
+    rest.
+
+architecture:
+  inputs:
+    - single PDF file URI
+    - list of file and/or folder URIs
+    - configured library root and paper paths
+  outputs:
+    - paper directory under papers/<id>/
+    - metadata record in the database
+    - metadata.yaml and bib.bib artifacts
+    - paper:added event per successfully imported paper
+    - BatchImportResult with success, failed, and skipped entries
+  dependencies:
+    - vscode workspace.fs
+    - storage/fileSystemService
+    - storage/libraryPaths
+    - db/database
+    - io/pdf
+    - io/bibtex
+    - core/eventBus
+
+database:
+  tables_used:
+    - papers
+  migrations: []
+
+events:
+  emits:
+    - paper:added
+  listens: []
+
+errors:
+  expected_failures:
+    - missing or inaccessible source PDF
+    - parse failure in PdfImportParser
+    - persistence failure while saving a paper
+    - non-PDF file in a batch import, recorded in skipped
+    - unreadable folder during recursive expansion, skipped silently
+  handling_strategy: >
+    Single-PDF errors are thrown to the caller. In batch mode each item failure
+    is caught individually and recorded in BatchImportResult.failed while the
+    rest of the queue continues.
+
+ui:
+  components:
+    - sidebar tree Add Paper button
+    - list panel + Add button
+    - drag-and-drop targets for both tree and list pane
+
+tests:
+  unit:
+    - addPaperFromUri imports a single PDF and emits paper:added
+    - addPapersFromUris imports a list of PDF URIs
+    - addPapersFromUris expands a folder URI recursively
+    - addPapersFromUris skips non-PDF files and records them in skipped
+    - addPapersFromUris records failed items and continues with the rest
+    - _findPdfsInFolder recurses into sub-folders
+    - _findPdfsInFolder filters strictly by .pdf extension
+  integration:
+    - import flow end-to-end writes files, database rows, and BibTeX artifacts
+    - batch import of mixed content keeps successful items even when one fails
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

@@ -1,0 +1,84 @@
+feature:
+  name: List Panel
+  module: ui
+  description: >
+    Central editor-area WebviewPanel that opens when the user clicks a
+    collection in the sidebar tree. It shows the paper list on the left and a
+    details sidebar on the right, and reuses a single panel instance across
+    collection switches.
+
+architecture:
+  inputs:
+    - selected CollectionItem
+    - PaperService.listPapers results
+    - paper:added, paper:updated, and paper:deleted events
+    - webview messages for openPdf, openFolder, copyCitation, updateStatus,
+      deletePaper, and addPaper
+  outputs:
+    - vscode.open on the paper PDF
+    - revealInExplorer on the paper folder
+    - clipboard writes for cite keys
+    - PaperService.updatePaperStatus mutations
+    - PaperService.deletePaper mutations
+    - labshelf.addPaper command execution
+  dependencies:
+    - vscode WebviewPanel API
+    - core/paperService
+    - core/eventBus
+
+database:
+  tables_used:
+    - papers
+  migrations: []
+
+events:
+  emits: []
+  listens:
+    - paper:added
+    - paper:updated
+    - paper:deleted
+
+errors:
+  expected_failures:
+    - PaperService.listPapers failure while loading a collection
+    - unknown paper ID in a message payload
+  handling_strategy: >
+    Load errors keep the panel safe and empty. Message handler failures are
+    surfaced through VS Code notifications or the underlying command failure
+    path.
+
+ui:
+  view_type: webview_panel
+  panel_id: labshelfList
+  layout:
+    list_pane:
+      - header with collection name, count badge, and + Add button
+      - column headers for Title, Creator, Status, and Attachments
+      - scrollable list with expandable rows
+    detail_pane:
+      - info, abstract, attachments, notes, tags, and related sections
+      - Open PDF, Copy Key, Show Folder, Remove, and status toggle actions
+  drag_and_drop:
+    supported: false
+    note: >
+      The panel does not accept file drops. VS Code intercepts drags from its
+      own explorer and would open the file in an editor, so drag-and-drop
+      import is handled only by the sidebar library tree
+      (see sidebar spec / LibraryDragAndDropController). The empty state tells
+      the user to drop PDFs onto a tree folder rather than onto the panel.
+
+tests:
+  unit:
+    - filterForCollection returns the correct subset
+    - buildHtml contains paper titles and cite keys
+    - buildHtml includes the add button element
+    - empty-state markup directs drag-and-drop to the sidebar tree
+  integration:
+    - createOrShow registers the webview panel and loads the collection
+    - openPdf messages open the right URI
+    - updateStatus messages call PaperService.updatePaperStatus
+    - addPaper messages execute labshelf.addPaper
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

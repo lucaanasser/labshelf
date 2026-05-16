@@ -1,0 +1,72 @@
+feature:
+  name: Paper Service
+  module: core
+  description: >
+    Own the lifecycle of paper records: parse PDFs, copy source files into the
+    library, persist metadata, update status, delete records, and regenerate
+    BibTeX artifacts.
+
+architecture:
+  inputs:
+    - source PDF URI
+    - paper ID and new status
+    - batch of file and folder URIs
+    - current paper list from the database
+  outputs:
+    - paper records stored in the database
+    - paper folder with paper.pdf, metadata.yaml, and bib.bib
+    - BatchImportResult for batch imports
+    - event notifications on paper changes
+  dependencies:
+    - storage/fileSystemService
+    - storage/libraryPaths
+    - db/database
+    - io/pdf
+    - io/bibtex
+    - core/eventBus
+    - vscode workspace.fs
+
+database:
+  tables_used:
+    - papers
+  migrations: []
+
+events:
+  emits:
+    - paper:added
+    - paper:updated
+    - paper:deleted
+  listens: []
+
+errors:
+  expected_failures:
+    - PDF parser rejects a non-PDF or unreadable file
+    - file copy or directory creation fails during import
+    - database lookup cannot find a paper for update or delete
+    - batch expansion encounters unreadable folders or non-PDF inputs
+  handling_strategy: >
+    Batch import isolates each item failure and records it in the result.
+    Single-item import, update, and delete operations fail fast so the caller
+    can surface the error directly.
+
+ui:
+  components:
+    - sidebar drop imports
+    - list panel drop imports
+    - command palette import and delete actions
+
+tests:
+  unit:
+    - listPapers returns the database contents
+    - updatePaperStatus persists the status and emits paper:updated
+    - deletePaper removes the record and emits paper:deleted
+    - regenerateBibTeX rewrites artifacts for all papers
+    - addPapersFromUris expands folders recursively and filters non-PDF files
+  integration:
+    - single paper import writes files, persists metadata, and emits paper:added
+    - batch import continues after a per-item failure
+    - deletePaper optionally removes the paper folder from disk
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

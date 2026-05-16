@@ -1,0 +1,101 @@
+feature:
+  name: PDF Viewer - Basic (Phase 1 MVP)
+  module: pdf-viewer
+  description: >
+    Render PDF documents in an interactive webview panel within VS Code.
+    Provide page navigation, zoom controls, and automatic theme synchronization
+    with VS Code (dark/light mode). Display PDF using PDF.js with proper worker
+    resolution for the extension host environment.
+
+architecture:
+  inputs:
+    - paper ID from ListWebviewPanel selection
+    - PDF file URI from filesystem
+    - VS Code active color theme (for auto-detection)
+    - Paper metadata from PaperService
+  outputs:
+    - Rendered PDF page in webview
+    - Navigation state (current page, zoom level)
+    - PDF_VIEWER_OPENED event
+    - PDF_VIEWER_CLOSED event
+  dependencies:
+    - vscode WebviewPanel API
+    - pdfjs-dist legacy build (pdf.mjs + worker) for document loading
+    - pdfjs-dist official web viewer module (web/pdf_viewer.mjs + web/pdf_viewer.css)
+    - PaperService for metadata
+    - EventBus for event emission
+    - FileSystemService for reading PDF bytes
+    - ThemeManager (new) for VS Code theme mapping
+
+database:
+  tables_used: []
+  migrations: []
+
+events:
+  emits:
+    - PDF_VIEWER_OPENED (paperId, timestamp)
+    - PDF_VIEWER_CLOSED (paperId, currentPage, timestamp)
+  listens: []
+
+errors:
+  expected_failures:
+    - PDF file not found or inaccessible
+    - Invalid PDF bytes or corrupted file
+    - PDF.js worker source resolution fails
+    - Webview creation fails (out of memory, permissions)
+    - Unsupported PDF features (embedded JavaScript, unusual encoding)
+  handling_strategy: >
+    File not found errors fail fast with user notification via vscode.window.showErrorMessage.
+    Corrupted PDF errors show "Failed to load PDF" in the webview with suggested actions
+    (retry, open in external viewer). Worker resolution failures degrade gracefully
+    by logging and attempting fallback. Webview errors are caught and logged with
+    context for debugging.
+
+ui:
+  components:
+    - PdfViewerPanel: Main webview container
+    - PDF.js official viewer container (`#viewerContainer` + `.pdfViewer`)
+    - PDF toolbar: page input, navigation buttons (first, prev, next, last)
+    - Zoom controls: dropdown (50%, 75%, 100%, 125%, 150%, 200%)
+    - Page counter: "Page X of Y"
+    - Rendered pages managed by PDFViewer from pdf_viewer.mjs
+    - Status bar: current theme indicator (auto/light/dark)
+
+tests:
+  unit:
+    - PdfViewerPanel creates webview with correct options
+    - Viewer shell HTML is assigned before theme and annotations finish hydrating
+    - PDF.js worker source is resolved to correct path
+    - Theme mapping works (VS Code ColorThemeKind → CSS class)
+    - Page navigation updates current page state
+    - Zoom levels are clamped to valid range
+    - Panel closes gracefully without memory leaks
+  integration:
+    - Opening paper from list creates PDF viewer panel
+    - PDF renders correctly with sample PDF file
+    - Navigation between pages works (first, prev, next, last, goto page)
+    - Zoom change re-renders PDF with correct scale
+    - Closing panel emits PDF_VIEWER_CLOSED event
+    - Theme changes in VS Code apply to PDF viewer
+    - Multiple papers can be opened/closed sequentially
+  fixtures:
+    - sample-valid.pdf (simple 5-page scientific paper)
+    - sample-corrupted.pdf (invalid header)
+    - sample-large.pdf (10+ MB for performance testing)
+
+ai_notes:
+  embeddings: false
+  semantic_search: false
+  migration_notes: >
+    Legacy custom webview renderer code was removed in favor of the official
+    PDF.js viewer module API. New changes should extend the PDFViewer-based
+    pipeline rather than reintroducing canvas-only rendering paths.
+  performance_notes: >
+    PDF.js rendering can be slow on large PDFs. The viewer should show its
+    shell immediately, then hydrate theme and annotations asynchronously.
+    Later phases can add lazy-loading / virtualization for long documents.
+    Zoom events should be debounced to avoid excessive re-renders.
+  worker_resolution_critical: >
+    The PDF.js worker MUST be explicitly resolved in extension host.
+    Use require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")
+    and pathToFileURL to construct the worker source URL.

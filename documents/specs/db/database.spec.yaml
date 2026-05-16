@@ -1,0 +1,64 @@
+feature:
+  name: Research Database Contract
+  module: db
+  description: >
+    Define the persistence interface used by the rest of LabShelf, plus the
+    in-memory fallback that keeps the extension usable when SQLite cannot be
+    opened. The SQLite database is a local-only cache rebuilt on startup by
+    LibraryIndexer. It is never synchronized. The sources of truth are
+    metadata.yaml (paper records) and .research/papers/<id>/data.json (annotations,
+    themes) managed by PaperDataStore.
+
+architecture:
+  inputs:
+    - paper records (rebuilt from metadata.yaml by LibraryIndexer)
+    - log entries
+    - annotation records (rebuilt from sidecars by LibraryIndexer)
+  outputs:
+    - local cache of paper rows (queryable by PaperService)
+    - local cache of annotation rows (queryable by AnnotationManager)
+    - persisted log entries
+  dependencies:
+    - core/types
+    - better-sqlite3 adapter implementation
+    - LibraryIndexer (rebuilds the cache on activation)
+
+database:
+  tables_used:
+    - papers
+    - logs
+    - annotations (cache — source of truth is PaperDataStore sidecar JSON)
+  migrations: []
+  notes: >
+    Annotations and theme preferences were previously the sole source of truth in
+    SQLite. They now live in per-paper JSON sidecars (.research/papers/<id>/data.json)
+    and are written there first via PaperDataStore. The DB tables are rebuilt on
+    startup and used only as a fast local query cache.
+
+events:
+  emits: []
+  listens: []
+
+errors:
+  expected_failures:
+    - database file path is unavailable
+    - SQLite connection fails
+    - operations are invoked before initialize()
+  handling_strategy: >
+    The contract itself stays small. Concrete implementations decide whether
+    to throw, fall back, or create directories before connecting.
+
+ui:
+  components: []
+
+tests:
+  unit:
+    - in-memory database stores and returns papers
+    - in-memory database records logs
+    - initialize is required before SQLite-backed operations
+  integration:
+    - paper persistence through the SQLite adapter
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

@@ -1,0 +1,256 @@
+{
+  "name": "@labshelf/vscode",
+  "displayName": "LabShelf",
+  "description": "Local-first research operating system for VS Code.",
+  "version": "0.0.1",
+  "publisher": "labshelf",
+  "engines": {
+    "vscode": "^1.98.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:labshelf.addPaper",
+    "onCommand:labshelf.openPaper",
+    "onCommand:labshelf.openSidebar",
+    "onCommand:labshelf.searchLibrary",
+    "onCommand:labshelf.generateBibTeX",
+    "onCommand:labshelf.rebuildIndex",
+    "onCommand:labshelf.openPaperPdf",
+    "onCommand:labshelf.openPaperFolder",
+    "onCommand:labshelf.copyCitation",
+    "onCommand:labshelf.openListTab",
+    "onCommand:labshelf.newFolder",
+    "onCommand:labshelf.deletePaper",
+    "onCommand:labshelf.openPdfViewer",
+    "onCommand:labshelf.sync.connect",
+    "onCommand:labshelf.sync.now",
+    "onCommand:labshelf.sync.disconnect",
+    "onView:labshelf.library",
+    "onView:labshelf.activity"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "labshelf.addPaper",
+        "title": "Research: Add Paper",
+        "category": "LabShelf",
+        "icon": "$(file-add)"
+      },
+      {
+        "command": "labshelf.openPaper",
+        "title": "Research: Open Paper",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.openSidebar",
+        "title": "Open Sidebar",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.searchLibrary",
+        "title": "Research: Search Library",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.generateBibTeX",
+        "title": "Research: Generate BibTeX",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.rebuildIndex",
+        "title": "Research: Rebuild Index",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.openPaperPdf",
+        "title": "Research: Open Paper PDF",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.openPaperFolder",
+        "title": "Research: Reveal Paper Folder",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.copyCitation",
+        "title": "Research: Copy Citation Key",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.openListTab",
+        "title": "Research: Open List Tab",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.newFolder",
+        "title": "New Folder",
+        "category": "LabShelf",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "labshelf.library.refresh",
+        "title": "Refresh",
+        "category": "LabShelf",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "labshelf.renameFolder",
+        "title": "Rename Folder",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.deleteFolder",
+        "title": "Delete Folder",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.addPaperHere",
+        "title": "Add Paper Here",
+        "category": "LabShelf",
+        "icon": "$(file-add)"
+      },
+      {
+        "command": "labshelf.openPdfViewer",
+        "title": "Research: Open PDF Viewer",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.deletePaper",
+        "title": "Research: Remove Paper",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.sync.connect",
+        "title": "Sync: Conectar ao Google Drive",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.sync.now",
+        "title": "Sync: Sincronizar Agora",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.sync.disconnect",
+        "title": "Sync: Desconectar do Google Drive",
+        "category": "LabShelf"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "labshelfContainer",
+          "title": "LabShelf",
+          "icon": "media/labshelf.svg"
+        }
+      ]
+    },
+    "views": {
+      "labshelfContainer": [
+        {
+          "id": "labshelf.library",
+          "name": "My LabShelf",
+          "type": "tree"
+        },
+        {
+          "id": "labshelf.activity",
+          "name": "Google Drive",
+          "type": "tree"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "labshelf.library",
+        "contents": "Nenhuma pasta ainda.\n[Nova pasta](command:labshelf.newFolder)\nVocê também pode arrastar PDFs para cá."
+      },
+      {
+        "view": "labshelf.activity",
+        "contents": "Configure a biblioteca primeiro para usar o Google Drive.\n[Configurar Biblioteca](command:labshelf.configureLibrary)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "labshelf.addPaper",
+          "when": "view == labshelf.library",
+          "group": "navigation@1"
+        },
+        {
+          "command": "labshelf.newFolder",
+          "when": "view == labshelf.library",
+          "group": "navigation@2"
+        },
+        {
+          "command": "labshelf.library.refresh",
+          "when": "view == labshelf.library",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "labshelf.addPaperHere",
+          "when": "view == labshelf.library && viewItem == labshelfFolder",
+          "group": "inline@1"
+        },
+        {
+          "command": "labshelf.newFolder",
+          "when": "view == labshelf.library && viewItem == labshelfFolder",
+          "group": "1_modify@1"
+        },
+        {
+          "command": "labshelf.renameFolder",
+          "when": "view == labshelf.library && viewItem == labshelfFolder",
+          "group": "1_modify@2"
+        },
+        {
+          "command": "labshelf.deleteFolder",
+          "when": "view == labshelf.library && viewItem == labshelfFolder",
+          "group": "1_modify@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "LabShelf",
+      "properties": {
+        "labshelf.sync.autoSyncIntervalMinutes": {
+          "type": "number",
+          "default": 15,
+          "minimum": 1,
+          "description": "Intervalo de sincronizacao automatica com o Google Drive (em minutos)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "typecheck": "tsc --noEmit -p ./",
+    "lint": "eslint . --ext .ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:core": "jest __tests__/core",
+    "test:db": "jest __tests__/db",
+    "test:storage": "jest __tests__/storage",
+    "test:pdf": "jest __tests__/pdf",
+    "test:bibtex": "jest __tests__/bibtex",
+    "test:commands": "jest __tests__/commands"
+  },
+  "dependencies": {
+    "@thednp/dommatrix": "^3.0.4",
+    "pdfjs-dist": "^5.7.284",
+    "yaml": "^2.7.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.13.10",
+    "@types/vscode": "^1.98.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.9",
+    "typescript": "^5.8.2"
+  }
+}

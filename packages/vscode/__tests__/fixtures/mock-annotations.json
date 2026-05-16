@@ -1,0 +1,54 @@
+[
+  {
+    "id": "ann-001",
+    "paperId": "paper-abc",
+    "type": "highlight",
+    "pageNumber": 1,
+    "content": "This is a key finding in the introduction",
+    "color": "yellow",
+    "position": { "x": 0.1, "y": 0.2, "width": 0.6, "height": 0.03 },
+    "createdAt": "2026-01-10T10:00:00Z",
+    "updatedAt": "2026-01-10T10:00:00Z"
+  },
+  {
+    "id": "ann-002",
+    "paperId": "paper-abc",
+    "type": "note",
+    "pageNumber": 2,
+    "content": "Important methodology note: compare with Smith et al. 2024",
+    "createdAt": "2026-01-10T10:05:00Z",
+    "updatedAt": "2026-01-10T10:05:00Z"
+  },
+  {
+    "id": "ann-003",
+    "paperId": "paper-abc",
+    "type": "highlight",
+    "pageNumber": 3,
+    "content": "The accuracy improved by 15% over the baseline",
+    "color": "green",
+    "position": { "x": 0.05, "y": 0.45, "width": 0.7, "height": 0.03 },
+    "createdAt": "2026-01-10T10:10:00Z",
+    "updatedAt": "2026-01-10T10:10:00Z"
+  },
+  {
+    "id": "ann-004",
+    "paperId": "paper-abc",
+    "type": "highlight",
+    "pageNumber": 3,
+    "content": "Future work: extend to multilingual settings",
+    "color": "blue",
+    "position": { "x": 0.05, "y": 0.8, "width": 0.65, "height": 0.03 },
+    "createdAt": "2026-01-10T10:15:00Z",
+    "updatedAt": "2026-01-10T10:15:00Z"
+  },
+  {
+    "id": "ann-005",
+    "paperId": "paper-xyz",
+    "type": "highlight",
+    "pageNumber": 1,
+    "content": "Different paper annotation",
+    "color": "red",
+    "createdAt": "2026-01-11T09:00:00Z",
+    "updatedAt": "2026-01-11T09:00:00Z"
+  }
+]

@@ -1,0 +1,56 @@
+feature:
+  name: Command Registration
+  module: commands
+  description: >
+    Register the LabShelf command palette actions and bind them to the paper
+    service, logger, and VS Code UI prompts.
+
+architecture:
+  inputs:
+    - command invocations
+    - selected paper IDs
+    - user dialog responses
+  outputs:
+    - service calls
+    - notifications and quick-pick prompts
+  dependencies:
+    - vscode command registry
+    - core/paperService
+    - core/logger
+
+database:
+  tables_used:
+    - papers
+  migrations: []
+
+events:
+  emits: []
+  listens: []
+
+errors:
+  expected_failures:
+    - user cancels open dialog or quick pick
+    - paper lookup returns no match
+    - import, delete, or regeneration workflow throws
+  handling_strategy: >
+    User cancellation returns early without mutating state. Failures are logged
+    and surfaced with VS Code error or warning messages.
+
+ui:
+  components:
+    - command palette entries
+    - file picker dialog
+    - quick pick for paper selection
+    - confirmation dialogs for deletion
+
+tests:
+  unit:
+    - command registration
+    - buildResultMessage summarizes import results
+  integration:
+    - add paper command launches batch import and reports the result
+    - delete paper command respects the confirmation choice
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

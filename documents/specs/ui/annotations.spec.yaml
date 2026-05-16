@@ -1,0 +1,105 @@
+feature:
+  name: Annotations - Highlights and Notes (Phase 2)
+  module: pdf-viewer
+  description: >
+    Enable users to create, view, edit, and delete annotations (highlights, notes, comments)
+    on PDF pages. Annotations are stored in per-paper JSON sidecars
+    (.research/papers/<id>/data.json) via PaperDataStore, which is the source of truth.
+    The SQLite table is a local cache rebuilt on startup by LibraryIndexer.
+    Display annotations in a sidebar panel with grouping by page.
+
+architecture:
+  inputs:
+    - User text selection in PDF viewer
+    - Annotation create/edit/delete commands from toolbar
+    - Click on annotation in sidebar
+    - Paper ID for querying annotations
+  outputs:
+    - Persisted annotations in .research/papers/<id>/data.json (via PaperDataStore)
+    - ANNOTATION_CREATED event
+    - ANNOTATION_UPDATED event
+    - ANNOTATION_DELETED event
+    - Annotation sidebar UI with interactive list
+    - PDF highlights rendered as overlay
+  dependencies:
+    - PaperDataStore (source of truth for annotations — JSON sidecars)
+    - ResearchDatabase (local cache only, rebuilt by LibraryIndexer)
+    - PdfViewerPanel from Phase 1
+    - EventBus for event emission
+    - Logger for annotation operations
+    - Types: Annotation interface
+
+database:
+  tables_used:
+    - annotations (cache only — rebuilt from sidecars by LibraryIndexer on startup)
+  migrations:
+    - create_annotations_table:
+        description: >
+          Cache table for annotation data: id (UUID), paperId, type, pageNumber, content,
+          color, position (JSON), createdAt, updatedAt. Rebuilt from
+          .research/papers/<id>/data.json on extension startup. Not the source of truth.
+
+events:
+  emits:
+    - ANNOTATION_CREATED (annotation: Annotation)
+    - ANNOTATION_UPDATED (annotation: Annotation)
+    - ANNOTATION_DELETED (annotationId: string, paperId: string)
+  listens: []
+
+errors:
+  expected_failures:
+    - Database insert/update fails (constraint violation, disk full)
+    - Invalid annotation data (missing required fields, invalid color)
+    - Attempt to edit/delete non-existent annotation
+    - User selects empty text or invalid position
+    - Position JSON malformed or out of bounds
+  handling_strategy: >
+    Database errors are logged with full context and surfaced to user via notification.
+    Validation errors are caught before DB write and shown as user-friendly messages.
+    Missing annotations (deleted by another process) fail gracefully with sidebar refresh.
+    Invalid positions are rejected with guidance on valid range.
+
+ui:
+  components:
+    - Annotation toolbar: "Highlight" button, color picker (yellow, green, blue, red, pink)
+    - Highlight overlay: transparent rectangles on PDF with selected color
+    - Annotation sidebar: grouped by page, shows icon (highlight dot), preview text, created date
+    - Context menu on highlight: Edit, Delete, Copy text, Open note
+    - Annotation list item: expandable to show full content, click navigates to page
+    - Inline note editor: textarea for editing note content
+    - Delete confirmation: "Are you sure?" dialog
+
+tests:
+  unit:
+    - AnnotationManager.createHighlight() saves to PaperDataStore sidecar and emits event
+    - AnnotationManager.updateAnnotation() persists changes to sidecar
+    - AnnotationManager.deleteAnnotation() removes from sidecar and emits event
+    - AnnotationManager.queryByPaper() returns sorted annotations by page
+    - Color validation rejects invalid colors
+    - Position validation accepts valid {x, y, width, height} and rejects invalid
+    - Annotation.toString() generates preview text correctly
+  integration:
+    - User selects text → shows color picker → chooses color → highlight created
+    - New highlight appears in sidebar under correct page group
+    - Clicking highlight in sidebar navigates PDF to page and highlights
+    - Editing annotation updates UI and DB
+    - Deleting annotation removes from both UI and DB
+    - Sidebar persists across page navigation (cache)
+    - Multiple annotations on same page display correctly without overlap
+  fixtures:
+    - sample-with-positions.json (highlight positions on known PDF)
+    - mock-annotations.json (various types and colors)
+
+ai_notes:
+  embeddings: false
+  semantic_search: false
+  position_tracking: >
+    Position {x, y, width, height} is stored in PDF coordinates.
+    Need to verify position validity and handle PDF.js coordinate system
+    conversion (may require scaling based on zoom level).
+  performance_concern: >
+    Rendering many highlights on a single page could be slow.
+    Consider caching rendered highlights and using CSS overlays.
+  ui_polish: >
+    Annotation colors should match VS Code's token colors if possible
+    for visual consistency. Sidebar should support keyboard navigation.

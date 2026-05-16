@@ -1,0 +1,105 @@
+feature:
+  name: PDF Viewer Themes - Sync and Customize (Phase 3)
+  module: pdf-viewer
+  description: >
+    Allow users to set PDF viewing theme independently from VS Code,
+    while maintaining automatic synchronization option. Support multiple themes:
+    auto (follows VS Code), light, dark, sepia, high-contrast. Store theme
+    preference per paper in the PaperDataStore sidecar (.research/papers/<id>/data.json).
+    Update PDF webview CSS dynamically when theme changes.
+
+architecture:
+  inputs:
+    - VS Code active color theme (via vscode.window.activeColorTheme)
+    - User theme selection from dropdown in PDF toolbar
+    - Theme preference from PaperDataStore sidecar (per paperId)
+    - Configuration changes listener
+  outputs:
+    - PDF webview CSS with theme colors applied
+    - PAPER_THEME_CHANGED event
+    - VSCODE_THEME_CHANGED event
+    - Persisted theme preference in .research/papers/<id>/data.json
+    - Theme indicator in status bar
+  dependencies:
+    - PaperDataStore (source of truth for theme preferences — JSON sidecars)
+    - ResearchDatabase (local cache only — not queried for themes by ThemeManager)
+    - PdfViewerPanel from Phase 1
+    - EventBus for event emission
+    - Logger for theme changes
+    - CSS generation from theme configuration
+
+database:
+  tables_used: []
+  migrations: []
+  notes: >
+    Theme preferences are no longer stored in SQLite. ThemeManager reads and writes
+    directly to PaperDataStore (JSON sidecar). The previous paperThemePreferences
+    table is not used.
+
+events:
+  emits:
+    - PAPER_THEME_CHANGED (paperId: string, theme: string, timestamp: Date)
+    - VSCODE_THEME_CHANGED (oldTheme: string, newTheme: string, timestamp: Date)
+  listens:
+    - vscode.window.onDidChangeActiveColorTheme (monitored, not via EventBus)
+
+errors:
+  expected_failures:
+    - Invalid theme value provided (not in allowed list)
+    - Database query fails for theme preference
+    - Theme CSS generation produces invalid CSS
+    - VS Code theme kind cannot be detected
+    - User switches theme while PDF loading
+  handling_strategy: >
+    Invalid theme values are rejected before DB write with validation.
+    Database failures fall back to default theme ('light') and log error.
+    CSS generation errors are caught and logged; PDF renders with fallback theme.
+    VS Code theme detection missing defaults to 'light' gracefully.
+    Theme switches during load are queued and applied after render completes.
+
+ui:
+  components:
+    - Theme dropdown in PDF toolbar: label "Theme" with options
+    - Theme option items: "Auto (VS Code)", "Light", "Dark", "Sepia", "High Contrast"
+    - Current theme indicator: shows selected theme in status bar
+    - Dynamic CSS application: background, text, highlight, border colors
+    - Webview root attribute `data-pdf-theme` drives live theme switching without rebuilding HTML
+    - Color palette for each theme:
+      - auto: inherit VS Code palette
+      - light: light gray background, dark text
+      - dark: dark gray/black background, light text
+      - sepia: warm beige background, brown text
+      - high-contrast: pure black/white, accessible borders
+
+tests:
+  unit:
+    - ThemeManager.mapVsCodeTheme() converts ColorThemeKind to theme string
+    - ThemeManager.generateCss() produces valid CSS for each theme
+    - Theme validation accepts valid values, rejects invalid
+    - CSS escape validates special characters
+    - ThemeManager reads and writes theme via PaperDataStore sidecar
+  integration:
+    - Opening PDF applies stored theme preference
+    - Changing theme in dropdown updates UI immediately through a postMessage applyTheme update
+    - Theme preference persists across close/reopen
+    - Changing VS Code theme updates PDF if paper theme is 'auto'
+    - Multiple papers can have different theme preferences
+    - Switching between papers retains their individual themes
+    - Theme change event triggers sidebar refresh if needed
+  fixtures:
+    - theme-configs.json (CSS definitions for each theme)
+    - mock-theme-preferences.json (sample stored preferences)
+
+ai_notes:
+  embeddings: false
+  semantic_search: false
+  css_injection: >
+    Theme CSS is injected into webview via <style> tag in HTML.
+    Must ensure colors are accessible and readable in all themes.
+    Test with actual VS Code light/dark/high-contrast themes.
+  accessibility: >
+    High-contrast theme must meet WCAG AA standards (4.5:1 contrast ratio).
+    Sepia theme should not be the default for accessibility.
+  performance: >
+    Theme application should not re-render entire PDF.
+    Use CSS variables or class switching for instant updates.

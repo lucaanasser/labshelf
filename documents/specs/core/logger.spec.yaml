@@ -1,0 +1,54 @@
+feature:
+  name: Workspace Logger
+  module: core
+  description: >
+    Write structured JSONL application logs to the library's app.log file and,
+    when available, mirror them to the database log store.
+
+architecture:
+  inputs:
+    - log level
+    - module name
+    - message
+    - context object
+    - optional stack trace
+  outputs:
+    - appended JSON line in .research/logs/app.log
+    - optional append into the database log store
+  dependencies:
+    - storage/fileSystemService
+    - storage/libraryPaths
+    - vscode workspace.fs
+
+database:
+  tables_used:
+    - logs
+  migrations: []
+
+events:
+  emits: []
+  listens: []
+
+errors:
+  expected_failures:
+    - log directory cannot be created
+    - log file cannot be read or appended
+    - database log store append fails
+  handling_strategy: >
+    Errors are surfaced to the caller so the owning workflow can decide whether
+    to show a warning, fall back, or abort.
+
+ui:
+  components: []
+
+tests:
+  unit:
+    - log writes JSONL entries to app.log
+    - error captures stack traces when present
+    - optional store append is invoked after file logging
+  integration:
+    - extension bootstrapping writes structured messages for paper lifecycle events
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

@@ -1,0 +1,89 @@
+feature:
+  name: Sidebar Collections Tree
+  module: ui
+  description: >
+    Render the LabShelf library navigation as a VS Code TreeView in the
+    activity bar. The tree exposes built-in collections and user-created custom
+    folders, and accepts OS file drops anywhere in the tree.
+
+architecture:
+  inputs:
+    - PaperService.listPapers for counts
+    - paper:added, paper:updated, and paper:deleted events
+    - workspaceState key labshelf.customCollections
+    - text/uri-list drops from the OS
+  outputs:
+    - labshelf.openListTab for the selected collection
+    - labshelf.addPaper from the toolbar
+    - persisted custom collections
+    - batch import through PaperService.addPapersFromUris
+  dependencies:
+    - vscode TreeDataProvider and createTreeView API
+    - vscode TreeDragAndDropController API
+    - core/paperService
+    - core/eventBus
+    - vscode ExtensionContext.workspaceState
+
+database:
+  tables_used:
+    - papers
+  migrations: []
+
+events:
+  emits: []
+  listens:
+    - paper:added
+    - paper:updated
+    - paper:deleted
+
+errors:
+  expected_failures:
+    - PaperService.listPapers failure while refreshing counts
+    - workspaceState unavailable or empty
+    - unreadable dropped folder
+    - non-PDF dropped file
+  handling_strategy: >
+    Refresh errors should not block rendering. Collection mutations are no-ops
+    on cancel. Drop import failures are logged by the activation layer and
+    summarized to the user when at least one item fails.
+
+ui:
+  view_type: tree
+  view_id: labshelf.collections
+  registration: vscode.window.createTreeView
+  components:
+    - CollectionsTreeDataProvider
+    - CollectionsDragAndDropController
+  built_in_collections:
+    - My Library
+    - Recently Read
+    - Unfiled Items
+  custom_collections:
+    - user-created, persisted in workspaceState
+  toolbar:
+    - Add Paper
+    - New Collection
+    - Refresh
+  drag_and_drop:
+    drop_mime_types:
+      - text/uri-list
+
+tests:
+  unit:
+    - root tree structure includes built-in collections
+    - tree items use the correct icon and contextValue per collection type
+    - counts update after paper:added and paper:updated events
+    - newCollection persists to workspaceState
+    - renameCollection updates the stored collection label
+    - deleteCollection removes the collection from workspaceState
+    - drag-and-drop controller parses text/uri-list payloads
+    - drag-and-drop controller ignores comments and invalid URIs
+    - drag-and-drop controller filters non-file URIs
+  integration:
+    - tree registered under labshelf.collections
+    - clicking a tree item opens labshelf.openListTab with the item
+    - drag-and-drop routes to PaperService.addPapersFromUris
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

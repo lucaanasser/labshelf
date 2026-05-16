@@ -1,0 +1,107 @@
+feature:
+  name: Sync
+  module: sync
+  description: >
+    Sincronização bidirecional multi-dispositivo da biblioteca local com
+    armazenamento remoto via camada de providers extensível. O provider inicial
+    é o Google Drive; a interface RemoteProvider permite adicionar providers
+    futuros como GitHub e Dropbox sem alterar o SyncEngine.
+
+architecture:
+  inputs:
+    - biblioteca local (papers/ com subpastas e .research/papers/<id>/data.json)
+    - credenciais OAuth armazenadas via vscode.ExtensionContext.secrets
+    - manifest local em .research/sync/<providerId>.state.json
+  outputs:
+    - arquivos de papers no namespace library do Drive (pasta visível ao usuário)
+    - manifest e dados de anotações no namespace appdata do Drive (pasta oculta via appDataFolder)
+  modules:
+    - RemoteProvider: interface que abstrai operações de listagem, upload, download e delete de arquivos remotos
+    - SyncEngine: executa o diff de três vias entre estado anterior (manifest), estado local atual e estado remoto atual, produzindo uma lista de ações a aplicar
+    - SyncManifest: lê e grava o arquivo de estado que serve de base do merge; quando ausente ou corrompido, aciona sync completo
+    - GoogleDriveProvider: implementação de RemoteProvider usando Drive REST API v3
+    - GoogleDriveAuth: fluxo OAuth 2.0 PKCE com servidor loopback local para capturar o código de autorização
+    - SyncController: orquestrador que inicializa auth, expõe comandos VSCode, gerencia o intervalo de auto-sync e atualiza o status bar
+  dependencies:
+    - vscode.ExtensionContext (armazenamento seguro de tokens via secrets)
+    - vscode.workspace.fs (adaptador de sistema de arquivos local)
+    - Drive REST API v3
+    - core/eventBus
+
+database:
+  tables_used: []
+  migrations: []
+  notes: >
+    O SQLite é cache local reconstruível via LibraryIndexer e não sincroniza
+    para o Drive. Anotações e temas vivem em
+    .research/papers/<id>/data.json (PaperDataStore) e são sincronizados como
+    arquivo comum. O estado de sync fica em
+    .research/sync/<providerId>.state.json e não sobe para o Drive.
+
+events:
+  emits: []
+  listens:
+    - paper:added — aciona debounce de sync (30 s)
+    - paper:deleted — aciona debounce de sync (30 s)
+    - paper:updated — aciona debounce de sync (30 s)
+    - annotation:created — aciona debounce de sync (30 s)
+    - annotation:updated — aciona debounce de sync (30 s)
+    - annotation:deleted — aciona debounce de sync (30 s)
+  notes: >
+    O módulo de sync não emite eventos próprios. Feedback de progresso e
+    resultado é exibido diretamente no status bar item.
+
+errors:
+  expected_failures:
+    - OAuth cancelado pelo usuário antes de concluir o loopback
+    - clientId não configurado em labshelf.googleDrive.clientId
+    - falha de rede durante upload, download ou listagem remota
+    - conflito bidirecional (mesmo arquivo modificado local e remotamente desde o último sync)
+    - manifest corrompido ou com JSON inválido
+    - Drive API retorna status 429 (rate limit)
+  handling_strategy: >
+    Conflito bidirecional é resolvido com keep-both: o arquivo remoto é
+    renomeado com sufixo "(conflito <data>)" antes de o arquivo local ser
+    enviado. Manifest corrompido dispara um sync completo sem manifest como
+    fallback seguro. Erro 429 interrompe o sync e exibe mensagem de erro ao
+    usuário via notificação VSCode. Erros de rede são logados com contexto
+    suficiente para diagnóstico e surfaceados ao usuário.
+
+ui:
+  components:
+    - status bar item: mostra estado de conexão (conectado / desconectado / sincronizando) e timestamp da última sync bem-sucedida; clique executa labshelf.sync.now quando conectado ou labshelf.sync.connect quando desconectado
+  commands:
+    - labshelf.sync.connect: inicia fluxo OAuth e registra credenciais
+    - labshelf.sync.now: dispara sync manual imediato
+    - labshelf.sync.disconnect: revoga tokens e limpa credenciais armazenadas
+  settings:
+    - labshelf.googleDrive.clientId: Client ID do projeto OAuth no Google Cloud Console
+    - labshelf.sync.autoSyncIntervalMinutes: intervalo de polling periódico em minutos
+
+tests:
+  unit:
+    - SyncEngine produz acao local-new quando arquivo existe local mas nao no manifest nem remoto
+    - SyncEngine produz acao remote-new quando arquivo existe remoto mas nao no manifest nem local
+    - SyncEngine produz acao local-modified quando hash local difere do manifest e remoto coincide com manifest
+    - SyncEngine produz acao remote-modified quando hash remoto difere do manifest e local coincide com manifest
+    - SyncEngine produz acao local-deleted quando arquivo esta no manifest mas nao mais local e remoto coincide com manifest
+    - SyncEngine produz acao remote-deleted quando arquivo esta no manifest mas nao mais remoto e local coincide com manifest
+    - SyncEngine produz acao conflict quando local e remoto divergem do manifest simultaneamente
+    - SyncEngine produz acao unchanged quando local e remoto coincidem com manifest
+    - SyncManifest retorna manifest vazio ao carregar arquivo ausente
+    - SyncManifest retorna manifest vazio e loga aviso ao carregar JSON corrompido
+    - SyncManifest persiste entradas e as recarrega corretamente apos save e reload
+    - DriveClient lista arquivos via fetch mockado
+    - DriveClient faz upload multipart via fetch mockado
+    - DriveClient deleta arquivo via fetch mockado
+    - PaperDataStore persiste e retorna anotacoes
+    - PaperDataStore persiste e retorna temas
+    - PaperDataStore retorna estrutura vazia ao carregar arquivo ausente
+    - LibraryIndexer reconstroi indice com mocks de readDirectory e metadata.yaml
+  integration:
+    - sync completo com RemoteProvider mockado cobre as 8 acoes do diff de tres vias
+    - conflito bidirecional resulta em arquivo com sufixo de conflito no provider mockado
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

@@ -1,0 +1,17 @@
+{
+  "name": "@labshelf/ai",
+  "version": "0.1.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p ./",
+    "typecheck": "tsc --noEmit -p ./",
+    "test": "echo \"No tests yet\""
+  },
+  "dependencies": {
+    "@labshelf/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "*"
+  }
+}

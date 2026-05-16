@@ -1,0 +1,48 @@
+feature:
+  name: BibTeX Generator
+  module: bibtex
+  description: >
+    Generate metadata.yaml and bib.bib artifacts for imported papers while
+    preserving authors and bibliographic fields when available.
+
+architecture:
+  inputs:
+    - paper record
+    - paper folder URI
+    - source PDF file name
+  outputs:
+    - metadata.yaml
+    - bib.bib
+  dependencies:
+    - yaml
+    - storage/fileSystemService
+
+database:
+  tables_used: []
+  migrations: []
+
+events:
+  emits: []
+  listens: []
+
+errors:
+  expected_failures:
+    - invalid cite key or malformed bibliographic value
+    - filesystem write failure
+  handling_strategy: >
+    Fail fast and let the owning import flow surface or log the failure.
+
+ui:
+  components: []
+
+tests:
+  unit:
+    - BibTeX entry generation
+    - author formatting
+    - YAML output generation
+  integration:
+    - artifact writing during paper import
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

@@ -1,0 +1,41 @@
+{
+  "themes": {
+    "light": {
+      "--pdf-bg": "#f0f0f0",
+      "--pdf-canvas-bg": "#ffffff",
+      "--pdf-text": "#1a1a1a",
+      "--pdf-toolbar-bg": "#e8e8e8",
+      "--pdf-toolbar-border": "#cccccc",
+      "--pdf-toolbar-text": "#333333"
+    },
+    "dark": {
+      "--pdf-bg": "#1e1e1e",
+      "--pdf-canvas-bg": "#2d2d2d",
+      "--pdf-text": "#d4d4d4",
+      "--pdf-toolbar-bg": "#252526",
+      "--pdf-toolbar-border": "#3c3c3c",
+      "--pdf-toolbar-text": "#cccccc"
+    },
+    "sepia": {
+      "--pdf-bg": "#f4efe4",
+      "--pdf-canvas-bg": "#faf6ee",
+      "--pdf-text": "#4a3728",
+      "--pdf-toolbar-bg": "#e8e0cc",
+      "--pdf-toolbar-border": "#c8b89a",
+      "--pdf-toolbar-text": "#5c4033"
+    },
+    "high-contrast": {
+      "--pdf-bg": "#000000",
+      "--pdf-canvas-bg": "#000000",
+      "--pdf-text": "#ffffff",
+      "--pdf-toolbar-bg": "#000000",
+      "--pdf-toolbar-border": "#ffffff",
+      "--pdf-toolbar-text": "#ffffff"
+    }
+  },
+  "mockPreferences": [
+    { "paperId": "paper-abc", "theme": "sepia" },
+    { "paperId": "paper-xyz", "theme": "dark" },
+    { "paperId": "paper-def", "theme": "auto" }
+  ]
+}

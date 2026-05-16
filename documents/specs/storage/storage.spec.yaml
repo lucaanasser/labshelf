@@ -1,0 +1,78 @@
+feature:
+  name: Library Storage
+  module: storage
+  description: >
+    Resolve and create the central library layout, persist the configured root,
+    provide a thin filesystem helper, own per-paper JSON sidecars (PaperDataStore),
+    and rebuild the SQLite index from disk on startup (LibraryIndexer).
+
+architecture:
+  inputs:
+    - library root URI
+    - workspace extension context
+    - filesystem read and write requests
+    - paper IDs for sidecar lookup
+  outputs:
+    - .research folder structure (including .research/papers/ and .research/sync/)
+    - persisted library root in globalState
+    - per-paper sidecar files at .research/papers/<id>/data.json
+    - rebuilt SQLite index from metadata.yaml + sidecar files
+  dependencies:
+    - vscode workspace.fs
+    - vscode ExtensionContext.globalState
+    - FileSystemService
+    - yaml (for metadata.yaml parsing in LibraryIndexer)
+    - ResearchDatabase (written by LibraryIndexer)
+
+database:
+  tables_used:
+    - papers (written by LibraryIndexer.rebuild() from metadata.yaml)
+    - annotations (written by LibraryIndexer.rebuild() from sidecar JSON)
+  migrations: []
+  notes: >
+    SQLite is a local cache only. The source of truth for papers is metadata.yaml;
+    for annotations and themes it is .research/papers/<id>/data.json.
+    PaperDataStore owns sidecar reads and writes; LibraryIndexer rebuilds the DB.
+
+events:
+  emits: []
+  listens: []
+
+errors:
+  expected_failures:
+    - stored library root no longer exists or is not a directory
+    - user cancels the setup wizard
+    - library folder creation fails
+    - text read or write fails in FileSystemService
+    - metadata.yaml missing or malformed (paper skipped during rebuild)
+    - sidecar data.json corrupt (paper data skipped, empty state returned)
+  handling_strategy: >
+    The setup flow returns undefined on cancel or inaccessible paths and shows
+    an error message when the library cannot be created. LibraryIndexer skips
+    unreadable papers/sidecars and logs warnings. PaperDataStore returns an
+    empty default when the sidecar is absent.
+
+ui:
+  components:
+    - choose-library-location dialog
+    - library-name input box
+    - setup failure error notification
+
+tests:
+  unit:
+    - LibraryPaths resolves .research, papers, logs, index, app log, paperDataDir, paperDataPath, syncDir paths
+    - resolveLibraryRoot returns undefined for missing or invalid roots
+    - ensureLibraryStructure creates .research, .research/logs, .research/papers, .research/sync, papers
+    - FileSystemService writes and reads UTF-8 text
+    - PaperDataStore.load returns empty default when sidecar is absent
+    - PaperDataStore CRUD for annotations and themes persists and reloads correctly
+    - LibraryIndexer.rebuild() scans papers/**/metadata.yaml and .research/papers/**/data.json
+    - LibraryIndexer.rebuild() is idempotent (running twice does not duplicate data)
+    - migrateSidecarsFromDb exports annotations from DB to sidecars without duplicating
+  integration:
+    - first-run setup wizard persists the chosen library root
+    - rebuild after fresh install restores annotations from sidecars
+
+ai_notes:
+  embeddings: false
+  semantic_search: false
