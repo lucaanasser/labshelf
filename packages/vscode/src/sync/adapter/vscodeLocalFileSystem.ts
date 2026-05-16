@@ -1,9 +1,4 @@
-/**
- * Module: VscodeLocalFileSystem
- * Responsibility: Adapt vscode.workspace.fs (Uri-based) to the LocalFileSystem
- *   interface (absolute-path string-based) required by the sync engine
- * Dependencies: vscode
- */
+/** Adapts vscode.workspace.fs (Uri-based) to the LocalFileSystem interface (absolute-path string-based) required by the sync engine. @depends vscode, syncTypes. @dependents syncController */
 import * as vscode from "vscode";
 import type { LocalFileSystem, LocalStat } from "../core/syncTypes.js";
 

@@ -1,16 +1,4 @@
-/**
- * Module: Command Registration
- * Responsibility: Register user-facing extension commands
- * Dependencies: vscode, services
- *
- * Architectural notes:
- * - Commands stay decoupled from the sidebar UI. Mutations are emitted via
- *   the event bus inside PaperService, which the sidebar listens to. That
- *   keeps command code free of presentation concerns while still keeping
- *   the UI in sync.
- * - All commands that require storage go through requireServices(), which
- *   triggers the library setup wizard if no library is configured yet.
- */
+/** Registers all user-facing extension commands against the VS Code command registry. @depends vscode, paperService, logger, themeManager, annotationManager. @dependents extension */
 import * as vscode from "vscode";
 
 import type { PaperService } from "../core/paperService.js";
@@ -30,6 +18,7 @@ export type ActiveServices = {
 
 export type RequireServices = () => Promise<ActiveServices | null>;
 
+/** Registers all labshelf.* commands onto the extension context subscriptions. @usedBy extension. @returns void */
 export function registerCommands(
   context: vscode.ExtensionContext,
   requireServices: RequireServices,
@@ -148,6 +137,7 @@ export function registerCommands(
   );
 }
 
+// Returns the paper matching paperId if given, or presents a quick-pick for the user to choose from.
 async function resolvePaper(
   paperService: PaperService,
   paperId: string | undefined,
@@ -169,6 +159,7 @@ async function resolvePaper(
   return pickFrom(papers, placeholder);
 }
 
+// Lists all papers and presents a quick-pick with the given placeholder label.
 async function pickPaper(paperService: PaperService, placeholder: string): Promise<PaperRecord | undefined> {
   const papers = await paperService.listPapers();
   if (papers.length === 0) {
@@ -178,6 +169,7 @@ async function pickPaper(paperService: PaperService, placeholder: string): Promi
   return pickFrom(papers, placeholder);
 }
 
+// Shows a VS Code quick-pick populated with all papers and returns the selected one.
 async function pickFrom(papers: PaperRecord[], placeholder: string): Promise<PaperRecord | undefined> {
   const items = papers.map((paper) => ({
     label: paper.title,
@@ -189,15 +181,18 @@ async function pickFrom(papers: PaperRecord[], placeholder: string): Promise<Pap
   return picked?.paper;
 }
 
+// Capitalizes the first letter of a paper status string for display.
 function formatStatus(status: PaperStatus): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+// Opens the paper.pdf file inside the paper folder using the default VS Code handler.
 async function openPaperPdf(paper: PaperRecord): Promise<void> {
   const pdf = vscode.Uri.joinPath(vscode.Uri.file(paper.path), "paper.pdf");
   await vscode.commands.executeCommand("vscode.open", pdf);
 }
 
+// Runs a batch import for the given URIs with a notification progress indicator, logging and surfacing any failures.
 async function runBatchImport(
   paperService: PaperService,
   logger: WorkspaceLogger,
@@ -218,6 +213,7 @@ async function runBatchImport(
   }
 }
 
+// Builds a human-readable summary string from a BatchImportResult (e.g. "3 papers imported, 1 failed").
 function buildResultMessage(result: BatchImportResult): string {
   const parts: string[] = [];
   if (result.success.length > 0) {
@@ -232,6 +228,7 @@ function buildResultMessage(result: BatchImportResult): string {
   return parts.join(", ") || "Nothing to import";
 }
 
+// Wraps an async command action with error logging and a user-facing error message on failure.
 async function executeSafely(logger: WorkspaceLogger, commandName: string, action: () => Promise<void>): Promise<void> {
   try {
     await action();

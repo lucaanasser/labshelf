@@ -1,10 +1,4 @@
-/**
- * Module: SyncController
- * Responsibility: Orchestrate sync lifecycle — auth, engine wiring, debounced
- *   auto-sync on library events, periodic polling, status bar feedback
- * Dependencies: vscode, GoogleDriveAuth, GoogleDriveProvider, SyncEngine,
- *   SyncManifest, VscodeLocalFileSystem, ILibraryPaths, ExtensionEventBus
- */
+/** Orchestrates the sync lifecycle — auth, engine wiring, debounced auto-sync on library events, periodic polling, and status bar feedback. @depends vscode, googleDriveAuth, googleDriveProvider, syncEngine, syncManifest, vscodeLocalFileSystem, libraryPaths, eventBus. @dependents extension */
 import * as path from "node:path";
 import * as vscode from "vscode";
 
@@ -47,7 +41,7 @@ export class SyncController implements vscode.Disposable {
     this.statusBar.command = "labshelf.sync.now";
     this.disposables.push(this.statusBar);
 
-    // Debounce sync on library change events
+    // Debounce a sync whenever any library change event fires.
     const scheduleSync = (): void => this.scheduleDebounce();
     eventBus.on("paper:added", scheduleSync);
     eventBus.on("paper:deleted", scheduleSync);
@@ -57,6 +51,7 @@ export class SyncController implements vscode.Disposable {
     eventBus.on("annotation:deleted", scheduleSync);
   }
 
+  /** Loads persisted auth state and starts periodic sync if already authenticated. @usedBy extension. @returns void */
   async initialize(): Promise<void> {
     await this.auth.loadPersistedState();
     this.updateStatusBar();
@@ -65,24 +60,27 @@ export class SyncController implements vscode.Disposable {
     }
   }
 
+  /** Authenticates with Google Drive, starts periodic sync, and runs an initial sync. @usedBy extension. @returns void */
   async connect(): Promise<void> {
     await this.auth.authenticate();
     this.updateStatusBar();
     this.startPeriodicSync();
-    vscode.window.showInformationMessage("LabShelf: Conectado ao Google Drive.");
+    vscode.window.showInformationMessage("LabShelf: Connected to Google Drive.");
     await this.sync();
   }
 
+  /** Stops periodic sync and revokes Google Drive credentials. @usedBy extension. @returns void */
   async disconnect(): Promise<void> {
     this.stopPeriodicSync();
     await this.auth.revoke();
     this.updateStatusBar();
-    vscode.window.showInformationMessage("LabShelf: Desconectado do Google Drive.");
+    vscode.window.showInformationMessage("LabShelf: Disconnected from Google Drive.");
   }
 
+  /** Runs a full sync if authenticated, updating the status bar and reporting results. @usedBy extension. @returns void */
   async sync(): Promise<void> {
     if (!this.auth.isAuthenticated()) {
-      vscode.window.showWarningMessage("LabShelf Sync: conecte ao Google Drive primeiro.");
+      vscode.window.showWarningMessage("LabShelf Sync: connect to Google Drive first.");
       return;
     }
     this.syncing = true;
@@ -104,18 +102,22 @@ export class SyncController implements vscode.Disposable {
     }
   }
 
+  /** Returns whether the controller is currently authenticated with Google Drive. @usedBy syncTreeDataProvider. @returns boolean */
   isConnected(): boolean {
     return this.auth.isAuthenticated();
   }
 
+  /** Returns whether a sync operation is currently in progress. @usedBy syncTreeDataProvider. @returns boolean */
   isSyncing(): boolean {
     return this.syncing;
   }
 
+  /** Returns the locale time string of the last successful sync, or null. @usedBy syncTreeDataProvider. @returns string | null */
   getLastSyncTime(): string | null {
     return this.lastSyncTime;
   }
 
+  // Builds the paperId ↔ display title translation maps used to name Drive folders.
   private async buildFolderNames(): Promise<FolderNameMaps | undefined> {
     if (!this.getPaperTitles) return undefined;
     const titles = await this.getPaperTitles();
@@ -129,6 +131,7 @@ export class SyncController implements vscode.Disposable {
     return { localToRemote, remoteToLocal };
   }
 
+  // Instantiates the provider, manifest, and engine, then runs a full sync.
   private async runEngine(): Promise<SyncResult> {
     const provider = createGoogleDriveProvider(this.auth);
     const manifestPath = path.join(this.paths.syncDir().fsPath, `${PROVIDER_ID}.state.json`);
@@ -147,6 +150,7 @@ export class SyncController implements vscode.Disposable {
     return engine.run();
   }
 
+  // Displays a status bar message and optional warning for conflicts after a sync run.
   private reportResult(result: SyncResult): void {
     const total = result.namespaces.reduce(
       (acc, ns) => acc + ns.uploaded + ns.downloaded + ns.deletedLocal + ns.deletedRemote,
@@ -158,19 +162,21 @@ export class SyncController implements vscode.Disposable {
 
     if (conflicts.length > 0) {
       vscode.window.showWarningMessage(
-        `LabShelf Sync: ${conflicts.length} conflito(s) detectado(s). Arquivos duplicados com sufixo "(conflito)".`,
+        `LabShelf Sync: ${conflicts.length} conflict(s) detected. Duplicate files saved with a "(conflict)" suffix.`,
       );
     } else if (total > 0) {
-      vscode.window.setStatusBarMessage(`LabShelf Sync: ${total} arquivo(s) sincronizado(s)`, 4000);
+      vscode.window.setStatusBarMessage(`LabShelf Sync: ${total} file(s) synced`, 4000);
     }
   }
 
+  // Schedules a debounced sync if authenticated, resetting any pending timer.
   private scheduleDebounce(): void {
     if (!this.auth.isAuthenticated()) { return; }
     clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => { void this.sync(); }, DEBOUNCE_MS);
   }
 
+  // Starts the periodic sync interval using the configured autoSyncIntervalMinutes setting.
   private startPeriodicSync(): void {
     this.stopPeriodicSync();
     const intervalMin = vscode.workspace
@@ -179,6 +185,7 @@ export class SyncController implements vscode.Disposable {
     this.periodicTimer = setInterval(() => { void this.sync(); }, intervalMin * 60_000);
   }
 
+  // Clears the periodic sync interval if running.
   private stopPeriodicSync(): void {
     if (this.periodicTimer !== undefined) {
       clearInterval(this.periodicTimer);
@@ -186,15 +193,16 @@ export class SyncController implements vscode.Disposable {
     }
   }
 
+  // Updates the status bar item to reflect the current auth state.
   private updateStatusBar(): void {
     if (this.auth.isAuthenticated()) {
       this.statusBar.text = "$(cloud) LabShelf";
-      this.statusBar.tooltip = "LabShelf: sincronizado com Google Drive. Clique para sincronizar.";
+      this.statusBar.tooltip = "LabShelf: synced with Google Drive. Click to sync.";
       this.statusBar.command = "labshelf.sync.now";
       this.statusBar.show();
     } else {
       this.statusBar.text = "$(cloud-upload) LabShelf";
-      this.statusBar.tooltip = "LabShelf: sem sincronizacao. Clique para conectar ao Drive.";
+      this.statusBar.tooltip = "LabShelf: not synced. Click to connect to Drive.";
       this.statusBar.command = "labshelf.sync.connect";
       this.statusBar.show();
     }

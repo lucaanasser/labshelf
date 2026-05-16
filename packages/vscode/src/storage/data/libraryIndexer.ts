@@ -1,9 +1,8 @@
 /**
- * Module: Library Indexer
- * Responsibility: Rebuild the SQLite cache from on-disk sources of truth —
- *   the metadata.yaml files under papers/ and the data.json sidecars under
- *   .research/papers/ — so index.sqlite never needs to be synchronized.
- * Dependencies: vscode, yaml, FileSystemService, ILibraryPaths, ResearchDatabase, PaperDataStore
+ * Rebuilds the SQLite cache by scanning metadata.yaml files and data.json sidecars on disk.
+ *
+ * @depends core/types, db/database, storage/fileSystemService, storage/paths/libraryPaths, storage/data/paperDataStore
+ * @dependents extension.ts, storage/data/index.ts, storage/index.ts
  */
 import * as vscode from "vscode";
 import YAML from "yaml";
@@ -14,6 +13,10 @@ import { FileSystemService } from "../fileSystemService.js";
 import type { ILibraryPaths } from "../paths/libraryPaths.js";
 import { PaperDataStore } from "./paperDataStore.js";
 
+/**
+ * Idempotent indexer that walks the library tree and upserts all papers, annotations, and themes into SQLite.
+ * @usedBy extension.ts
+ */
 export class LibraryIndexer {
   constructor(
     private readonly paths: ILibraryPaths,
@@ -22,8 +25,11 @@ export class LibraryIndexer {
     private readonly paperDataStore: PaperDataStore,
   ) {}
 
-  // Scans papers/ + .research/papers/ and rebuilds the full SQLite cache.
-  // Idempotent: uses upsert so repeated runs never duplicate data.
+  /**
+   * Scans papers/ and .research/papers/ and rebuilds the full SQLite cache via upsert.
+   * @usedBy extension.ts
+   * @returns object with counts of indexed papers and annotations
+   */
   async rebuild(): Promise<{ papers: number; annotations: number }> {
     const papers = await this.scanPapers();
     let annotations = 0;
@@ -43,6 +49,7 @@ export class LibraryIndexer {
     return found;
   }
 
+  // Recursively walks a directory, collecting papers from folders that contain metadata.yaml.
   private async walk(dir: vscode.Uri, found: PaperRecord[]): Promise<void> {
     const entries = await this.fsService.readDirectory(dir);
     if (entries.some(([name, type]) => name === "metadata.yaml" && type === vscode.FileType.File)) {
@@ -99,15 +106,18 @@ export class LibraryIndexer {
   }
 }
 
+// Returns the last path segment of a URI (the folder name used as the paper id).
 function basename(uri: vscode.Uri): string {
   const parts = uri.fsPath.split(/[\\/]/).filter(Boolean);
   return parts[parts.length - 1] ?? "";
 }
 
+// Type guard that checks whether a value is a valid PaperRecord status string.
 function isStatus(v: unknown): v is PaperRecord["status"] {
   return v === "unread" || v === "reading" || v === "done";
 }
 
+// Extracts a string array from a metadata authors field, returning an empty object if the field is absent.
 function parseAuthors(value: unknown): { authors?: string[] } {
   if (Array.isArray(value)) {
     const authors = value.filter((a): a is string => typeof a === "string");
@@ -116,6 +126,7 @@ function parseAuthors(value: unknown): { authors?: string[] } {
   return {};
 }
 
+// Picks string-valued keys from a metadata record, omitting keys whose value is not a string.
 function optStr(meta: Record<string, unknown>, ...keys: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const key of keys) {

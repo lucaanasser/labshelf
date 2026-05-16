@@ -1,7 +1,8 @@
 /**
- * Module: PDF Import Parser
- * Responsibility: Orchestrate PDF.js setup, polyfills, and metadata extraction pipeline
- * Dependencies: vscode workspace filesystem, pdfjs-dist, extractor, resolver, types
+ * Orchestrates the full PDF import pipeline: reads the file, loads PDF.js with required polyfills, extracts metadata, and resolves bibliographic data online.
+ *
+ * @depends pdf/types.ts, pdf/extractor.ts, pdf/resolver.ts
+ * @dependents pdf/index.ts, pdf/pdfImportParser.ts
  */
 import * as path from "node:path";
 import * as vscode from "vscode";
@@ -21,6 +22,11 @@ import {
 import { resolveOnlineMetadata } from "./resolver.js";
 
 export class PdfImportParser {
+  /**
+   * Parses a PDF file at the given URI and returns a structured metadata record including title, authors, year, DOI, and citation key.
+   * @usedBy core/paperService.ts, extension.ts
+   * @returns A fully populated ParsedPdfImport object.
+   */
   async parse(sourceUri: vscode.Uri): Promise<ParsedPdfImport> {
     const pdfBytes = await vscode.workspace.fs.readFile(sourceUri);
     const header = Buffer.from(pdfBytes.slice(0, 5)).toString("utf8");

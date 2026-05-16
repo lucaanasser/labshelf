@@ -1,9 +1,8 @@
 /**
- * Module: ThemeManager
- * Responsibility: Map VS Code themes to PDF viewer themes, generate CSS, persist
- *   per-paper preferences. The per-paper sidecar JSON (PaperDataStore) is the
- *   single source of truth for theme preferences.
- * Dependencies: vscode, PaperDataStore
+ * Maps VS Code color themes to PDF viewer themes, generates theme CSS, and persists per-paper theme preferences via PaperDataStore.
+ *
+ * @depends pdf-viewer/config.ts, storage/data/paperDataStore.ts, core/types.ts
+ * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/renderer/PdfRenderer.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
@@ -92,12 +91,20 @@ export class ThemeManager {
     this.store = store ?? null;
   }
 
-  /** Map a VS Code ColorThemeKind number to a pdf theme string */
+  /**
+   * Maps a VS Code ColorThemeKind number to the corresponding PDF theme name.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts, pdf-viewer/ThemeManager.ts
+   * @returns A PdfTheme string such as 'light', 'dark', or 'high-contrast'.
+   */
   mapVsCodeTheme(kind: number): PdfTheme {
     return VSCODE_THEME_MAP[kind] ?? 'light';
   }
 
-  /** Resolve the effective theme, converting 'auto' via the current VS Code theme */
+  /**
+   * Resolves the effective theme name, converting 'auto' to the current VS Code theme name.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts, pdf-viewer/renderer/PdfRenderer.ts
+   * @returns The resolved theme string (e.g., 'light', 'dark', 'sepia').
+   */
   getEffectiveTheme(preference: string = 'auto'): string {
     if (preference === 'auto') {
       const kind = vscode.window.activeColorTheme?.kind ?? 1;
@@ -109,7 +116,11 @@ export class ThemeManager {
     return 'light';
   }
 
-  /** Generate CSS variable block for the given theme */
+  /**
+   * Generates a full CSS block of theme variable definitions for both the default and all named themes.
+   * @usedBy pdf-viewer/renderer/PdfRenderer.ts
+   * @returns A multi-block CSS string with :root and data-pdf-theme selectors.
+   */
   generateThemeCss(theme: string): string {
     const effectiveTheme = theme === 'auto' ? this.getEffectiveTheme('auto') : theme;
     const fallbackTheme = THEME_CSS[effectiveTheme] ?? THEME_CSS['light'] ?? {};
@@ -122,7 +133,11 @@ export class ThemeManager {
     return blocks.join('\n\n');
   }
 
-  /** Register a callback when VS Code theme changes. Returns a disposable. */
+  /**
+   * Registers a callback to be called with the new effective theme whenever the VS Code color theme changes.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns A vscode.Disposable that unregisters the listener when disposed.
+   */
   onVsCodeThemeChange(callback: (effectiveTheme: string) => void): vscode.Disposable {
     return vscode.window.onDidChangeActiveColorTheme((event) => {
       const newTheme = this.mapVsCodeTheme(event.kind);
@@ -130,20 +145,32 @@ export class ThemeManager {
     });
   }
 
-  /** Validate a theme value */
+  /**
+   * Returns true when the given theme string is one of the allowed PdfTheme values.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns boolean — true if valid, false otherwise.
+   */
   isValidTheme(theme: string): theme is PdfTheme {
     return PDF_VIEWER_CONFIG.THEMES.available.includes(theme as PdfTheme);
   }
 
   // ── Per-paper preferences (sidecar-backed) ───────────────────────────────
 
-  /** Get stored theme preference for a paper (defaults to 'auto' if not set) */
+  /**
+   * Retrieves the stored theme preference for a paper from the sidecar, defaulting to 'auto'.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns The PdfTheme preference string for the paper.
+   */
   async getThemeForPaper(paperId: string): Promise<PdfTheme> {
     if (this.store) { return this.store.getTheme(paperId); }
     return 'auto';
   }
 
-  /** Persist theme preference to the per-paper sidecar */
+  /**
+   * Persists the given theme preference to the per-paper sidecar via PaperDataStore.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns void
+   */
   async setThemeForPaper(paperId: string, theme: PdfTheme): Promise<void> {
     if (this.store) { await this.store.setTheme(paperId, theme); }
   }

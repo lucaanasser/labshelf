@@ -1,7 +1,8 @@
 /**
- * Module: Database Contracts
- * Responsibility: Define the persistence interface for paper metadata, logs, annotations, and theme preferences
- * Dependencies: none
+ * Defines the ResearchDatabase interface and an in-memory implementation used for testing and fallback.
+ *
+ * @depends core/types
+ * @dependents core/paperService.ts, db/sqliteResearchDatabase.ts, extension.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts
  */
 import type { LogEntry, PaperRecord, Annotation, PdfTheme } from "../core/types.js";
 
@@ -27,12 +28,21 @@ export interface ResearchDatabase {
   setThemePreference(paperId: string, theme: PdfTheme): Promise<void>;
 }
 
+/**
+ * Volatile in-memory implementation of ResearchDatabase for tests and graceful-degradation fallback.
+ * @usedBy extension.ts
+ */
 export class InMemoryResearchDatabase implements ResearchDatabase {
   private readonly papers = new Map<string, PaperRecord>();
   private readonly logs: LogEntry[] = [];
   private readonly annotations = new Map<string, Annotation>();
   private readonly themePreferences = new Map<string, PdfTheme>();
 
+  /**
+   * No-op initializer; satisfies the ResearchDatabase contract for in-memory use.
+   * @usedBy extension.ts
+   * @returns void
+   */
   async initialize(): Promise<void> {
     return;
   }

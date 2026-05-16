@@ -1,7 +1,8 @@
 /**
- * Module: PdfViewerPanel
- * Responsibility: Create and manage webview panels for PDF viewing with annotations and theming
- * Dependencies: vscode, PaperService, EventBus, ThemeManager, AnnotationManager, PdfRenderer
+ * Creates and manages VS Code webview panels for viewing PDFs with annotation support and live theme switching.
+ *
+ * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/PdfRenderer.ts, pdf-viewer/config.ts, core/paperService.ts, core/eventBus.ts, core/types.ts, constants/events.ts
+ * @dependents extension.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
 import type { PaperService } from "../core/paperService.js";
@@ -26,11 +27,20 @@ export class PdfViewerPanel {
   private readonly _renderer = new PdfRenderer();
   private _disposed = false;
 
-  /** Reset all tracked panels — for testing only */
+  /**
+   * Clears the map of open panels — intended for use in tests only.
+   * @usedBy tests
+   * @returns void
+   */
   static _clearAllForTesting(): void {
     openPanels.clear();
   }
 
+  /**
+   * Reveals an existing panel for the paper if one is open, or creates and initializes a new webview panel.
+   * @usedBy extension.ts, commands/registerCommands.ts
+   * @returns void
+   */
   static createOrShow(
     extensionUri: vscode.Uri,
     paperService: PaperService,
@@ -252,6 +262,11 @@ export class PdfViewerPanel {
     }
   }
 
+  /**
+   * Disposes all disposables and the underlying webview panel, guarded against double-disposal.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts (self, on panel close event)
+   * @returns void
+   */
   dispose(): void {
     if (this._disposed) { return; }
     this._disposed = true;

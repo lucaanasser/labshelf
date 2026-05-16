@@ -1,7 +1,8 @@
 /**
- * Module: PDF Viewer Configuration
- * Responsibility: Centralize PDF viewer constants (zoom levels, colors, themes, debounce)
- * Dependencies: none
+ * Centralizes all PDF viewer constants: zoom levels, annotation colors, theme names, and debounce timing.
+ *
+ * @depends none
+ * @dependents pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, pdf-viewer/PdfViewerPanel.ts, pdf-viewer/renderer/PdfRenderer.ts, pdf-viewer/index.ts
  */
 export const PDF_VIEWER_CONFIG = {
   ZOOM_LEVELS: [50, 75, 100, 125, 150, 200] as const,

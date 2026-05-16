@@ -1,10 +1,16 @@
 /**
- * Module: PDF Metadata Resolver
- * Responsibility: CrossRef & arXiv HTTP API calls to resolve bibliographic metadata
- * Dependencies: fetch (global), shared types
+ * Resolves bibliographic metadata for a detected DOI or arXiv identifier via the CrossRef and arXiv HTTP APIs.
+ *
+ * @depends pdf/types.ts
+ * @dependents pdf/parser.ts
  */
 import type { DetectedIdentifier, ResolvedMetadata } from "./types.js";
 
+/**
+ * Dispatches a metadata lookup to CrossRef (for DOIs) or arXiv (for arXiv IDs) and returns normalized bibliographic data.
+ * @usedBy pdf/parser.ts
+ * @returns A ResolvedMetadata object with available bibliographic fields, or undefined on failure.
+ */
 export async function resolveOnlineMetadata(identifier: DetectedIdentifier): Promise<ResolvedMetadata | undefined> {
   if (identifier.type === "doi") {
     return lookupCrossRef(identifier.value);

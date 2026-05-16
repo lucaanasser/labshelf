@@ -1,8 +1,4 @@
-/**
- * Module: Google Drive Provider
- * Responsibility: Implements RemoteProvider using GoogleDriveAuth and DriveClient.
- *   Maps the Drive API concepts to the provider-agnostic RemoteFile interface.
- */
+/** Implements RemoteProvider using GoogleDriveAuth and DriveClient, mapping Drive API concepts to the provider-agnostic RemoteFile interface. @depends remoteProvider, googleDriveClient, googleDriveAuth. @dependents syncController */
 
 import type { RemoteProvider, RemoteFile, RemoteNamespace } from "../provider/remoteProvider.js";
 import type { DriveFile } from "./googleDriveClient.js";
@@ -12,6 +8,7 @@ import { GoogleDriveAuth } from "../auth/googleDriveAuth.js";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const LIST_FIELDS = "files(id,name,mimeType,modifiedTime,size)";
 
+// Converts a raw DriveFile response to the provider-agnostic RemoteFile shape.
 function toRemoteFile(f: DriveFile): RemoteFile {
   const file: RemoteFile = {
     id: f.id,
@@ -25,6 +22,7 @@ function toRemoteFile(f: DriveFile): RemoteFile {
   return file;
 }
 
+/** Google Drive implementation of RemoteProvider. @usedBy syncController (via createGoogleDriveProvider). */
 export class GoogleDriveProvider implements RemoteProvider {
   readonly id = "google-drive";
   readonly displayName = "Google Drive";
@@ -53,6 +51,7 @@ export class GoogleDriveProvider implements RemoteProvider {
     return this.resolveLibraryRoot();
   }
 
+  // Finds or creates the top-level "LabShelf Library" folder in Drive.
   private async resolveLibraryRoot(): Promise<RemoteFile> {
     const result = await this.client.listFiles({
       q: "name='LabShelf Library' and mimeType='application/vnd.google-apps.folder' and trashed=false",
@@ -66,8 +65,9 @@ export class GoogleDriveProvider implements RemoteProvider {
     return toRemoteFile(created);
   }
 
+  // Returns the synthetic RemoteFile for the Drive appDataFolder namespace.
   private async resolveAppdataRoot(): Promise<RemoteFile> {
-    // appDataFolder is a special alias -- list to confirm it exists
+    // appDataFolder is a Drive special alias — list to confirm access is granted.
     const result = await this.client.listFiles({
       q: "trashed=false",
       spaces: "appDataFolder",

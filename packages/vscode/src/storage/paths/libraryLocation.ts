@@ -1,9 +1,8 @@
 /**
- * Module: Library Location
- * Responsibility: Persist, resolve, and set up the central library directory
- * Dependencies: vscode, FileSystemService
+ * Persists, resolves, and sets up the central LabShelf library directory using VS Code globalState.
  *
- * Stored in context.globalState so it survives across workspaces and sessions.
+ * @depends storage/fileSystemService
+ * @dependents extension.ts, storage/index.ts, storage/paths/index.ts
  */
 import * as vscode from "vscode";
 
@@ -11,6 +10,11 @@ import type { FileSystemService } from "../fileSystemService.js";
 
 const LIBRARY_ROOT_KEY = "labshelf.libraryRoot";
 
+/**
+ * Reads the stored library root path from globalState and validates that it still exists on disk.
+ * @usedBy extension.ts
+ * @returns URI of the library root, or undefined if unset or inaccessible
+ */
 export async function resolveLibraryRoot(context: vscode.ExtensionContext): Promise<vscode.Uri | undefined> {
   const stored = context.globalState.get<string>(LIBRARY_ROOT_KEY);
   if (!stored) {
@@ -30,10 +34,20 @@ export async function resolveLibraryRoot(context: vscode.ExtensionContext): Prom
   }
 }
 
+/**
+ * Saves the given library root URI to globalState so it persists across sessions.
+ * @usedBy storage/paths/libraryLocation.ts (runLibrarySetupWizard)
+ * @returns void
+ */
 export async function persistLibraryRoot(context: vscode.ExtensionContext, uri: vscode.Uri): Promise<void> {
   await context.globalState.update(LIBRARY_ROOT_KEY, uri.fsPath);
 }
 
+/**
+ * Creates all required LabShelf subdirectories under root if they do not already exist.
+ * @usedBy extension.ts, storage/paths/libraryLocation.ts (runLibrarySetupWizard)
+ * @returns void
+ */
 export async function ensureLibraryStructure(root: vscode.Uri, fsService: FileSystemService): Promise<void> {
   await fsService.ensureDirectory(vscode.Uri.joinPath(root, ".research"));
   await fsService.ensureDirectory(vscode.Uri.joinPath(root, ".research", "logs"));
@@ -42,7 +56,11 @@ export async function ensureLibraryStructure(root: vscode.Uri, fsService: FileSy
   await fsService.ensureDirectory(vscode.Uri.joinPath(root, "papers"));
 }
 
-// Runs the first-use setup wizard. Returns the configured root URI, or undefined if cancelled.
+/**
+ * Runs the first-use folder-picker wizard and creates the library structure at the chosen location.
+ * @usedBy extension.ts
+ * @returns the configured library root URI, or undefined if the user cancelled
+ */
 export async function runLibrarySetupWizard(
   context: vscode.ExtensionContext,
   fsService: FileSystemService,
@@ -87,7 +105,11 @@ export async function runLibrarySetupWizard(
   }
 }
 
-// Validates a stored root and re-prompts reconfiguration if invalid.
+/**
+ * Re-runs the setup wizard to let the user choose a new library location (used when the stored path is invalid).
+ * @usedBy extension.ts (indirectly via storage/index.ts)
+ * @returns the new library root URI, or undefined if the user cancelled
+ */
 export async function reconfigureLibrary(
   context: vscode.ExtensionContext,
   fsService: FileSystemService,

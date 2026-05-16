@@ -1,7 +1,8 @@
 /**
- * Module: PDF Viewer
- * Responsibility: Re-export public API for the pdf-viewer module
- * Dependencies: PdfViewerPanel, ThemeManager, AnnotationManager, PdfRenderer, config
+ * Public barrel export for the pdf-viewer module, exposing the panel, managers, renderer, config, and all related types.
+ *
+ * @depends pdf-viewer/PdfViewerPanel.ts, pdf-viewer/ThemeManager.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/PdfRenderer.ts, pdf-viewer/config.ts
+ * @dependents extension.ts, commands/registerCommands.ts
  */
 export { PdfViewerPanel } from "./PdfViewerPanel.js";
 export { ThemeManager } from "./ThemeManager.js";

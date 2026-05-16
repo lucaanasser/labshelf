@@ -1,7 +1,8 @@
 /**
- * Module: SQLite Research Database
- * Responsibility: Persist paper metadata, relationships, and logs in SQLite
- * Dependencies: node:sqlite, vscode, workspace filesystem
+ * SQLite-backed implementation of ResearchDatabase that persists papers, annotations, logs, and theme preferences.
+ *
+ * @depends core/types, db/database, storage/fileSystemService
+ * @dependents extension.ts
  */
 import * as path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -23,6 +24,7 @@ type AnnotationRow = {
   updatedAt: string;
 };
 
+// Converts a raw SQLite annotation row into a typed Annotation, safely parsing the JSON position field.
 function rowToAnnotation(row: AnnotationRow): Annotation {
   let position: Annotation['position'] | undefined;
   if (row.position) {
@@ -72,6 +74,10 @@ type PaperRow = {
   language: string | null;
 };
 
+/**
+ * Concrete ResearchDatabase backed by a WAL-mode SQLite file; applies additive schema migrations on initialize.
+ * @usedBy extension.ts (via createSqliteResearchDatabase)
+ */
 export class SqliteResearchDatabase implements ResearchDatabase {
   private connection: DatabaseSync | undefined;
 
@@ -291,6 +297,7 @@ export class SqliteResearchDatabase implements ResearchDatabase {
     });
   }
 
+  // Returns the live DatabaseSync or throws if initialize() was never called.
   private requireConnection(): DatabaseSync {
     if (!this.connection) {
       throw new Error("SQLite database has not been initialized");
@@ -299,6 +306,7 @@ export class SqliteResearchDatabase implements ResearchDatabase {
     return this.connection;
   }
 
+  // Adds any missing bibliographic columns to the papers table (additive migration).
   private ensureColumns(): void {
     const db = this.requireConnection();
     const existing = new Set(
@@ -325,11 +333,13 @@ export class SqliteResearchDatabase implements ResearchDatabase {
     }
   }
 
+  // Fetches a single annotation row by id and converts it to an Annotation, or returns null.
   private findAnnotation(id: string): Annotation | null {
     const row = this.requireConnection().prepare(`SELECT * FROM annotations WHERE id = ?`).get(id) as AnnotationRow | undefined;
     return row ? rowToAnnotation(row) : null;
   }
 
+  // Creates the annotations table and its paperId/pageNumber index if they do not exist.
   private ensureAnnotationsTable(): void {
     this.requireConnection().exec(`
       CREATE TABLE IF NOT EXISTS annotations (
@@ -348,6 +358,7 @@ export class SqliteResearchDatabase implements ResearchDatabase {
     `);
   }
 
+  // Creates the paperThemePreferences table if it does not exist.
   private ensureThemePreferencesTable(): void {
     this.requireConnection().exec(`
       CREATE TABLE IF NOT EXISTS paperThemePreferences (
@@ -359,6 +370,7 @@ export class SqliteResearchDatabase implements ResearchDatabase {
     `);
   }
 
+  // Deserializes the JSON-encoded authors column, returning an empty array on parse failure.
   private parseAuthors(rawAuthors: string): string[] {
     try {
       const parsed = JSON.parse(rawAuthors) as unknown;
@@ -369,6 +381,11 @@ export class SqliteResearchDatabase implements ResearchDatabase {
   }
 }
 
+/**
+ * Factory that instantiates a SqliteResearchDatabase without calling initialize, leaving that to the caller.
+ * @usedBy extension.ts
+ * @returns uninitialised ResearchDatabase backed by the file at storageUri
+ */
 export async function createSqliteResearchDatabase(storageUri: vscode.Uri, fileSystemService: FileSystemService): Promise<ResearchDatabase> {
   return new SqliteResearchDatabase(storageUri, fileSystemService);
 }

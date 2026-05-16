@@ -1,8 +1,15 @@
 /**
- * Module: template.css
- * Responsibility: All theme CSS strings for the PDF viewer webview
+ * Returns the complete inline CSS string for the PDF viewer webview, including theme variables, layout, toolbar, sidebar, and selection toolbar styles.
+ *
+ * @depends none
+ * @dependents pdf-viewer/renderer/PdfRenderer.ts
  */
 
+/**
+ * Builds and returns the full CSS string injected into the PDF viewer webview.
+ * @usedBy pdf-viewer/renderer/PdfRenderer.ts
+ * @returns A CSS string with theme variables and all viewer layout styles.
+ */
 export function buildCss(): string {
   return `/* ── Theme variables ────────────────────────────────────────── */
 :root{

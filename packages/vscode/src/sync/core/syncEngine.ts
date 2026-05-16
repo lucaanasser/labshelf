@@ -1,10 +1,4 @@
-/**
- * Module: Sync Engine
- * Responsibility: Provider-agnostic orchestration of a sync run - scan local
- *   and remote trees, diff against the manifest, apply operations, persist
- * Dependencies: remoteProvider, syncTypes, syncManifest, syncDiff, syncApply,
- *   treeScan, remotePathResolver
- */
+/** Provider-agnostic orchestration of a sync run — scan local and remote trees, diff against the manifest, apply operations, and persist. @depends remoteProvider, syncTypes, syncManifest, syncDiff, syncApply, treeScan, remotePathResolver. @dependents syncController */
 import type { RemoteProvider, RemoteNamespace } from "../provider/remoteProvider.js";
 import type {
   LocalFileSystem,
@@ -42,18 +36,16 @@ export interface SyncEngineDeps {
 
 const NAMESPACES: RemoteNamespace[] = ["library", "appdata"];
 
-/**
- * Runs a full bidirectional sync. The engine never talks to a concrete
- * backend - it only uses the injected RemoteProvider and LocalFileSystem.
- */
+/** Runs a full bidirectional sync using only injected RemoteProvider and LocalFileSystem — no concrete backend dependency. @usedBy syncController. @returns SyncResult */
 export class SyncEngine {
   constructor(private readonly deps: SyncEngineDeps) {}
 
+  // Returns the current clock time, using the injected clock override if provided.
   private now(): Date {
     return this.deps.clock ? this.deps.clock() : new Date();
   }
 
-  /** Syncs a single namespace and returns its per-namespace result. */
+  // Syncs a single namespace and returns its per-namespace result.
   private async syncNamespace(
     ns: RemoteNamespace,
   ): Promise<NamespaceResult> {
@@ -80,7 +72,7 @@ export class SyncEngine {
     );
   }
 
-  /** Runs the full sync across both namespaces and persists the manifest. */
+  /** Runs the full sync across both namespaces and persists the manifest. @usedBy syncController. @returns SyncResult */
   async run(): Promise<SyncResult> {
     if (!this.deps.provider.isConnected()) {
       throw new Error("Sync provider is not connected");

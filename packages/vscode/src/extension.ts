@@ -1,14 +1,4 @@
-/**
- * Module: Extension Entry Point
- * Responsibility: Wire services, commands, library folder tree, and list panel
- * Dependencies: vscode, core, storage, db, ui
- *
- * Initialization strategy:
- *   1. Always activate — no workspace folder required.
- *   2. If a library root is already configured in globalState, initialize all services immediately.
- *   3. If not, services remain null; the first write command triggers the setup wizard.
- *   4. After wizard completion, services are initialized and the tree is refreshed.
- */
+/** Extension entry point — wires services, commands, library folder tree, sync controller, and list panel on activation. @depends vscode, core, storage, db, ui, sync, bibtex, commands. @dependents vscode runtime */
 import * as path from "node:path";
 import * as vscode from "vscode";
 
@@ -41,6 +31,7 @@ import { SyncController } from "./sync/adapter/syncController.js";
 import type { ResearchDatabase } from "./db/database.js";
 import type { PaperRecord } from "./core/types.js";
 
+/** Activates the extension, initializing services if a library is already configured. @usedBy vscode runtime. @returns void */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const fileSystemService = new FileSystemService();
   const eventBus = new ExtensionEventBus();
@@ -66,7 +57,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await syncController.initialize();
     context.subscriptions.push(syncController);
   } else {
-    // Library not configured — inform user without blocking activation
+    // Library not configured — inform the user without blocking activation.
     vscode.window.showInformationMessage(
       'LabShelf: No library configured. Run "Configure Library" to get started.',
       "Configure Library",
@@ -77,10 +68,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   }
 
-  // Library folder tree — mirrors the real directory structure under papers/
+  // Library folder tree mirrors the real directory structure under papers/.
   const libraryProvider = new LibraryTreeDataProvider(papersRootUri(), eventBus);
 
-  // Returns current services or triggers setup wizard, then returns newly built services.
+  // Returns current services or triggers the setup wizard and builds services from the chosen root.
   async function requireServices(): Promise<ActiveServices | null> {
     if (activeServices) {
       return activeServices;
@@ -135,7 +126,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  // Google Drive sync panel — shows status and action items.
+  // Google Drive sync panel shows status and action items in the activity view.
   if (syncController) {
     const syncTree = new SyncTreeDataProvider(syncController);
     context.subscriptions.push(
@@ -179,7 +170,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("labshelf.library.refresh", () => libraryProvider.refresh()),
   );
 
-  // Create a folder — under the clicked folder (context menu) or at the library root (title bar).
+  // Create a folder under the clicked node (context menu) or at the library root (title bar).
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.newFolder", async (node?: LibraryNode) => {
       if (!(await requireServices())) { return; }
@@ -237,7 +228,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  // Import papers into a specific folder via its context menu.
+  // Import papers into a specific folder selected via the tree context menu.
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.addPaperHere", async (node?: LibraryNode) => {
       const services = await requireServices();
@@ -266,7 +257,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  // Configure / reconfigure the library root
+  // Configure or reconfigure the library root via the setup wizard.
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.configureLibrary", async () => {
       const root = await runLibrarySetupWizard(context, fileSystemService);
@@ -279,7 +270,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  // Sync commands — require the library to be configured first
+  // Sync commands require the library to be configured before delegating to SyncController.
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.sync.connect", async () => {
       if (!(await requireServices())) { return; }
@@ -307,15 +298,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 }
 
+/** Called by VS Code on extension deactivation — cleanup is handled via disposables. @usedBy vscode runtime. @returns void */
 export function deactivate(): void {
   return;
 }
 
+// Returns true when the folder name is non-empty and contains no path separators.
 function isValidFolderName(value: string): boolean {
   const trimmed = value.trim();
   return trimmed.length > 0 && !/[/\\]/.test(trimmed);
 }
 
+// Constructs and wires all application services for the given library root.
 async function buildServices(
   context: vscode.ExtensionContext,
   root: vscode.Uri,
@@ -340,6 +334,7 @@ async function buildServices(
   return { paperService, logger, themeManager, annotationManager };
 }
 
+// Tries to create the SQLite database; falls back to the in-memory implementation on failure.
 async function initializeDatabase(indexPath: vscode.Uri, fileSystemService: FileSystemService): Promise<ResearchDatabase> {
   try {
     const { createSqliteResearchDatabase } = await import("./db/sqliteResearchDatabase.js");

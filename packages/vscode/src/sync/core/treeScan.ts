@@ -1,22 +1,15 @@
-/**
- * Module: Tree Scan
- * Responsibility: Enumerate the local and remote file trees of a namespace
- *   into path-keyed maps consumed by the diff
- * Dependencies: syncTypes, remoteProvider, remotePathResolver, contentHash
- */
+/** Enumerate the local and remote file trees of a namespace into path-keyed maps consumed by the diff. @depends syncTypes, remoteProvider, remotePathResolver, contentHash. @dependents syncEngine */
 import type { LocalFileSystem, TreeNode } from "./syncTypes.js";
 import type { RemoteProvider } from "../provider/remoteProvider.js";
 import type { RemotePathResolver } from "../provider/remotePathResolver.js";
 import { sha256Hex } from "../util/contentHash.js";
 
+// Joins a relative directory prefix and a child name into a POSIX path.
 function joinPath(prefix: string, name: string): string {
   return prefix ? `${prefix}/${name}` : name;
 }
 
-/**
- * Recursively scans a local directory tree. Hashes every file so the diff
- * can compare against the manifest base.
- */
+/** Recursively scans a local directory tree, hashing every file for comparison against the manifest base. @usedBy syncEngine. @returns Map<string, TreeNode> */
 export async function scanLocalTree(
   fs: LocalFileSystem,
   rootPath: string,
@@ -48,11 +41,7 @@ export async function scanLocalTree(
   return tree;
 }
 
-/**
- * Recursively scans a remote folder tree, registering discovered folders on
- * the resolver so the apply step can reuse their ids.
- * folderNameMap translates remote display names → local names (e.g. title → id).
- */
+/** Recursively scans a remote folder tree, registering discovered folders on the resolver; folderNameMap translates remote display names to local names. @usedBy syncEngine. @returns Map<string, TreeNode> */
 export async function scanRemoteTree(
   provider: RemoteProvider,
   rootId: string,

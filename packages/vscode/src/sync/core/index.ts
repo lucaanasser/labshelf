@@ -1,3 +1,4 @@
+/** Barrel re-export for all sync/core public symbols. @depends syncTypes, syncManifest, treeScan, syncDiff, syncApply, syncEngine. @dependents sync/index, syncController */
 export type {
   ManifestEntry,
   ManifestData,

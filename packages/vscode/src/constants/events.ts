@@ -1,8 +1,4 @@
-/**
- * Module: Event Constants
- * Responsibility: Centralize extension event names
- * Dependencies: none
- */
+/** Centralizes extension event name constants used across the event bus. @depends none. @dependents eventBus, paperService, annotationManager, pdfViewerPanel */
 export const EVENTS = {
   PAPER_ADDED: "paper:added",
   PAPER_UPDATED: "paper:updated",

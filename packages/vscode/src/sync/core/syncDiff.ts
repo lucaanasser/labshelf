@@ -1,9 +1,4 @@
-/**
- * Module: Sync Diff
- * Responsibility: Pure three-way diff - classify every relative path by
- *   comparing the local tree, the remote tree, and the manifest base
- * Dependencies: syncTypes (no I/O)
- */
+/** Pure three-way diff — classifies every relative path by comparing the local tree, remote tree, and manifest base. @depends syncTypes, syncManifest, remoteProvider. @dependents syncEngine */
 import type {
   DiffClass,
   SyncOperation,
@@ -12,15 +7,17 @@ import type {
 import type { SyncManifest } from "./syncManifest.js";
 import type { RemoteNamespace } from "../provider/remoteProvider.js";
 
-/** True when a node differs from its recorded base. */
+// Returns true when a local node's hash differs from the manifest base.
 function localChanged(node: TreeNode, baseHash: string): boolean {
   return node.contentHash !== baseHash;
 }
 
+// Returns true when a remote node's modifiedTime differs from the manifest base.
 function remoteChanged(node: TreeNode, baseTime: string): boolean {
   return node.modifiedTime !== baseTime;
 }
 
+// Classifies a single path given its local node, remote node, and manifest base.
 function classify(
   path: string,
   local: TreeNode | undefined,
@@ -52,10 +49,7 @@ function classify(
   return "unchanged";
 }
 
-/**
- * Builds the classified operation list for one namespace. Inputs are the
- * scanned local and remote trees keyed by relative POSIX path.
- */
+/** Builds the classified operation list for one namespace from the scanned local and remote trees keyed by relative POSIX path. @usedBy syncEngine. @returns SyncOperation[] */
 export function diffNamespace(
   ns: RemoteNamespace,
   localTree: Map<string, TreeNode>,

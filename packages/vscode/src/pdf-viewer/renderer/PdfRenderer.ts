@@ -1,23 +1,8 @@
 /**
- * Module: PdfRenderer
- * Responsibility: Generate webview HTML using the official PDF.js viewer components
- * Dependencies: vscode, ThemeManager, PDF_VIEWER_CONFIG
+ * Generates the complete HTML document for the PDF viewer webview, resolving PDF.js asset URIs and injecting theme CSS and the viewer script.
  *
- * Optimizations vs original:
- *  - pdfjsLib + viewerLib loaded in parallel via Promise.all
- *  - Worker preloaded as modulepreload (not just preload as="script")
- *  - Theme changes applied purely via CSS filter on #viewerContainer:
- *      dark  → invert(1)+hue-rotate(180deg): inverts luminance, preserves hue
- *      sepia → sepia(0.8)+brightness(1.04): warm tone without re-render
- *      high-contrast → invert(1)+grayscale(1)+contrast(1.3)
- *    Zero canvas re-rasterisation; theme switch is GPU-composited only.
- *  - pageColors used for BG/text colour: set by preset on theme change or
- *    directly by the BG/Text colour pickers; picker values persist within
- *    the session and override the preset until the theme is re-selected
- *  - Map.prototype.getOrInsertComputed polyfill hoisted out of hot path
- *  - getDocument called with disableAutoFetch:false, rangeChunkSize tuned
- *  - All DOM queries cached; no querySelector inside event handlers
- *  - applyTheme is synchronous CSS class swap — GPU composite only
+ * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/config.ts, pdf-viewer/renderer/template.css.ts, pdf-viewer/renderer/template.js.ts, core/types.ts
+ * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/PdfRenderer.ts (re-export shim), pdf-viewer/renderer/index.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
 import * as path from "node:path";
@@ -51,7 +36,11 @@ export interface ResolvedUris {
   iccWebviewUrl: string;
 }
 
-/** Resolve pdfjs-dist file paths and convert to webview URIs */
+/**
+ * Resolves pdfjs-dist file paths (including cmaps, fonts, wasm, iccs) and converts them to webview-safe URIs.
+ * @usedBy pdf-viewer/renderer/PdfRenderer.ts (generateHtml), pdf-viewer/index.ts, pdf-viewer/PdfRenderer.ts (shim)
+ * @returns A ResolvedUris object with all webview URIs, or null if pdfjs-dist cannot be located.
+ */
 export function resolvePdfjsUris(webview: vscode.Webview): ResolvedUris | null {
   try {
     let pdfjsPath: string;
@@ -89,7 +78,11 @@ export function resolvePdfjsUris(webview: vscode.Webview): ResolvedUris | null {
   }
 }
 
-/** Get the pdfjs-dist root directory for localResourceRoots */
+/**
+ * Locates and returns the pdfjs-dist package root directory as a vscode.Uri for use in webview localResourceRoots.
+ * @usedBy pdf-viewer/PdfViewerPanel.ts, pdf-viewer/index.ts, pdf-viewer/PdfRenderer.ts (shim)
+ * @returns A vscode.Uri pointing to the pdfjs-dist root, or null if the package cannot be resolved.
+ */
 export function getPdfjsDirectory(): vscode.Uri | null {
   try {
     let pdfjsPath: string;
@@ -119,6 +112,11 @@ function nonce(): string {
 }
 
 export class PdfRenderer {
+  /**
+   * Generates the full HTML document for the PDF viewer webview, including CSP header, theme CSS, and the PDF.js module script.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns An HTML string ready to assign to webview.html.
+   */
   generateHtml(params: RenderParams): string {
     const {
       webview,

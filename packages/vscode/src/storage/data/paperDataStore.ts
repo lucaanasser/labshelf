@@ -1,8 +1,8 @@
 /**
- * Module: Paper Data Store
- * Responsibility: Own the per-paper sidecar JSON (.research/papers/<id>/data.json),
- *   the single source of truth for annotations and theme. SQLite is only a cache.
- * Dependencies: vscode (Uri), FileSystemService, core types
+ * Owns the per-paper sidecar JSON (.research/papers/<id>/data.json), the authoritative source for annotations and theme preferences.
+ *
+ * @depends core/types, storage/fileSystemService
+ * @dependents extension.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, storage/data/index.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts, storage/index.ts
  */
 import * as vscode from "vscode";
 import { randomUUID } from "crypto";
@@ -19,6 +19,10 @@ function emptyData(): PaperData {
   return { annotations: [], theme: "auto" };
 }
 
+/**
+ * Read/write accessor for a paper's sidecar JSON, the single source of truth for its annotations and theme.
+ * @usedBy extension.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts
+ */
 export class PaperDataStore {
   constructor(
     private readonly researchRoot: vscode.Uri,
@@ -35,7 +39,11 @@ export class PaperDataStore {
     return vscode.Uri.joinPath(this.dataDir(paperId), "data.json");
   }
 
-  // Reads the sidecar; a missing file means "paper has no data yet".
+  /**
+   * Reads the sidecar JSON for a paper, returning empty data if the file is absent or corrupt.
+   * @usedBy pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts
+   * @returns PaperData containing annotations and theme
+   */
   async load(paperId: string): Promise<PaperData> {
     const uri = this.dataPath(paperId);
     if (!(await this.fsService.exists(uri))) {
@@ -49,7 +57,11 @@ export class PaperDataStore {
     }
   }
 
-  // Persists the full sidecar, creating the paper's data folder if needed.
+  /**
+   * Writes the full sidecar JSON to disk, creating the paper data directory if needed.
+   * @usedBy storage/data/migrateSidecars.ts, internally by mutation methods
+   * @returns void
+   */
   async save(paperId: string, data: PaperData): Promise<void> {
     await this.fsService.ensureDirectory(this.dataDir(paperId));
     const payload: PaperData = {
@@ -59,6 +71,11 @@ export class PaperDataStore {
     await this.fsService.writeText(this.dataPath(paperId), JSON.stringify(payload, null, 2));
   }
 
+  /**
+   * Creates a new annotation with a generated id and current timestamps and persists the sidecar.
+   * @usedBy pdf-viewer/AnnotationManager.ts
+   * @returns the created Annotation
+   */
   async addAnnotation(
     paperId: string,
     data: Omit<Annotation, "id" | "createdAt" | "updatedAt">,
@@ -77,6 +94,11 @@ export class PaperDataStore {
     return annotation;
   }
 
+  /**
+   * Updates the content and updatedAt timestamp of an existing annotation; returns null if not found.
+   * @usedBy pdf-viewer/AnnotationManager.ts
+   * @returns the updated Annotation, or null
+   */
   async updateAnnotation(paperId: string, id: string, content: string): Promise<Annotation | null> {
     const current = await this.load(paperId);
     const index = current.annotations.findIndex((a) => a.id === id);
@@ -93,6 +115,11 @@ export class PaperDataStore {
     return updated;
   }
 
+  /**
+   * Removes an annotation from the sidecar; no-ops silently if the id does not exist.
+   * @usedBy pdf-viewer/AnnotationManager.ts
+   * @returns void
+   */
   async deleteAnnotation(paperId: string, id: string): Promise<void> {
     const current = await this.load(paperId);
     const filtered = current.annotations.filter((a) => a.id !== id);
@@ -103,6 +130,11 @@ export class PaperDataStore {
     await this.save(paperId, current);
   }
 
+  /**
+   * Returns all annotations for a paper sorted by page number then creation time.
+   * @usedBy pdf-viewer/AnnotationManager.ts
+   * @returns sorted Annotation array
+   */
   async getAnnotations(paperId: string): Promise<Annotation[]> {
     const data = await this.load(paperId);
     return [...data.annotations].sort(
@@ -110,6 +142,11 @@ export class PaperDataStore {
     );
   }
 
+  /**
+   * Returns annotations for a specific page of a paper, sorted by creation time.
+   * @usedBy pdf-viewer/AnnotationManager.ts
+   * @returns Annotation array for the given page
+   */
   async getAnnotationsByPage(paperId: string, page: number): Promise<Annotation[]> {
     const data = await this.load(paperId);
     return data.annotations
@@ -117,12 +154,22 @@ export class PaperDataStore {
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
+  /**
+   * Persists the chosen PDF theme for a paper in its sidecar.
+   * @usedBy pdf-viewer/ThemeManager.ts
+   * @returns void
+   */
   async setTheme(paperId: string, theme: PdfTheme): Promise<void> {
     const current = await this.load(paperId);
     current.theme = theme;
     await this.save(paperId, current);
   }
 
+  /**
+   * Returns the stored PDF theme for a paper, defaulting to 'auto' when no sidecar exists.
+   * @usedBy pdf-viewer/ThemeManager.ts
+   * @returns PdfTheme value
+   */
   async getTheme(paperId: string): Promise<PdfTheme> {
     return (await this.load(paperId)).theme;
   }

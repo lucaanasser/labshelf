@@ -1,7 +1,8 @@
 /**
- * Module: Library Paths
- * Responsibility: Resolve LabShelf folder structure from an arbitrary root URI
- * Dependencies: vscode
+ * Resolves every well-known LabShelf path (papers, logs, sidecars, sync) from an arbitrary library root URI.
+ *
+ * @depends none (vscode API only)
+ * @dependents core/logger.ts, core/paperService.ts, extension.ts, storage/data/libraryIndexer.ts, storage/index.ts, storage/paths/index.ts, storage/paths/workspacePaths.ts, sync/adapter/syncController.ts
  */
 import * as vscode from "vscode";
 
@@ -18,25 +19,54 @@ export interface ILibraryPaths {
   syncDir(): vscode.Uri;
 }
 
+/**
+ * Concrete ILibraryPaths implementation that computes every LabShelf path relative to a given root URI.
+ * @usedBy extension.ts, storage/paths/index.ts, storage/paths/workspacePaths.ts
+ */
 export class LibraryPaths implements ILibraryPaths {
   constructor(private readonly root: vscode.Uri) {}
 
+  /**
+   * Returns the hidden .research/ directory that holds the index, logs, and sidecars.
+   * @usedBy extension.ts, storage/data/paperDataStore.ts
+   * @returns URI of .research/
+   */
   researchRoot(): vscode.Uri {
     return vscode.Uri.joinPath(this.root, ".research");
   }
 
+  /**
+   * Returns the user-visible papers/ directory where paper folders are stored.
+   * @usedBy core/paperService.ts, extension.ts, storage/data/libraryIndexer.ts
+   * @returns URI of papers/
+   */
   papersRoot(): vscode.Uri {
     return vscode.Uri.joinPath(this.root, "papers");
   }
 
+  /**
+   * Returns the directory used for log files.
+   * @usedBy core/logger.ts
+   * @returns URI of .research/logs/
+   */
   logsRoot(): vscode.Uri {
     return vscode.Uri.joinPath(this.root, ".research", "logs");
   }
 
+  /**
+   * Returns the path of the SQLite index file.
+   * @usedBy extension.ts
+   * @returns URI of .research/index.sqlite
+   */
   indexPath(): vscode.Uri {
     return vscode.Uri.joinPath(this.root, ".research", "index.sqlite");
   }
 
+  /**
+   * Returns the path of the main application log file.
+   * @usedBy core/logger.ts
+   * @returns URI of .research/logs/app.log
+   */
   appLogPath(): vscode.Uri {
     return vscode.Uri.joinPath(this.root, ".research", "logs", "app.log");
   }

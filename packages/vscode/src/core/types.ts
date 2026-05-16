@@ -1,7 +1,8 @@
 /**
- * Module: Core Types
- * Responsibility: Shared domain types for papers and logs
- * Dependencies: none
+ * Shared domain types for papers, annotations, logs, and theme preferences.
+ *
+ * @depends none
+ * @dependents core/logger.ts, core/paperService.ts, db/database.ts, db/sqliteResearchDatabase.ts, storage/data/paperDataStore.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts
  */
 export type PaperStatus = "unread" | "reading" | "done";
 

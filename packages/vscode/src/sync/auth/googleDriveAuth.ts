@@ -1,8 +1,4 @@
-/**
- * Module: Google Drive Auth
- * Responsibility: OAuth 2.0 Authorization Code + PKCE loopback flow for the
- *   Drive API. Persists tokens in VSCode SecretStorage.
- */
+/** OAuth 2.0 Authorization Code + PKCE loopback flow for the Drive API — persists tokens in VSCode SecretStorage. @depends vscode, node:http, node:crypto. @dependents googleDriveProvider, syncController */
 
 import * as vscode from "vscode";
 import * as http from "node:http";
@@ -25,15 +21,18 @@ interface TokenData {
   expiry_ms: number;
 }
 
+// Encodes a Buffer as a URL-safe base64 string without padding.
 function base64url(buf: Buffer): string {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
+/** Manages Google Drive OAuth tokens via PKCE loopback flow. @usedBy googleDriveProvider, syncController. */
 export class GoogleDriveAuth {
   private tokens: TokenData | null = null;
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
+  /** Loads tokens from VSCode SecretStorage into memory. @usedBy syncController. @returns void */
   async loadPersistedState(): Promise<void> {
     const raw = await this.context.secrets.get(SECRET_KEY);
     if (raw) {
@@ -45,10 +44,12 @@ export class GoogleDriveAuth {
     }
   }
 
+  /** Returns true when valid tokens are held in memory. @usedBy syncController, googleDriveProvider. @returns boolean */
   isAuthenticated(): boolean {
     return this.tokens !== null;
   }
 
+  /** Returns a valid access token, refreshing first if needed. @usedBy googleDriveProvider (via DriveClient). @returns string */
   async getAccessToken(): Promise<string> {
     if (!this.tokens) {
       throw new Error("Not authenticated. Call authenticate() first.");
@@ -57,6 +58,7 @@ export class GoogleDriveAuth {
     return this.tokens!.access_token;
   }
 
+  /** Runs the PKCE loopback OAuth flow, exchanges the code for tokens, and persists them. @usedBy syncController, googleDriveProvider. @returns void */
   async authenticate(): Promise<void> {
     const verifier = base64url(crypto.randomBytes(32));
     const challenge = base64url(
@@ -81,6 +83,7 @@ export class GoogleDriveAuth {
     await this.context.secrets.store(SECRET_KEY, JSON.stringify(tokenData));
   }
 
+  /** Revokes the refresh token, clears in-memory tokens, and removes the secret. @usedBy syncController, googleDriveProvider. @returns void */
   async revoke(): Promise<void> {
     if (this.tokens) {
       try {
@@ -95,6 +98,7 @@ export class GoogleDriveAuth {
     await this.context.secrets.delete(SECRET_KEY);
   }
 
+  // Refreshes the access token if it expires within the next 60 seconds.
   private async refreshIfNeeded(): Promise<void> {
     if (!this.tokens) return;
     if (this.tokens.expiry_ms > Date.now() + 60_000) return;
@@ -124,14 +128,12 @@ export class GoogleDriveAuth {
     await this.context.secrets.store(SECRET_KEY, JSON.stringify(this.tokens));
   }
 
-  // Single server stays open from port discovery through auth code capture,
-  // avoiding the race condition of closing and reopening on the same port.
+  // Starts a single loopback HTTP server from port discovery through auth code capture, avoiding the race condition of closing and reopening on the same port.
   private runLoopbackFlow(
     buildUrls: (port: number) => { authUrl: string; redirectUri: string },
   ): Promise<{ code: string; redirectUri: string }> {
     return new Promise((resolve, reject) => {
-      // Port captured once in the listen callback and reused in the request
-      // handler — avoids calling srv.address() after srv.close().
+      // Port captured once in the listen callback and reused in the request handler — avoids calling srv.address() after srv.close().
       let capturedPort = 0;
 
       const srv = http.createServer((req, res) => {
@@ -139,7 +141,7 @@ export class GoogleDriveAuth {
         const code = url.searchParams.get("code");
         const oauthError = url.searchParams.get("error");
 
-        // Ignore browser noise (favicon, etc.) — only handle the OAuth callback.
+        // Ignore browser noise (favicon, etc.) and only handle the OAuth redirect.
         if (!code && !oauthError) {
           res.writeHead(204);
           res.end();
@@ -147,7 +149,7 @@ export class GoogleDriveAuth {
         }
 
         res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end("Autenticacao concluida. Pode fechar esta aba.");
+        res.end("Authentication complete. You may close this tab.");
         srv.close();
 
         if (code) {
@@ -175,6 +177,7 @@ export class GoogleDriveAuth {
     });
   }
 
+  // Exchanges an authorization code for access and refresh tokens.
   private async exchangeCode(
     code: string,
     verifier: string,

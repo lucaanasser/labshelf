@@ -1,8 +1,4 @@
-/**
- * Module: Drive Client
- * Responsibility: Thin HTTP wrapper around the Google Drive REST API v3.
- *   Knows nothing about OAuth -- receives a token callback from the caller.
- */
+/** Thin HTTP wrapper around the Google Drive REST API v3 — token-agnostic, receives a token callback from the caller. @depends none. @dependents googleDriveProvider */
 
 const BASE = "https://www.googleapis.com";
 const UPLOAD_BASE = "https://www.googleapis.com/upload";
@@ -28,6 +24,7 @@ interface ListParams {
   pageToken?: string;
 }
 
+// Throws a descriptive error when the HTTP response indicates a Drive API failure.
 async function assertOk(res: Response): Promise<void> {
   if (res.status >= 400) {
     let body = "";
@@ -42,14 +39,17 @@ async function assertOk(res: Response): Promise<void> {
   }
 }
 
+/** Thin HTTP client for Google Drive REST API v3. @usedBy googleDriveProvider. */
 export class DriveClient {
   constructor(private readonly getToken: () => Promise<string>) {}
 
+  // Builds the Authorization header by calling the injected token provider.
   private async authHeader(): Promise<Record<string, string>> {
     const token = await this.getToken();
     return { Authorization: `Bearer ${token}` };
   }
 
+  /** Lists Drive files matching the given query parameters. @usedBy googleDriveProvider. @returns DriveFileList */
   async listFiles(params: ListParams): Promise<DriveFileList> {
     const auth = await this.authHeader();
     const url = new URL(`${BASE}/drive/v3/files`);
@@ -64,6 +64,7 @@ export class DriveClient {
     return res.json() as Promise<DriveFileList>;
   }
 
+  /** Creates a Drive folder with the given name under the specified parent ids. @usedBy googleDriveProvider. @returns DriveFile */
   async createFolder(name: string, parents: string[]): Promise<DriveFile> {
     const auth = await this.authHeader();
     const res = await fetch(`${BASE}/drive/v3/files`, {
@@ -79,6 +80,7 @@ export class DriveClient {
     return res.json() as Promise<DriveFile>;
   }
 
+  /** Uploads file content to Drive using multipart upload, updating an existing file if existingId is provided. @usedBy googleDriveProvider. @returns DriveFile */
   async uploadFile(
     name: string,
     parents: string[],
@@ -137,6 +139,7 @@ export class DriveClient {
     return res.json() as Promise<DriveFile>;
   }
 
+  /** Downloads a Drive file by id and returns its raw bytes. @usedBy googleDriveProvider. @returns Uint8Array */
   async downloadFile(fileId: string): Promise<Uint8Array> {
     const auth = await this.authHeader();
     const url = new URL(`${BASE}/drive/v3/files/${fileId}`);
@@ -147,6 +150,7 @@ export class DriveClient {
     return new Uint8Array(buf);
   }
 
+  /** Permanently deletes a Drive file by id. @usedBy googleDriveProvider. @returns void */
   async deleteFile(fileId: string): Promise<void> {
     const auth = await this.authHeader();
     const res = await fetch(`${BASE}/drive/v3/files/${fileId}`, {
@@ -158,6 +162,7 @@ export class DriveClient {
     }
   }
 
+  /** Moves a Drive file to a new parent and optionally renames it in a single PATCH request. @usedBy googleDriveProvider. @returns DriveFile */
   async moveFile(
     fileId: string,
     newParentId: string,
@@ -182,6 +187,7 @@ export class DriveClient {
     return res.json() as Promise<DriveFile>;
   }
 
+  /** Returns the list of parent folder ids for a Drive file. @usedBy googleDriveProvider. @returns string[] */
   async getFileParents(fileId: string): Promise<string[]> {
     const auth = await this.authHeader();
     const url = new URL(`${BASE}/drive/v3/files/${fileId}`);

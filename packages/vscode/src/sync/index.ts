@@ -1,8 +1,4 @@
-/**
- * Module: Sync (root barrel)
- * Responsibility: Public surface of the sync layer — re-exports all public
- *   symbols from the six subdirectories
- */
+/** Public surface of the sync layer — re-exports all public symbols from the six subdirectories. @depends provider, core, drive, auth, util, adapter. @dependents extension */
 export type {
   RemoteProvider,
   RemoteFile,

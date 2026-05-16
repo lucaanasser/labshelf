@@ -1,25 +1,18 @@
-/**
- * Module: Conflict Name
- * Responsibility: Derive a keep-both rename for a conflicting file path
- * Dependencies: none
- */
+/** Derives a keep-both sibling rename for a conflicting file path. @depends none. @dependents syncApply */
 
-/** Pads a number to two digits. */
+// Pads a number to two digits.
 function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-/** Formats a date as YYYY-MM-DD in UTC. */
+/** Formats a Date as a YYYY-MM-DD string in UTC. @usedBy conflictPath. @returns string */
 export function isoDate(date: Date): string {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(
     date.getUTCDate(),
   )}`;
 }
 
-/**
- * Returns a sibling path that preserves the extension, e.g.
- * "a/b/paper.pdf" -> "a/b/paper (conflito 2026-05-16).pdf".
- */
+/** Returns a sibling path preserving the extension (e.g. "paper.pdf" → "paper (conflict 2026-05-16).pdf"). @usedBy syncApply. @returns string */
 export function conflictPath(path: string, date: Date): string {
   const slash = path.lastIndexOf("/");
   const dir = slash < 0 ? "" : path.slice(0, slash + 1);
@@ -29,5 +22,5 @@ export function conflictPath(path: string, date: Date): string {
   const stem = dot <= 0 ? file : file.slice(0, dot);
   const ext = dot <= 0 ? "" : file.slice(dot);
 
-  return `${dir}${stem} (conflito ${isoDate(date)})${ext}`;
+  return `${dir}${stem} (conflict ${isoDate(date)})${ext}`;
 }

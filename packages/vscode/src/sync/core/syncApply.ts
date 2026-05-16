@@ -1,10 +1,4 @@
-/**
- * Module: Sync Apply
- * Responsibility: Execute classified diff operations against the RemoteProvider
- *   and LocalFileSystem, including keep-both conflict resolution
- * Dependencies: syncTypes, remoteProvider, remotePathResolver, conflictName,
- *   syncManifest, contentHash
- */
+/** Execute classified diff operations against RemoteProvider and LocalFileSystem, including keep-both conflict resolution. @depends syncTypes, remoteProvider, remotePathResolver, conflictName, syncManifest, contentHash. @dependents syncEngine */
 import type { RemoteProvider } from "../provider/remoteProvider.js";
 import type { RemoteNamespace } from "../provider/remoteProvider.js";
 import type {
@@ -30,10 +24,12 @@ export interface ApplyContext {
   now: Date;
 }
 
+// Joins a local root directory with a relative path.
 function joinLocal(root: string, path: string): string {
   return `${root}/${path}`;
 }
 
+// Uploads a local file to the remote and records the new manifest entry.
 async function pushLocalToRemote(
   ctx: ApplyContext,
   op: SyncOperation,
@@ -54,6 +50,7 @@ async function pushLocalToRemote(
   });
 }
 
+// Downloads a remote file to the local filesystem and records the new manifest entry.
 async function pullRemoteToLocal(
   ctx: ApplyContext,
   op: SyncOperation,
@@ -70,6 +67,7 @@ async function pullRemoteToLocal(
   });
 }
 
+// Resolves a conflict by renaming the remote copy and uploading the local version (keep-both strategy).
 async function resolveConflict(
   ctx: ApplyContext,
   op: SyncOperation,
@@ -104,7 +102,7 @@ async function resolveConflict(
   result.conflicts.push(op.path);
 }
 
-/** Applies one classified operation, mutating the result counters. */
+// Applies one classified operation, mutating the result counters.
 async function applyOne(
   ctx: ApplyContext,
   op: SyncOperation,
@@ -139,7 +137,7 @@ async function applyOne(
   }
 }
 
-/** Applies every operation for a namespace and returns its result. */
+/** Applies every operation for a namespace and returns its aggregated result. @usedBy syncEngine. @returns NamespaceResult */
 export async function applyOperations(
   ctx: ApplyContext,
   ops: SyncOperation[],

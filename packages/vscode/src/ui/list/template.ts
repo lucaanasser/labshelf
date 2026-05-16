@@ -1,13 +1,18 @@
 /**
- * Module: List Panel HTML Template
- * Responsibility: Generate the full HTML/CSS/JS content for the paper list webview,
- *   including the inline detail sidebar.
- * Dependencies: vscode Webview API, PaperRecord, LibraryNode
+ * Generates the full HTML/CSS/JS document for the paper list webview panel, including the inline detail sidebar and all interactive controls.
+ *
+ * @depends ui/library/libraryTreeDataProvider.ts, core/types.ts
+ * @dependents ui/list/listWebviewPanel.ts, ui/list/index.ts
  */
 import * as vscode from 'vscode';
 import type { LibraryNode } from '../library/libraryTreeDataProvider.js';
 import type { PaperRecord } from '../../core/types.js';
 
+/**
+ * Builds and returns the complete HTML string for the paper list webview, embedding paper data as JSON and all inline styles and scripts.
+ * @usedBy ui/list/listWebviewPanel.ts
+ * @returns A full HTML document string ready to assign to webview.html.
+ */
 export function buildListPanelHtml(webview: vscode.Webview, collection: LibraryNode | undefined, papers: PaperRecord[]): string {
   const n = nonce();
   const title = esc(collection?.label ?? 'LabShelf');
@@ -580,6 +585,11 @@ body.detail-collapsed .detail-resizer.dragging{
 </html>`;
 }
 
+/**
+ * Returns a minimal loading placeholder HTML string shown while the paper list is being fetched.
+ * @usedBy ui/list/listWebviewPanel.ts
+ * @returns A short HTML document string with a "Loading…" message.
+ */
 export function loadingHtml(): string {
   return '<!doctype html><html><body style="font-family:var(--vscode-font-family);color:var(--vscode-foreground);background:var(--vscode-editor-background);padding:24px;">Loading…</body></html>';
 }

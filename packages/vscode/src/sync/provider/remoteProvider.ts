@@ -1,9 +1,4 @@
-/**
- * Module: Remote Provider
- * Responsibility: Provider-agnostic contract for a remote storage backend
- *   (Google Drive, GitHub, Dropbox, ...) used by the sync engine
- * Dependencies: none (no vscode, extractable to packages/core)
- */
+/** Provider-agnostic contract for a remote storage backend (Google Drive, Dropbox, …) consumed by the sync engine. @depends none. @dependents syncTypes, syncApply, syncEngine, syncManifest, treeScan, syncDiff, googleDriveProvider, remotePathResolver */
 
 /** A namespace splits visible library content from hidden app data. */
 export type RemoteNamespace = "library" | "appdata";

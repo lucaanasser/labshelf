@@ -1,8 +1,8 @@
 /**
- * Module: List Webview Panel
- * Responsibility: Central editor tab showing the paper list for a selected folder,
- *   with an inline details sidebar — Zotero-style split layout.
- * Dependencies: vscode, PaperService, ExtensionEventBus, LibraryNode
+ * Manages the central editor tab that displays the paper list for a selected collection folder with an inline detail sidebar, in a Zotero-style split layout.
+ *
+ * @depends ui/list/template.ts, ui/library/libraryTreeDataProvider.ts, core/paperService.ts, core/eventBus.ts, core/types.ts
+ * @dependents ui/list/index.ts, extension.ts
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -20,6 +20,11 @@ export class ListWebviewPanel {
   private _currentCollection: LibraryNode | undefined = undefined;
   private _paperService: PaperService;
 
+  /**
+   * Reveals the existing list panel if one is open, or creates a new one and loads the given collection.
+   * @usedBy extension.ts, commands/registerCommands.ts
+   * @returns void
+   */
   public static createOrShow(
     extensionUri: vscode.Uri,
     paperService: PaperService,
@@ -138,6 +143,11 @@ export class ListWebviewPanel {
     return (await this._paperService.listPapers()).find(p => p.id === id);
   }
 
+  /**
+   * Clears the static panel reference, disposes the webview panel, and cleans up all disposables.
+   * @usedBy ui/list/listWebviewPanel.ts (self, on panel dispose event)
+   * @returns void
+   */
   public dispose(): void {
     ListWebviewPanel.currentPanel = undefined;
     this._panel.dispose();

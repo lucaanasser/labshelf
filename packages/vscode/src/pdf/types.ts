@@ -1,6 +1,8 @@
 /**
- * Module: PDF Import Types
- * Responsibility: Shared interfaces for the PDF import pipeline
+ * Shared type definitions for the PDF import pipeline (identifiers, parsed metadata, resolved metadata).
+ *
+ * @depends none
+ * @dependents pdf/extractor.ts, pdf/parser.ts, pdf/resolver.ts, pdf/index.ts, pdf/pdfImportParser.ts
  */
 
 export interface ParsedPdfImport {

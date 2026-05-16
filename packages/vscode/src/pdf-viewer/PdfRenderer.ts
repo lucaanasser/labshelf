@@ -1,6 +1,8 @@
 /**
- * Module: PdfRenderer (re-export shim)
- * Responsibility: Re-export from renderer/ subdirectory for backward compatibility
+ * Re-export shim for PdfRenderer, resolvePdfjsUris, and getPdfjsDirectory — delegates to the renderer/ subdirectory for backward compatibility.
+ *
+ * @depends pdf-viewer/renderer/PdfRenderer.ts
+ * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/index.ts
  */
 export {
   PdfRenderer,

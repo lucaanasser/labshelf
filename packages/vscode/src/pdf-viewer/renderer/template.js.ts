@@ -1,7 +1,8 @@
 /**
- * Module: template.js
- * Responsibility: Inline JS for the PDF viewer webview
- * (PDF.js init, toolbar event handlers, text selection, annotation rendering)
+ * Generates the inline JavaScript module injected into the PDF viewer webview, covering PDF.js initialization, toolbar controls, text-selection highlighting, annotation rendering, and host message handling.
+ *
+ * @depends none
+ * @dependents pdf-viewer/renderer/PdfRenderer.ts
  */
 
 export interface BuildJsParams {
@@ -23,6 +24,11 @@ export interface BuildJsParams {
   defaultZoom: number;
 }
 
+/**
+ * Builds and returns a self-contained `<script type="module">` string that initializes the PDF.js viewer inside the webview.
+ * @usedBy pdf-viewer/renderer/PdfRenderer.ts
+ * @returns An HTML script tag string ready to be embedded in the webview document.
+ */
 export function buildJs(p: BuildJsParams): string {
   return `<script nonce="${p.nonce}" type="module">
 /* ─── Polyfill (Map.getOrInsertComputed — TC39 stage 3) ─────── */

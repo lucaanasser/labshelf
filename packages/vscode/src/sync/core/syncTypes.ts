@@ -1,9 +1,4 @@
-/**
- * Module: Sync Types
- * Responsibility: Shared types for the sync engine - manifest entries,
- *   three-way diff classes, sync results, and the local filesystem abstraction
- * Dependencies: remoteProvider (RemoteNamespace)
- */
+/** Shared types for the sync engine — manifest entries, three-way diff classes, sync results, and the local filesystem abstraction. @depends remoteProvider. @dependents syncManifest, treeScan, syncDiff, syncApply, syncEngine, syncController */
 import type { RemoteNamespace } from "../provider/remoteProvider.js";
 
 /** One manifest entry: state of a path at the last successful sync. */

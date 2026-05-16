@@ -1,7 +1,8 @@
 /**
- * Module: Library Tree Data Provider
- * Responsibility: TreeView backed by the real folder structure under papers/
- * Dependencies: vscode, ExtensionEventBus
+ * Provides the VS Code tree view for the LabShelf library by reading collection folders under the papers/ directory, and handles drag-and-drop PDF imports.
+ *
+ * @depends core/eventBus.ts
+ * @dependents ui/library/index.ts, extension.ts
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -32,16 +33,30 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
     eventBus.on('paper:deleted', refresh);
   }
 
-  // Called after library setup once the papers root is known.
+  /**
+   * Updates the papers root URI and triggers a full tree refresh; called after workspace setup completes.
+   * @usedBy extension.ts
+   * @returns void
+   */
   setPapersRoot(papersRoot: vscode.Uri): void {
     this._papersRoot = papersRoot;
     this.refresh();
   }
 
+  /**
+   * Fires the onDidChangeTreeData event to instruct VS Code to re-read the tree.
+   * @usedBy extension.ts (via eventBus listeners)
+   * @returns void
+   */
   refresh(): void {
     this._onDidChangeTreeData.fire();
   }
 
+  /**
+   * Returns the VS Code TreeItem representation of a library node, with expand state and open command.
+   * @usedBy vscode TreeView API
+   * @returns A vscode.TreeItem configured for the given collection folder node.
+   */
   async getTreeItem(node: LibraryNode): Promise<vscode.TreeItem> {
     const subfolders = await this._readCollectionFolders(node.dirPath);
     const isLeaf = subfolders.length === 0;
@@ -66,6 +81,11 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
     return item;
   }
 
+  /**
+   * Returns the child collection folder nodes for the given node, or the top-level folders when called without an argument.
+   * @usedBy vscode TreeView API
+   * @returns A thenable resolving to an array of LibraryNode objects.
+   */
   getChildren(node?: LibraryNode): Thenable<LibraryNode[]> {
     const dir = node ? node.dirPath : this._papersRoot?.fsPath;
     if (!dir) {
@@ -74,6 +94,11 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
     return this._readCollectionFolders(dir);
   }
 
+  /**
+   * Returns the parent LibraryNode for a given node, or null when the node is at the root level.
+   * @usedBy vscode TreeView API (reveal)
+   * @returns The parent LibraryNode, or null.
+   */
   getParent(node: LibraryNode): vscode.ProviderResult<LibraryNode> {
     const root = this._papersRoot?.fsPath;
     if (!root) {
@@ -136,6 +161,11 @@ export class LibraryDragAndDropController implements vscode.TreeDragAndDropContr
     private readonly onFileDrop: (uris: vscode.Uri[], targetDir: string | undefined) => Promise<void>,
   ) {}
 
+  /**
+   * Handles a drag-and-drop file event from the OS, parsing dropped URIs and routing them to the import callback.
+   * @usedBy vscode TreeDragAndDropController API
+   * @returns void
+   */
   async handleDrop(target: LibraryNode | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
     const item = dataTransfer.get('text/uri-list');
     if (!item) {

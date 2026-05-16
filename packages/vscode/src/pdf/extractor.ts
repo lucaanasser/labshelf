@@ -1,13 +1,18 @@
 /**
- * Module: PDF Layout Extractor
- * Responsibility: Layout analysis, title/author heuristics, DOI/arXiv regex detection
- * Dependencies: pdfjs document (any), shared types
+ * Extracts text blocks from a PDF document and infers title, authors, and identifiers (DOI/arXiv) via layout heuristics.
+ *
+ * @depends pdf/types.ts
+ * @dependents pdf/parser.ts
  */
 import type { TextBlock, DetectedIdentifier } from "./types.js";
 
 // ─── Text extraction ───────────────────────────────────────────────────────────
 
-// Groups page-1 text into runs sharing a font size, in reading order.
+/**
+ * Groups page-1 text items into runs that share the same font size, in reading order.
+ * @usedBy pdf/parser.ts
+ * @returns Array of TextBlock objects representing font-grouped text runs.
+ */
 export async function extractTitleBlocks(document: any): Promise<TextBlock[]> {
   const page = await document.getPage(1);
   const content = await page.getTextContent();
@@ -33,6 +38,11 @@ export async function extractTitleBlocks(document: any): Promise<TextBlock[]> {
     .filter((block) => block.text.length > 0);
 }
 
+/**
+ * Concatenates the plain text from the first `pageCount` pages of the PDF document.
+ * @usedBy pdf/parser.ts
+ * @returns Newline-joined string of page text, used for identifier detection.
+ */
 export async function extractFirstPagesText(document: any, pageCount: number): Promise<string> {
   const chunks: string[] = [];
   const limit = Math.min(document.numPages ?? pageCount, pageCount);
@@ -54,7 +64,11 @@ export async function extractFirstPagesText(document: any, pageCount: number): P
 
 // ─── Title / author heuristics ─────────────────────────────────────────────────
 
-// The title is the largest-font run near the top of page 1.
+/**
+ * Returns the title by picking the largest-font text run from the first eight blocks of page 1.
+ * @usedBy pdf/parser.ts
+ * @returns The inferred title string, or undefined if no suitable block is found.
+ */
 export function titleFromBlocks(blocks: TextBlock[]): string | undefined {
   const head = blocks.slice(0, 8);
   if (head.length === 0) { return undefined; }
@@ -70,7 +84,11 @@ export function titleFromBlocks(blocks: TextBlock[]): string | undefined {
   return best.text;
 }
 
-// Authors usually sit in the run directly below the title.
+/**
+ * Scans the blocks immediately below the title block and returns parsed author names.
+ * @usedBy pdf/parser.ts
+ * @returns Array of author name strings, or empty array if no author line is detected.
+ */
 export function authorsFromBlocks(blocks: TextBlock[], title: string | undefined): string[] {
   if (!title) { return []; }
   const titleIndex = blocks.findIndex((block) => block.text === title);
@@ -102,6 +120,11 @@ function medianSize(blocks: TextBlock[]): number {
 
 // ─── Identifier detection ──────────────────────────────────────────────────────
 
+/**
+ * Detects a DOI or arXiv identifier from PDF metadata fields and the first-pages text.
+ * @usedBy pdf/parser.ts
+ * @returns A DetectedIdentifier with type and value, or undefined if none found.
+ */
 export function detectIdentifier(pdfInfo: Record<string, unknown>, text: string): DetectedIdentifier | undefined {
   const candidate = asString(pdfInfo.DOI) ?? findDoi(text);
   if (candidate) {
@@ -128,6 +151,11 @@ function findArxivId(text: string): string | undefined {
 
 // ─── Shared string helpers ─────────────────────────────────────────────────────
 
+/**
+ * Normalizes a raw title string by collapsing underscores, hyphens, and whitespace.
+ * @usedBy pdf/parser.ts
+ * @returns The cleaned title string.
+ */
 export function normalizeTitle(rawValue: string): string {
   return rawValue
     .replace(/[_-]+/g, " ")
@@ -135,6 +163,11 @@ export function normalizeTitle(rawValue: string): string {
     .trim();
 }
 
+/**
+ * Splits an author string (or passes through an array) into individual trimmed author names.
+ * @usedBy pdf/parser.ts
+ * @returns Array of non-empty author name strings.
+ */
 export function normalizeAuthors(rawValue: string | string[] | undefined): string[] {
   if (Array.isArray(rawValue)) {
     return rawValue.map((value) => value.trim()).filter(Boolean);
@@ -150,6 +183,11 @@ export function normalizeAuthors(rawValue: string | string[] | undefined): strin
     .filter(Boolean);
 }
 
+/**
+ * Builds a citation key from the best available source (identifier, file stem, or title) combined with the year.
+ * @usedBy pdf/parser.ts
+ * @returns A lowercase alphanumeric cite key string, optionally suffixed with the year.
+ */
 export function buildCiteKey(fileStem: string, title: string, year?: number, identifier?: string): string {
   const sourceKey = identifier ?? fileStem ?? title;
   const base = sourceKey
@@ -159,6 +197,11 @@ export function buildCiteKey(fileStem: string, title: string, year?: number, ide
   return year ? `${base}${year}` : base;
 }
 
+/**
+ * Extracts a four-digit year (1900–2099) from a raw date string such as a PDF creation date.
+ * @usedBy pdf/parser.ts
+ * @returns The year as a number, or undefined if no match is found.
+ */
 export function extractYear(rawValue: string | undefined): number | undefined {
   if (!rawValue) {
     return undefined;
@@ -168,6 +211,11 @@ export function extractYear(rawValue: string | undefined): number | undefined {
   return match ? Number(match[0]) : undefined;
 }
 
+/**
+ * Coerces an unknown value to a non-empty trimmed string, returning undefined for blanks and non-strings.
+ * @usedBy pdf/parser.ts
+ * @returns The trimmed string, or undefined.
+ */
 export function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }

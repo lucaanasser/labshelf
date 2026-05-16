@@ -1,8 +1,8 @@
 /**
- * Module: AnnotationManager
- * Responsibility: CRUD for paper annotations with validation and event emission.
- *   The per-paper sidecar JSON (PaperDataStore) is the single source of truth.
- * Dependencies: PaperDataStore, ExtensionEventBus, core types
+ * Manages create, read, update, and delete operations for paper annotations, delegating persistence to PaperDataStore and emitting events on each change.
+ *
+ * @depends pdf-viewer/config.ts, storage/data/paperDataStore.ts, core/eventBus.ts, core/types.ts, constants/events.ts
+ * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/index.ts
  */
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
 import type { ExtensionEventBus } from "../core/eventBus.js";
@@ -24,6 +24,11 @@ export class AnnotationManager {
     private readonly eventBus: ExtensionEventBus,
   ) {}
 
+  /**
+   * Creates a highlight annotation for the given paper and page, validates inputs, and emits ANNOTATION_CREATED.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns The newly created Annotation record.
+   */
   async createHighlight(
     paperId: string,
     pageNumber: number,
@@ -49,6 +54,11 @@ export class AnnotationManager {
     return annotation;
   }
 
+  /**
+   * Creates a note annotation for the given paper and page, validates inputs, and emits ANNOTATION_CREATED.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns The newly created Annotation record.
+   */
   async createNote(paperId: string, pageNumber: number, content: string): Promise<Annotation> {
     this.validatePageNumber(pageNumber);
     if (!content.trim()) { throw new Error('Note content cannot be empty'); }
@@ -64,18 +74,33 @@ export class AnnotationManager {
     return annotation;
   }
 
+  /**
+   * Returns all annotations for the specified paper and updates the in-memory owner index.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns Array of Annotation records for the paper.
+   */
   async getAnnotationsByPaper(paperId: string): Promise<Annotation[]> {
     const annotations = await this.dataStore.getAnnotations(paperId);
     for (const a of annotations) { this.ownerIndex.set(a.id, paperId); }
     return annotations;
   }
 
+  /**
+   * Returns all annotations for the specified paper on a given page and updates the in-memory owner index.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns Array of Annotation records for that page.
+   */
   async getAnnotationsByPage(paperId: string, pageNumber: number): Promise<Annotation[]> {
     const annotations = await this.dataStore.getAnnotationsByPage(paperId, pageNumber);
     for (const a of annotations) { this.ownerIndex.set(a.id, paperId); }
     return annotations;
   }
 
+  /**
+   * Updates the content of an existing annotation by id and emits ANNOTATION_UPDATED.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns The updated Annotation record.
+   */
   async updateAnnotation(id: string, content: string): Promise<Annotation> {
     if (!content.trim()) { throw new Error('Annotation content cannot be empty'); }
     const paperId = await this.resolvePaperId(id);
@@ -86,6 +111,11 @@ export class AnnotationManager {
     return updated;
   }
 
+  /**
+   * Deletes the annotation with the given id from the sidecar store and emits ANNOTATION_DELETED.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns void
+   */
   async deleteAnnotation(id: string, paperId: string): Promise<void> {
     await this.dataStore.deleteAnnotation(paperId, id);
     this.ownerIndex.delete(id);
@@ -102,24 +132,44 @@ export class AnnotationManager {
 
   // ── Validation helpers ────────────────────────────────────────────────────
 
+  /**
+   * Throws if the given color string is not one of the allowed annotation colors.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns void
+   */
   validateColor(color: string): void {
     if (!VALID_COLORS.includes(color)) {
       throw new Error(`Invalid annotation color: ${color}. Must be one of: ${VALID_COLORS.join(', ')}`);
     }
   }
 
+  /**
+   * Throws if the given type string is not one of the allowed annotation types.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns void
+   */
   validateType(type: string): void {
     if (!VALID_TYPES.includes(type as AnnotationType)) {
       throw new Error(`Invalid annotation type: ${type}. Must be one of: ${VALID_TYPES.join(', ')}`);
     }
   }
 
+  /**
+   * Throws if the given page number is not a positive integer.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns void
+   */
   validatePageNumber(pageNumber: number): void {
     if (!Number.isInteger(pageNumber) || pageNumber < 1) {
       throw new Error(`Invalid page number: ${pageNumber}. Must be a positive integer`);
     }
   }
 
+  /**
+   * Validates and returns a normalized AnnotationPosition; throws a descriptive error for any invalid field.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns A validated AnnotationPosition with x, y, width, height in the [0, 1] range.
+   */
   validatePosition(pos: unknown): AnnotationPosition {
     if (!pos || typeof pos !== 'object' || Array.isArray(pos)) {
       throw new Error('Position must be an object with x, y, width, height');

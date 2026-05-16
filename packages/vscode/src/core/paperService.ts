@@ -1,7 +1,8 @@
 /**
- * Module: Paper Service
- * Responsibility: Drive paper import, metadata persistence, and deletion
- * Dependencies: filesystem, database, event bus, pdf parser, bibtex service
+ * Orchestrates paper import, metadata persistence, status updates, and deletion.
+ *
+ * @depends core/types, core/eventBus, db/database, storage/fileSystemService, storage/paths/libraryPaths, pdf/index, bibtex/bibtexService
+ * @dependents commands/registerCommands.ts, extension.ts, pdf-viewer/PdfViewerPanel.ts, ui/list/listWebviewPanel.ts
  */
 import * as path from "node:path";
 import * as vscode from "vscode";
@@ -25,6 +26,11 @@ export class PaperService {
     private readonly bibTeXService: BibTeXService,
   ) {}
 
+  /**
+   * Imports a single PDF, copies it into the library, persists metadata, and emits PAPER_ADDED.
+   * @usedBy extension.ts, commands/registerCommands.ts
+   * @returns the newly created PaperRecord
+   */
   async addPaperFromUri(sourceUri: vscode.Uri, targetParentDir?: vscode.Uri): Promise<PaperRecord> {
     const parsed = await this.pdfImportParser.parse(sourceUri);
     const paperId = parsed.citeKey || path.basename(sourceUri.fsPath, path.extname(sourceUri.fsPath)) || crypto.randomUUID();
@@ -62,10 +68,20 @@ export class PaperService {
     return paper;
   }
 
+  /**
+   * Returns all papers currently stored in the database, ordered by title.
+   * @usedBy commands/registerCommands.ts, extension.ts, ui/list/listWebviewPanel.ts
+   * @returns array of PaperRecord
+   */
   async listPapers(): Promise<PaperRecord[]> {
     return this.database.listPapers();
   }
 
+  /**
+   * Updates the read-status of one paper and emits PAPER_UPDATED; returns undefined if not found.
+   * @usedBy ui/list/listWebviewPanel.ts
+   * @returns updated PaperRecord or undefined
+   */
   async updatePaperStatus(paperId: string, status: PaperRecord["status"]): Promise<PaperRecord | undefined> {
     const papers = await this.database.listPapers();
     const current = papers.find((paper) => paper.id === paperId);
@@ -79,6 +95,11 @@ export class PaperService {
     return next;
   }
 
+  /**
+   * Removes a paper from the index and optionally sends its folder to the trash; emits PAPER_DELETED.
+   * @usedBy commands/registerCommands.ts, ui/list/listWebviewPanel.ts
+   * @returns true if the paper existed and was deleted, false if not found
+   */
   async deletePaper(paperId: string, deleteFiles: boolean): Promise<boolean> {
     const papers = await this.database.listPapers();
     const paper = papers.find((p) => p.id === paperId);
@@ -100,6 +121,11 @@ export class PaperService {
     return true;
   }
 
+  /**
+   * Imports multiple PDFs or folders of PDFs, collecting per-file successes, failures, and skipped paths.
+   * @usedBy commands/registerCommands.ts, extension.ts
+   * @returns BatchImportResult with success, failed, and skipped arrays
+   */
   async addPapersFromUris(uris: vscode.Uri[], targetParentDir?: vscode.Uri): Promise<BatchImportResult> {
     const result: BatchImportResult = { success: [], failed: [], skipped: [] };
     const pdfs = await this._expandToPdfs(uris, result.skipped);
@@ -117,6 +143,7 @@ export class PaperService {
     return result;
   }
 
+  // Expands a mix of file and directory URIs into a flat list of PDF URIs, populating skipped for non-PDFs.
   private async _expandToPdfs(uris: vscode.Uri[], skipped: string[]): Promise<vscode.Uri[]> {
     const pdfs: vscode.Uri[] = [];
     for (const uri of uris) {
@@ -136,6 +163,7 @@ export class PaperService {
     return pdfs;
   }
 
+  // Recursively collects all PDF files inside a directory tree.
   private async _findPdfsInFolder(folderUri: vscode.Uri): Promise<vscode.Uri[]> {
     const pdfs: vscode.Uri[] = [];
     try {
@@ -154,8 +182,11 @@ export class PaperService {
     return pdfs;
   }
 
-  // Rewrites stored paper paths after a collection folder is renamed or moved
-  // on disk, so the index keeps pointing at the relocated paper folders.
+  /**
+   * Rewrites stored paper paths after a collection folder is renamed or moved so the index stays valid.
+   * @usedBy extension.ts
+   * @returns void
+   */
   async relocatePapersUnder(oldDir: string, newDir: string): Promise<void> {
     const papers = await this.database.listPapers();
     const prefix = oldDir + path.sep;
@@ -170,8 +201,11 @@ export class PaperService {
     }
   }
 
-  // Drops index entries for every paper stored under `dirPath`. Used when a
-  // collection folder is deleted — the folder's files are removed separately.
+  /**
+   * Drops index entries for every paper stored under dirPath, emitting PAPER_DELETED for each.
+   * @usedBy extension.ts
+   * @returns void
+   */
   async removePapersUnder(dirPath: string): Promise<void> {
     const papers = await this.database.listPapers();
     const prefix = dirPath + path.sep;
@@ -184,6 +218,11 @@ export class PaperService {
     }
   }
 
+  /**
+   * Re-writes the BibTeX and metadata artifacts for every paper in the library.
+   * @usedBy commands/registerCommands.ts
+   * @returns count of papers processed
+   */
   async regenerateBibTeX(): Promise<number> {
     const papers = await this.database.listPapers();
     for (const paper of papers) {

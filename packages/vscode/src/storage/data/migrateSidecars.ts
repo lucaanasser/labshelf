@@ -1,15 +1,18 @@
 /**
- * Module: Sidecar Migration
- * Responsibility: One-time, idempotent export of annotations and theme
- *   preferences from the legacy SQLite database into per-paper sidecar JSON.
- * Dependencies: ResearchDatabase, PaperDataStore, core types
+ * One-time, idempotent migration that exports annotations and theme preferences from SQLite into per-paper sidecar JSON files.
+ *
+ * @depends core/types, db/database, storage/data/paperDataStore
+ * @dependents extension.ts, storage/data/index.ts, storage/index.ts
  */
 import type { Annotation, PaperRecord } from "../../core/types.js";
 import type { ResearchDatabase } from "../../db/database.js";
 import type { PaperDataStore, PaperData } from "./paperDataStore.js";
 
-// Exports legacy SQLite data to sidecars. Safe to run repeatedly: annotations
-// are merged by id (no duplicates) and a non-default sidecar theme is kept.
+/**
+ * Merges annotation and theme data from SQLite into on-disk sidecars for every paper; safe to run repeatedly.
+ * @usedBy extension.ts
+ * @returns object with the count of papers whose sidecar was updated
+ */
 export async function migrateSidecarsFromDb(
   database: ResearchDatabase,
   dataStore: PaperDataStore,
@@ -37,7 +40,7 @@ export async function migrateSidecarsFromDb(
   return { migratedPapers };
 }
 
-// Sidecar wins on id conflict so a previous migration is never overwritten.
+// Merges sidecar and DB annotation arrays by id; the sidecar entry wins on conflict.
 function mergeAnnotations(sidecar: Annotation[], db: Annotation[]): Annotation[] {
   const byId = new Map<string, Annotation>();
   for (const a of db) {
@@ -49,6 +52,7 @@ function mergeAnnotations(sidecar: Annotation[], db: Annotation[]): Annotation[]
   return [...byId.values()];
 }
 
+// Returns true when the merged result is identical to the existing sidecar, so the file is not written unnecessarily.
 function isUnchanged(before: PaperData, after: PaperData): boolean {
   return (
     before.theme === after.theme &&
