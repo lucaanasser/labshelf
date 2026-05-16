@@ -7,7 +7,7 @@
  */
 import * as vscode from "vscode";
 
-import type { FileSystemService } from "./fileSystemService.js";
+import type { FileSystemService } from "../fileSystemService.js";
 
 const LIBRARY_ROOT_KEY = "labshelf.libraryRoot";
 

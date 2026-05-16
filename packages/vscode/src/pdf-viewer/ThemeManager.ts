@@ -6,7 +6,7 @@
  * Dependencies: vscode, PaperDataStore
  */
 import * as vscode from "vscode";
-import type { PaperDataStore } from "../storage/paperDataStore.js";
+import type { PaperDataStore } from "../storage/data/paperDataStore.js";
 import type { PdfTheme } from "../core/types.js";
 import { PDF_VIEWER_CONFIG } from "./config.js";
 

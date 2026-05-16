@@ -8,10 +8,10 @@
 import * as vscode from "vscode";
 import YAML from "yaml";
 
-import type { PaperRecord } from "../core/types.js";
-import type { ResearchDatabase } from "../db/database.js";
-import { FileSystemService } from "./fileSystemService.js";
-import type { ILibraryPaths } from "./libraryPaths.js";
+import type { PaperRecord } from "../../core/types.js";
+import type { ResearchDatabase } from "../../db/database.js";
+import { FileSystemService } from "../fileSystemService.js";
+import type { ILibraryPaths } from "../paths/libraryPaths.js";
 import { PaperDataStore } from "./paperDataStore.js";
 
 export class LibraryIndexer {

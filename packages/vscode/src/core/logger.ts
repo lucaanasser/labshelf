@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 
 import type { LogEntry } from "./types.js";
 import { FileSystemService } from "../storage/fileSystemService.js";
-import type { ILibraryPaths } from "../storage/libraryPaths.js";
+import type { ILibraryPaths } from "../storage/paths/libraryPaths.js";
 
 export interface LogStore {
   append(entry: LogEntry): Promise<void>;

@@ -4,7 +4,7 @@
  *   The per-paper sidecar JSON (PaperDataStore) is the single source of truth.
  * Dependencies: PaperDataStore, ExtensionEventBus, core types
  */
-import type { PaperDataStore } from "../storage/paperDataStore.js";
+import type { PaperDataStore } from "../storage/data/paperDataStore.js";
 import type { ExtensionEventBus } from "../core/eventBus.js";
 import type { Annotation, AnnotationType, AnnotationColor, AnnotationPosition } from "../core/types.js";
 import { EVENTS } from "../constants/events.js";

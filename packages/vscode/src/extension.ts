@@ -17,12 +17,12 @@ import { PaperService } from "./core/paperService.js";
 import { WorkspaceLogger } from "./core/logger.js";
 import { InMemoryResearchDatabase } from "./db/database.js";
 import { FileSystemService } from "./storage/fileSystemService.js";
-import { LibraryPaths } from "./storage/libraryPaths.js";
+import { LibraryPaths } from "./storage/paths/libraryPaths.js";
 import {
   resolveLibraryRoot,
   runLibrarySetupWizard,
   ensureLibraryStructure,
-} from "./storage/libraryLocation.js";
+} from "./storage/paths/libraryLocation.js";
 import { LibraryTreeDataProvider, LibraryDragAndDropController } from "./ui/libraryTreeDataProvider.js";
 import type { LibraryNode } from "./ui/libraryTreeDataProvider.js";
 import { SyncTreeDataProvider } from "./ui/syncTreeDataProvider.js";
@@ -34,9 +34,9 @@ import { PdfImportParser } from "./pdf/pdfImportParser.js";
 import { BibTeXService } from "./bibtex/bibtexService.js";
 import { ThemeManager } from "./pdf-viewer/ThemeManager.js";
 import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
-import { PaperDataStore } from "./storage/paperDataStore.js";
-import { LibraryIndexer } from "./storage/libraryIndexer.js";
-import { migrateSidecarsFromDb } from "./storage/migrateSidecars.js";
+import { PaperDataStore } from "./storage/data/paperDataStore.js";
+import { LibraryIndexer } from "./storage/data/libraryIndexer.js";
+import { migrateSidecarsFromDb } from "./storage/data/migrateSidecars.js";
 import { SyncController } from "./sync/syncController.js";
 import type { ResearchDatabase } from "./db/database.js";
 import type { PaperRecord } from "./core/types.js";

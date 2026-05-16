@@ -7,8 +7,8 @@
 import * as vscode from "vscode";
 import { randomUUID } from "crypto";
 
-import type { Annotation, PdfTheme } from "../core/types.js";
-import { FileSystemService } from "./fileSystemService.js";
+import type { Annotation, PdfTheme } from "../../core/types.js";
+import { FileSystemService } from "../fileSystemService.js";
 
 export interface PaperData {
   annotations: Annotation[];

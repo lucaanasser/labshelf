@@ -4,8 +4,8 @@
  *   preferences from the legacy SQLite database into per-paper sidecar JSON.
  * Dependencies: ResearchDatabase, PaperDataStore, core types
  */
-import type { Annotation, PaperRecord } from "../core/types.js";
-import type { ResearchDatabase } from "../db/database.js";
+import type { Annotation, PaperRecord } from "../../core/types.js";
+import type { ResearchDatabase } from "../../db/database.js";
 import type { PaperDataStore, PaperData } from "./paperDataStore.js";
 
 // Exports legacy SQLite data to sidecars. Safe to run repeatedly: annotations

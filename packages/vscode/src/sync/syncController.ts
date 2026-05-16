@@ -8,7 +8,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILibraryPaths } from "../storage/libraryPaths.js";
+import type { ILibraryPaths } from "../storage/paths/libraryPaths.js";
 import type { ExtensionEventBus } from "../core/eventBus.js";
 import { GoogleDriveAuth } from "./googleDriveAuth.js";
 import { createGoogleDriveProvider } from "./googleDriveProvider.js";
