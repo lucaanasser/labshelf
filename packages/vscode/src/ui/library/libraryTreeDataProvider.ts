@@ -5,7 +5,7 @@
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { ExtensionEventBus } from '../core/eventBus.js';
+import type { ExtensionEventBus } from '../../core/eventBus.js';
 
 // A node is a "collection folder": a real directory under papers/ that is not
 // itself a paper folder. Paper folders are not shown as nodes — their papers

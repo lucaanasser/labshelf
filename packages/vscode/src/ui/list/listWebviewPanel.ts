@@ -6,10 +6,10 @@
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { PaperService } from '../core/paperService.js';
-import type { ExtensionEventBus } from '../core/eventBus.js';
-import type { LibraryNode } from './libraryTreeDataProvider.js';
-import type { PaperRecord } from '../core/types.js';
+import type { PaperService } from '../../core/paperService.js';
+import type { ExtensionEventBus } from '../../core/eventBus.js';
+import type { LibraryNode } from '../library/libraryTreeDataProvider.js';
+import type { PaperRecord } from '../../core/types.js';
 
 export class ListWebviewPanel {
   public static currentPanel: ListWebviewPanel | undefined;

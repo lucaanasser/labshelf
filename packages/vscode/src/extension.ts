@@ -23,10 +23,10 @@ import {
   runLibrarySetupWizard,
   ensureLibraryStructure,
 } from "./storage/paths/libraryLocation.js";
-import { LibraryTreeDataProvider, LibraryDragAndDropController } from "./ui/libraryTreeDataProvider.js";
-import type { LibraryNode } from "./ui/libraryTreeDataProvider.js";
-import { SyncTreeDataProvider } from "./ui/syncTreeDataProvider.js";
-import { ListWebviewPanel } from "./ui/listWebviewPanel.js";
+import { LibraryTreeDataProvider, LibraryDragAndDropController } from "./ui/library/index.js";
+import type { LibraryNode } from "./ui/library/index.js";
+import { SyncTreeDataProvider } from "./ui/sync/index.js";
+import { ListWebviewPanel } from "./ui/list/index.js";
 import { PdfViewerPanel } from "./pdf-viewer/PdfViewerPanel.js";
 import { registerCommands } from "./commands/registerCommands.js";
 import type { ActiveServices } from "./commands/registerCommands.js";
