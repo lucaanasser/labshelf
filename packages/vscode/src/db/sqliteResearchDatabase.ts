@@ -96,52 +96,6 @@ export class SqliteResearchDatabase implements ResearchDatabase {
         summary TEXT
       );
 
-      CREATE TABLE IF NOT EXISTS authors (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE
-      );
-
-      CREATE TABLE IF NOT EXISTS paper_authors (
-        paper_id TEXT NOT NULL,
-        author_id INTEGER NOT NULL,
-        PRIMARY KEY (paper_id, author_id),
-        FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE,
-        FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS tags (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE
-      );
-
-      CREATE TABLE IF NOT EXISTS paper_tags (
-        paper_id TEXT NOT NULL,
-        tag_id INTEGER NOT NULL,
-        PRIMARY KEY (paper_id, tag_id),
-        FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE,
-        FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS notes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        paper_id TEXT NOT NULL,
-        path TEXT NOT NULL,
-        FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS citations (
-        from_paper TEXT NOT NULL,
-        to_paper TEXT NOT NULL,
-        PRIMARY KEY (from_paper, to_paper)
-      );
-
-      CREATE TABLE IF NOT EXISTS chunks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        paper_id TEXT NOT NULL,
-        content TEXT NOT NULL,
-        embedding TEXT
-      );
-
       CREATE TABLE IF NOT EXISTS logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp TEXT NOT NULL,
