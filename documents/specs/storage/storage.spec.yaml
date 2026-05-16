@@ -6,6 +6,35 @@ feature:
     provide a thin filesystem helper, own per-paper JSON sidecars (PaperDataStore),
     and rebuild the SQLite index from disk on startup (LibraryIndexer).
 
+structure:
+  description: >
+    The storage module is split into two subdirectories plus one root-level
+    helper. paths/ owns layout resolution and root persistence; data/ owns the
+    per-paper sidecar store and the SQLite index rebuild; fileSystemService.ts
+    stays at the storage root as a shared low-level helper.
+  layout:
+    storage/fileSystemService.ts: >
+      Thin UTF-8 text read/write helper over vscode.workspace.fs. Shared by
+      paths/, data/, and other modules.
+    storage/paths/libraryPaths.ts: >
+      Pure path resolution for the .research layout (papers, logs, index,
+      app.log, paperDataDir, paperDataPath, syncDir).
+    storage/paths/libraryLocation.ts: >
+      Resolve the configured library root, run the first-run setup wizard, and
+      persist the chosen root in ExtensionContext.globalState.
+    storage/paths/workspacePaths.ts: >
+      Resolve workspace-relative paths used to anchor the library inside the
+      open VS Code workspace.
+    storage/data/paperDataStore.ts: >
+      Owns per-paper JSON sidecars at .research/papers/<id>/data.json; CRUD for
+      annotations and theme preferences. Source of truth for that data.
+    storage/data/libraryIndexer.ts: >
+      Rebuilds the SQLite cache on startup by scanning papers/**/metadata.yaml
+      and .research/papers/**/data.json. Idempotent.
+    storage/data/migrateSidecars.ts: >
+      One-time migration that exports annotations from the legacy SQLite tables
+      into per-paper sidecars without duplicating existing entries.
+
 architecture:
   inputs:
     - library root URI
@@ -20,9 +49,9 @@ architecture:
   dependencies:
     - vscode workspace.fs
     - vscode ExtensionContext.globalState
-    - FileSystemService
-    - yaml (for metadata.yaml parsing in LibraryIndexer)
-    - ResearchDatabase (written by LibraryIndexer)
+    - storage/fileSystemService
+    - yaml (for metadata.yaml parsing in storage/data/libraryIndexer)
+    - db/database (ResearchDatabase, written by storage/data/libraryIndexer)
 
 database:
   tables_used:

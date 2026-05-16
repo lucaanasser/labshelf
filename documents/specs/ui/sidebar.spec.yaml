@@ -6,6 +6,20 @@ feature:
     activity bar. The tree exposes built-in collections and user-created custom
     folders, and accepts OS file drops anywhere in the tree.
 
+structure:
+  description: >
+    The ui module is split by view. This feature lives in ui/library/.
+  layout:
+    ui/library/libraryTreeDataProvider.ts: >
+      TreeDataProvider and TreeDragAndDropController for the library tree;
+      hosts the CollectionsTreeDataProvider and CollectionsDragAndDropController
+      logic. Other ui views live in ui/list/ (list panel) and ui/sync/ (sync
+      status tree).
+  notes: >
+    Legacy ui/sidebarHtml.ts, ui/sidebarWebviewProvider.ts, and
+    ui/sidebarStateMapper.ts were removed; the sidebar is now a native TreeView,
+    not a webview.
+
 architecture:
   inputs:
     - PaperService.listPapers for counts

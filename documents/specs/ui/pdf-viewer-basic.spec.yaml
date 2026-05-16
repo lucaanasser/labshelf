@@ -22,10 +22,16 @@ architecture:
     - vscode WebviewPanel API
     - pdfjs-dist legacy build (pdf.mjs + worker) for document loading
     - pdfjs-dist official web viewer module (web/pdf_viewer.mjs + web/pdf_viewer.css)
-    - PaperService for metadata
-    - EventBus for event emission
-    - FileSystemService for reading PDF bytes
-    - ThemeManager (new) for VS Code theme mapping
+    - core/paperService for metadata
+    - core/eventBus for event emission
+    - storage/fileSystemService for reading PDF bytes
+    - pdf-viewer/ThemeManager for VS Code theme mapping
+    - pdf-viewer/renderer/PdfRenderer for webview HTML generation (see renderer.spec.yaml)
+  notes: >
+    PdfViewerPanel delegates webview HTML generation to the pdf-viewer/renderer/
+    submodule (PdfRenderer + template.css + template.js). The legacy
+    pdf-viewer/PdfRenderer.ts at the module root is a re-export shim kept for
+    backward compatibility.
 
 database:
   tables_used: []

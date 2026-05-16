@@ -19,7 +19,7 @@ architecture:
     - event notifications on paper changes
   dependencies:
     - storage/fileSystemService
-    - storage/libraryPaths
+    - storage/paths/libraryPaths
     - db/database
     - io/pdf
     - io/bibtex

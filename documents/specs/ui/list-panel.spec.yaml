@@ -7,6 +7,17 @@ feature:
     details sidebar on the right, and reuses a single panel instance across
     collection switches.
 
+structure:
+  description: >
+    This feature lives in ui/list/. The webview controller and its HTML
+    template are separate files.
+  layout:
+    ui/list/listWebviewPanel.ts: >
+      WebviewPanel controller (ListWebviewPanel) — creates/reuses the panel,
+      loads collections, and handles webview messages.
+    ui/list/template.ts: >
+      Pure HTML builder (buildHtml) for the list and detail panes.
+
 architecture:
   inputs:
     - selected CollectionItem

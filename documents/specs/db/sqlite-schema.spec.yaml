@@ -2,9 +2,13 @@ feature:
   name: SQLite Research Schema
   module: db
   description: >
-    Persist papers, relationships, and structured logs in a local SQLite file.
+    Persist papers, annotations, and structured logs in a local SQLite file.
     The adapter creates the schema on startup and keeps backward compatibility
-    for older paper rows by adding missing metadata columns.
+    for older paper rows by adding missing metadata columns. SQLite is a
+    rebuildable local cache only — the sources of truth are metadata.yaml
+    (papers) and .research/papers/<id>/data.json (annotations, themes). The
+    legacy relational tables (authors, paper_authors, tags, paper_tags, notes,
+    citations, chunks) were removed; that data is no longer modelled in SQLite.
 
 architecture:
   inputs:
@@ -21,13 +25,7 @@ architecture:
 database:
   tables_used:
     - papers
-    - authors
-    - paper_authors
-    - tags
-    - paper_tags
-    - notes
-    - citations
-    - chunks
+    - annotations
     - logs
   migrations: []
   schema_notes:
@@ -51,6 +49,21 @@ database:
         - url
         - issn
         - language
+    annotations:
+      primary_key: id
+      columns:
+        - id
+        - paperId
+        - type
+        - pageNumber
+        - content
+        - color
+        - position
+        - createdAt
+        - updatedAt
+      notes: >
+        Cache table rebuilt from .research/papers/<id>/data.json by
+        LibraryIndexer on startup. Not the source of truth.
     logs:
       primary_key: id
       columns:
@@ -60,14 +73,22 @@ database:
         - message
         - stack
         - context
-    relationships:
-      - paper_authors.paper_id references papers.id
-      - paper_authors.author_id references authors.id
-      - paper_tags.paper_id references papers.id
-      - paper_tags.tag_id references tags.id
-      - notes.paper_id references papers.id
+    relationships: []
   compatibility:
     - ensureColumns adds missing bibliographic columns to papers
+  removed_tables:
+    description: >
+      The following relational tables were removed in the refactoring and are
+      no longer created or queried. Authors and tags are denormalized into the
+      papers row; notes/citations/chunks features are not modelled in SQLite.
+    tables:
+      - authors
+      - paper_authors
+      - tags
+      - paper_tags
+      - notes
+      - citations
+      - chunks
 
 events:
   emits: []

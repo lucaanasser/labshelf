@@ -5,6 +5,26 @@ feature:
     Validate PDFs, extract embedded metadata and first-page text, detect DOI or
     arXiv identifiers, and resolve online metadata when available.
 
+structure:
+  description: >
+    The pdf module is split into focused files. pdfImportParser.ts remains the
+    public entry point that orchestrates the others.
+  layout:
+    pdf/types.ts: >
+      Shared interfaces for parsed PDF metadata and identifier results.
+    pdf/parser.ts: >
+      Loads pdfjs-dist (with the main-thread worker), validates the PDF header,
+      and reads embedded document metadata and first-page text.
+    pdf/extractor.ts: >
+      Extracts structured metadata from raw PDF text — title, authors, DOI and
+      arXiv identifiers — and generates the cite key.
+    pdf/resolver.ts: >
+      Resolves online metadata for detected DOI/arXiv identifiers via CrossRef
+      and arXiv, with graceful fallback to locally extracted metadata.
+    pdf/pdfImportParser.ts: >
+      Public entry point used by PaperService; composes parser, extractor, and
+      resolver into a single parse call.
+
 architecture:
   inputs:
     - source PDF URI

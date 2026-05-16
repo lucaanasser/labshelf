@@ -27,18 +27,18 @@ architecture:
     - core/paperService
     - core/logger
     - storage/fileSystemService
-    - storage/libraryLocation
-    - storage/libraryPaths
-    - storage/paperDataStore
-    - storage/libraryIndexer
-    - storage/migrateSidecars
+    - storage/paths/libraryLocation
+    - storage/paths/libraryPaths
+    - storage/data/paperDataStore
+    - storage/data/libraryIndexer
+    - storage/data/migrateSidecars
     - db/database
     - db/sqliteResearchDatabase
     - io/pdf
     - io/bibtex
-    - sync/syncController
-    - ui/libraryTreeDataProvider
-    - ui/listWebviewPanel
+    - sync/adapter/syncController
+    - ui/library/libraryTreeDataProvider
+    - ui/list/listWebviewPanel
     - commands/registerCommands
 
 database:

@@ -17,7 +17,7 @@ architecture:
     - optional append into the database log store
   dependencies:
     - storage/fileSystemService
-    - storage/libraryPaths
+    - storage/paths/libraryPaths
     - vscode workspace.fs
 
 database:

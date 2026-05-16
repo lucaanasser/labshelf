@@ -1,0 +1,127 @@
+feature:
+  name: Sync Engine Core
+  module: sync
+  description: >
+    The provider-agnostic core of the sync subsystem (sync/core/). It runs a
+    three-way merge between the manifest base (last successful sync), the
+    current local tree, and the current remote tree, classifies every path,
+    applies the resulting operations against an injected RemoteProvider and
+    LocalFileSystem, and persists the updated manifest. The core contains no
+    vscode imports and no ambient globals, so it is fully unit-testable with
+    fakes.
+
+structure:
+  description: >
+    All files live in sync/core/. They depend on the provider interface
+    (sync/provider/) and pure utilities (sync/util/) but never on vscode.
+  layout:
+    sync/core/syncTypes.ts: >
+      Shared types — ManifestEntry (remoteId, contentHash, modifiedTime),
+      ManifestData (keyed by namespace then relative POSIX path), DiffClass,
+      SyncOperation, TreeNode, LocalFileSystem abstraction, NamespaceResult,
+      SyncResult.
+    sync/core/syncManifest.ts: >
+      SyncManifest class — reads/writes the per-provider manifest JSON via an
+      injected LocalFileSystem. Local-only state, never synced. Returns an empty
+      manifest when the file is absent or its JSON is corrupt.
+    sync/core/treeScan.ts: >
+      scanLocalTree and scanRemoteTree — enumerate a namespace's file tree into
+      a Map<string, TreeNode> keyed by relative POSIX path. Local files are
+      hashed (sha256Hex) for comparison; remote nodes carry modifiedTime.
+    sync/core/syncDiff.ts: >
+      diffNamespace — pure three-way diff. For each path, compares local node,
+      remote node, and manifest base to assign a DiffClass and emit a
+      SyncOperation.
+    sync/core/syncApply.ts: >
+      applyOperations — executes classified operations against the provider and
+      local filesystem, including keep-both conflict resolution (renames the
+      remote file with a conflict suffix before uploading the local file).
+    sync/core/syncEngine.ts: >
+      Orchestrates one full sync run for all namespaces — scan, diff, apply,
+      then persist the updated manifest. Exposes NamespaceRoots and
+      FolderNameMaps for local/remote folder name translation.
+
+architecture:
+  inputs:
+    - injected RemoteProvider (sync/provider/remoteProvider)
+    - injected LocalFileSystem (implemented by sync/adapter/vscodeLocalFileSystem)
+    - NamespaceRoots — absolute local root directory per namespace
+    - FolderNameMaps — local folder name <-> remote display name translation
+    - existing manifest (or empty when first run / corrupt)
+  outputs:
+    - SyncResult aggregating per-namespace NamespaceResult outcomes
+    - updated and persisted manifest
+    - remote uploads, downloads, deletes, and conflict renames
+    - local file writes and deletes
+  dependencies:
+    - sync/provider/remoteProvider (RemoteProvider, RemoteNamespace)
+    - sync/provider/remotePathResolver (RemotePathResolver, splitPath)
+    - sync/util/contentHash (sha256Hex)
+    - sync/util/conflictName (conflictPath)
+  notes: >
+    The core has no vscode dependency. The VSCode binding (LocalFileSystem
+    implementation, command wiring, status bar) lives in sync/adapter/.
+
+database:
+  tables_used: []
+  migrations: []
+  notes: >
+    The engine does not touch SQLite. Annotation/theme sidecars are synced as
+    ordinary files; the manifest at .research/sync/<providerId>.state.json is
+    local-only and never uploaded.
+
+events:
+  emits: []
+  listens: []
+  notes: >
+    The core emits no events. Progress and results are surfaced by
+    sync/adapter/syncController via the status bar.
+
+errors:
+  expected_failures:
+    - manifest file absent (first run) — engine proceeds with an empty base
+    - manifest JSON corrupt — engine logs a warning and treats it as empty,
+      effectively forcing a full sync
+    - bidirectional conflict — same path changed locally and remotely since the
+      last sync
+    - network failure during a remote list, upload, download, or delete
+  handling_strategy: >
+    A missing or corrupt manifest degrades to an empty base so the next run is a
+    safe full sync. Conflicts are resolved keep-both: the remote file is renamed
+    with a conflict suffix (conflictName.conflictPath) before the local version
+    is uploaded, so no edit is lost. Provider/network errors propagate to the
+    caller (SyncController), which surfaces them to the user.
+
+ui:
+  components: []
+
+tests:
+  unit:
+    - syncDiff classifies unchanged when local and remote both match the manifest
+    - syncDiff classifies local-new when a path exists locally but not in
+      manifest or remote
+    - syncDiff classifies remote-new when a path exists remotely but not in
+      manifest or local
+    - syncDiff classifies local-modified when the local hash differs from the
+      manifest and the remote matches
+    - syncDiff classifies remote-modified when the remote modifiedTime differs
+      from the manifest and the local matches
+    - syncDiff classifies local-deleted when a manifest path is gone locally and
+      the remote still matches the manifest
+    - syncDiff classifies remote-deleted when a manifest path is gone remotely
+      and the local still matches the manifest
+    - syncDiff classifies conflict when local and remote both diverge from the
+      manifest
+    - syncManifest returns an empty manifest when the file is absent
+    - syncManifest returns an empty manifest and logs a warning on corrupt JSON
+    - syncManifest persists entries and reloads them after save
+    - treeScan enumerates a local directory tree and hashes every file
+    - syncApply performs keep-both rename on a conflict operation
+  integration:
+    - syncEngine runs a full sync with a faked RemoteProvider covering all eight
+      diff classes
+    - a bidirectional conflict yields a conflict-suffixed file on the faked provider
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

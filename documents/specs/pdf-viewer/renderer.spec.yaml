@@ -1,0 +1,98 @@
+feature:
+  name: PDF Viewer Renderer
+  module: pdf-viewer
+  description: >
+    Generate the complete HTML document for the PDF viewer webview. The renderer
+    resolves pdfjs-dist asset URIs (worker, viewer, cmaps, fonts, wasm, icc),
+    injects the theme CSS, and embeds the self-contained viewer script. It is a
+    pure HTML/string builder with no webview lifecycle responsibilities — the
+    PdfViewerPanel owns the panel and delegates HTML generation here.
+
+structure:
+  description: >
+    The renderer lives in pdf-viewer/renderer/, split into the orchestrator and
+    two pure template builders. A re-export shim at pdf-viewer/PdfRenderer.ts
+    keeps the old import path working.
+  layout:
+    pdf-viewer/renderer/PdfRenderer.ts: >
+      Orchestrator. Exposes the PdfRenderer class (generateHtml), resolvePdfjsUris,
+      and getPdfjsDirectory. Resolves pdfjs-dist file paths, converts them to
+      webview-safe URIs, and assembles the final HTML document by combining the
+      CSS and JS template outputs.
+    pdf-viewer/renderer/template.css.ts: >
+      Pure function buildCss() returning the full inline CSS string — theme
+      variables (dark/light/sepia/high-contrast via data-pdf-theme), layout,
+      toolbar, sidebar, and selection-toolbar styles.
+    pdf-viewer/renderer/template.js.ts: >
+      Pure function buildJs(BuildJsParams) returning the self-contained
+      <script type="module"> string — PDF.js initialization, toolbar controls,
+      text-selection highlighting, annotation rendering, and host message handling.
+    pdf-viewer/renderer/index.ts: >
+      Barrel export re-exporting PdfRenderer, resolvePdfjsUris,
+      getPdfjsDirectory, and the RenderParams/ResolvedUris types.
+    pdf-viewer/PdfRenderer.ts: >
+      Backward-compatibility re-export shim delegating to renderer/PdfRenderer.ts.
+
+architecture:
+  inputs:
+    - RenderParams (webview, extensionUri, pdfUri, paperId, paperTitle,
+      themeManager, themePreference, initialPage, initialZoom, annotations)
+    - resolved pdfjs-dist installation on disk
+  outputs:
+    - complete HTML document string for the PDF viewer webview
+    - ResolvedUris bundle (pdfjs, worker, viewer, viewer CSS, cMap, standard
+      font, wasm, icc webview URIs)
+  dependencies:
+    - vscode Webview and Uri APIs
+    - node:path
+    - pdfjs-dist legacy build and official web viewer module
+    - pdf-viewer/ThemeManager (effective theme + theme CSS)
+    - pdf-viewer/config (PDF_VIEWER_CONFIG — zoom levels, defaults)
+    - core/types (Annotation)
+    - pdf-viewer/renderer/template.css
+    - pdf-viewer/renderer/template.js
+
+database:
+  tables_used: []
+  migrations: []
+
+events:
+  emits: []
+  listens: []
+
+errors:
+  expected_failures:
+    - pdfjs-dist installation cannot be located on disk
+    - a required pdfjs asset (worker, viewer, cmaps) is missing
+  handling_strategy: >
+    resolvePdfjsUris returns null when pdfjs-dist cannot be located, letting the
+    PdfViewerPanel surface a load error instead of generating broken HTML. The
+    template builders are pure and do not throw; invalid inputs are serialized
+    as-is via JSON.stringify into the script.
+
+ui:
+  components:
+    - viewer shell HTML (toolbar, viewer container, annotation sidebar)
+    - inline <style> block from buildCss()
+    - inline <script type="module"> block from buildJs()
+  notes: >
+    The HTML applies the data-pdf-theme attribute on the root element so theme
+    switching is a CSS-only update without rebuilding the document.
+
+tests:
+  unit:
+    - generateHtml produces a document containing the resolved pdfjs URIs
+    - generateHtml injects the effective theme as data-pdf-theme
+    - generateHtml embeds the nonce in the script tag for CSP compliance
+    - resolvePdfjsUris returns null when pdfjs-dist cannot be located
+    - resolvePdfjsUris converts every asset path to a webview-safe URI
+    - getPdfjsDirectory locates the installed pdfjs-dist directory
+    - buildCss includes theme variables for all four data-pdf-theme values
+    - buildJs serializes injected host constants and annotations JSON
+  integration:
+    - PdfViewerPanel renders a real sample PDF using the generated HTML
+    - the shim at pdf-viewer/PdfRenderer.ts exposes the same API as renderer/
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

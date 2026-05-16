@@ -23,7 +23,7 @@ architecture:
   dependencies:
     - vscode workspace.fs
     - storage/fileSystemService
-    - storage/libraryPaths
+    - storage/paths/libraryPaths
     - db/database
     - io/pdf
     - io/bibtex

@@ -7,6 +7,54 @@ feature:
     é o Google Drive; a interface RemoteProvider permite adicionar providers
     futuros como GitHub e Dropbox sem alterar o SyncEngine.
 
+structure:
+  description: >
+    O módulo sync é dividido em 6 subdiretórios por responsabilidade. core/
+    contém o motor puro e provider-agnóstico; provider/ define a interface
+    remota e a resolução de paths; adapter/ liga o motor ao ambiente VSCode;
+    drive/ implementa o provider do Google Drive; auth/ trata o OAuth; util/
+    reúne funções puras compartilhadas.
+  layout:
+    sync/core/syncTypes.ts: >
+      Tipos compartilhados — ManifestEntry, ManifestData, DiffClass,
+      SyncOperation, TreeNode, LocalFileSystem, NamespaceResult, SyncResult.
+    sync/core/syncManifest.ts: >
+      Persiste e consulta o manifest por provider (base do merge de três vias);
+      manifest ausente ou corrompido devolve estado vazio e dispara sync completo.
+    sync/core/treeScan.ts: >
+      Enumera as árvores local e remota de um namespace em mapas keyed por path
+      relativo; hasheia cada arquivo local para comparação.
+    sync/core/syncDiff.ts: >
+      Diff puro de três vias — classifica cada path comparando árvore local,
+      árvore remota e base do manifest.
+    sync/core/syncApply.ts: >
+      Executa as operações classificadas contra RemoteProvider e
+      LocalFileSystem, incluindo resolução keep-both de conflito.
+    sync/core/syncEngine.ts: >
+      Orquestração de um sync run, provider-agnóstica e sem vscode — escaneia,
+      diffa, aplica e persiste o manifest.
+    sync/provider/remoteProvider.ts: >
+      Interface RemoteProvider e tipo RemoteNamespace que abstraem listagem,
+      upload, download e delete de arquivos remotos.
+    sync/provider/remotePathResolver.ts: >
+      Traduz paths relativos entre representação local e remota (RemotePathResolver, splitPath).
+    sync/adapter/vscodeLocalFileSystem.ts: >
+      Implementação de LocalFileSystem sobre vscode.workspace.fs.
+    sync/adapter/syncController.ts: >
+      Orquestrador VSCode — inicializa auth, expõe comandos, gerencia o
+      intervalo de auto-sync e atualiza o status bar.
+    sync/drive/googleDriveClient.ts: >
+      Cliente de baixo nível da Drive REST API v3 (list, upload multipart, delete).
+    sync/drive/googleDriveProvider.ts: >
+      Implementação de RemoteProvider usando o googleDriveClient.
+    sync/auth/googleDriveAuth.ts: >
+      Fluxo OAuth 2.0 PKCE com servidor loopback local para capturar o código
+      de autorização.
+    sync/util/contentHash.ts: >
+      Função pura sha256Hex usada para hashear conteúdo de arquivos.
+    sync/util/conflictName.ts: >
+      Gera nomes de arquivo com sufixo de conflito (conflictPath).
+
 architecture:
   inputs:
     - biblioteca local (papers/ com subpastas e .research/papers/<id>/data.json)
@@ -16,17 +64,19 @@ architecture:
     - arquivos de papers no namespace library do Drive (pasta visível ao usuário)
     - manifest e dados de anotações no namespace appdata do Drive (pasta oculta via appDataFolder)
   modules:
-    - RemoteProvider: interface que abstrai operações de listagem, upload, download e delete de arquivos remotos
-    - SyncEngine: executa o diff de três vias entre estado anterior (manifest), estado local atual e estado remoto atual, produzindo uma lista de ações a aplicar
-    - SyncManifest: lê e grava o arquivo de estado que serve de base do merge; quando ausente ou corrompido, aciona sync completo
-    - GoogleDriveProvider: implementação de RemoteProvider usando Drive REST API v3
-    - GoogleDriveAuth: fluxo OAuth 2.0 PKCE com servidor loopback local para capturar o código de autorização
-    - SyncController: orquestrador que inicializa auth, expõe comandos VSCode, gerencia o intervalo de auto-sync e atualiza o status bar
+    - RemoteProvider (sync/provider/remoteProvider): interface que abstrai operações de listagem, upload, download e delete de arquivos remotos
+    - SyncEngine (sync/core/syncEngine): executa o diff de três vias entre estado anterior (manifest), estado local atual e estado remoto atual, produzindo uma lista de ações a aplicar
+    - SyncManifest (sync/core/syncManifest): lê e grava o arquivo de estado que serve de base do merge; quando ausente ou corrompido, aciona sync completo
+    - GoogleDriveProvider (sync/drive/googleDriveProvider): implementação de RemoteProvider usando Drive REST API v3
+    - GoogleDriveAuth (sync/auth/googleDriveAuth): fluxo OAuth 2.0 PKCE com servidor loopback local para capturar o código de autorização
+    - SyncController (sync/adapter/syncController): orquestrador que inicializa auth, expõe comandos VSCode, gerencia o intervalo de auto-sync e atualiza o status bar
   dependencies:
     - vscode.ExtensionContext (armazenamento seguro de tokens via secrets)
-    - vscode.workspace.fs (adaptador de sistema de arquivos local)
+    - vscode.workspace.fs (via sync/adapter/vscodeLocalFileSystem)
     - Drive REST API v3
     - core/eventBus
+  notes: >
+    O detalhamento dos arquivos de sync/core/ está na spec sync-engine.spec.yaml.
 
 database:
   tables_used: []
