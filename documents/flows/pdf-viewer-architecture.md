@@ -1,6 +1,6 @@
-# Arquitetura e Fluxos - PDF Viewer com Anotações
+# Architecture and Flows — PDF Viewer with Annotations
 
-## 1. Arquitetura de Camadas Estendida
+## 1. Extended Layer Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -8,13 +8,13 @@
 │                                                                   │
 │  ┌──────────────────┐    ┌──────────────────┐                   │
 │  │  Sidebar Tree    │    │  List Panel      │                   │
-│  │  (existente)     │    │  (existente)     │                   │
+│  │  (existing)      │    │  (existing)      │                   │
 │  └────────┬─────────┘    └────────┬─────────┘                   │
 │           │                       │                              │
 │           └───────────┬───────────┘                              │
 │                       │                                          │
 │           ┌───────────▼────────────────────┐                    │
-│           │   PDF Viewer Panel (NOVO)      │                    │
+│           │   PDF Viewer Panel (NEW)       │                    │
 │           │  ├─ PDF.js Renderer            │                    │
 │           │  ├─ Annotation UI              │                    │
 │           │  ├─ Theme Selector             │                    │
@@ -23,10 +23,10 @@
 └─────────────────────────┼──────────────────────────────────────┘
                           │
 ┌─────────────────────────┼──────────────────────────────────────┐
-│              Services Layer (Negócio)                            │
+│              Services Layer (Business Logic)                     │
 │                                                                   │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │                  pdf-viewer/ (NOVO)                        │ │
+│  │                  pdf-viewer/ (NEW)                         │ │
 │  │ ┌──────────────────┐ ┌──────────────────┐                 │ │
 │  │ │ PdfViewerPanel   │ │ AnnotationMgr    │                 │ │
 │  │ └──────────────────┘ └──────────────────┘                 │ │
@@ -36,21 +36,21 @@
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                   │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │              pdf-export/ (NOVO)                            │ │
+│  │              pdf-export/ (NEW)                             │ │
 │  │ ┌──────────────────┐ ┌──────────────────┐                 │ │
 │  │ │ LatexExporter    │ │ MarkdownExporter │                 │ │
 │  │ └──────────────────┘ └──────────────────┘                 │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                   │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │          latex-integration/ (NOVO)                         │ │
+│  │          latex-integration/ (NEW)                          │ │
 │  │ ┌──────────────────┐ ┌──────────────────┐                 │ │
 │  │ │ LatexWorkshopBrg │ │ DocumentInserter │                 │ │
 │  │ └──────────────────┘ └──────────────────┘                 │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                   │
 │  ┌─────────────────────────────────────────────────────────────┐│
-│  │    PaperService, EventBus, Logger (existentes)              ││
+│  │    PaperService, EventBus, Logger (existing)                ││
 │  └─────────────────────────────────────────────────────────────┘│
 └────────────────────────┬─────────────────────────────────────────┘
                          │
@@ -59,23 +59,23 @@
 │                         │                                         │
 │  ┌──────────────────────▼──────────────────┐                    │
 │  │ SQLite Database (db/)                    │                    │
-│  │ ├─ papers (existente)                    │                    │
-│  │ ├─ annotations (NOVO)                    │                    │
-│  │ ├─ paperThemePreferences (NOVO)          │                    │
-│  │ └─ generatedSummaries (NOVO)             │                    │
+│  │ ├─ papers (existing)                     │                    │
+│  │ ├─ annotations (NEW)                     │                    │
+│  │ ├─ paperThemePreferences (NEW)           │                    │
+│  │ └─ generatedSummaries (NEW)             │                    │
 │  └─────────────────────────────────────────┘                    │
 │                                                                   │
 │  ┌─────────────────────────────────────────┐                    │
 │  │ Filesystem (storage/)                    │                    │
-│  │ ├─ Paper files (existente)               │                    │
-│  │ └─ Generated LaTeX/Markdown (NOVO)       │                    │
+│  │ ├─ Paper files (existing)                │                    │
+│  │ └─ Generated LaTeX/Markdown (NEW)        │                    │
 │  └─────────────────────────────────────────┘                    │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Fluxo de Dados - Abrir e Anotar PDF
+## 2. Data Flow — Open and Annotate PDF
 
 ```
 User clicks paper in list
@@ -158,7 +158,7 @@ User clicks paper in list
 
 ---
 
-## 3. Fluxo de Exportação LaTeX
+## 3. LaTeX Export Flow
 
 ```
 User clicks "Export to LaTeX" button
@@ -230,7 +230,7 @@ User clicks "Export to LaTeX" button
 
 ---
 
-## 4. Fluxo de Sincronização de Tema
+## 4. Theme Synchronization Flow
 
 ```
 1. Extension starts
@@ -279,7 +279,7 @@ User clicks "Export to LaTeX" button
 
 ---
 
-## 5. Eventos do Event Bus (Completo)
+## 5. Event Bus Events (Complete)
 
 ```typescript
 // PDF Viewer Lifecycle
@@ -309,7 +309,7 @@ export const LATEX_INSERT_COMPLETED = 'latex:insert:completed';
 
 ---
 
-## 6. Estrutura de Dados - Annotation
+## 6. Data Structure — Annotation
 
 ```typescript
 interface Annotation {
@@ -317,7 +317,7 @@ interface Annotation {
   paperId: string;         // Foreign key
   type: 'highlight' | 'note' | 'comment' | 'tag';
   pageNumber: number;
-  content: string;         // Texto selecionado ou nota
+  content: string;         // Selected text or note
   color?: string;          // 'yellow' | 'green' | 'blue' | 'red' | 'pink'
   position?: {
     x: number;
@@ -345,15 +345,15 @@ interface GeneratedSummary {
   format: 'latex' | 'markdown' | 'bibtex';
   content: string;
   generatedAt: Date;
-  checksum?: string;       // Para detectar se anotações mudaram
+  checksum?: string;       // To detect if annotations have changed
 }
 ```
 
 ---
 
-## 7. Pontos de Integração com LaTeX Workshop
+## 7. LaTeX Workshop Integration Points
 
-### 7.1 Detectar Instalação
+### 7.1 Detect Installation
 ```typescript
 // LatexWorkshopBridge
 const isLatexWorkshopInstalled = (): boolean => {
@@ -362,7 +362,7 @@ const isLatexWorkshopInstalled = (): boolean => {
 };
 ```
 
-### 7.2 Obter Arquivos Abertos
+### 7.2 Get Open Files
 ```typescript
 const getOpenLatexDocuments = (): vscode.TextDocument[] => {
   return vscode.workspace.textDocuments.filter(doc => 
@@ -371,7 +371,7 @@ const getOpenLatexDocuments = (): vscode.TextDocument[] => {
 };
 ```
 
-### 7.3 Inserir Conteúdo
+### 7.3 Insert Content
 ```typescript
 // DocumentInserter
 async insertIntoDocument(
@@ -386,19 +386,19 @@ async insertIntoDocument(
 };
 ```
 
-### 7.4 Executar Comando do LaTeX Workshop (opcional)
+### 7.4 Execute LaTeX Workshop Command (optional)
 ```typescript
-// Se quisermos compilar depois de inserir:
+// If we want to compile after inserting:
 await vscode.commands.executeCommand(
   'latex-workshop.build',
-  { // opções
+  { // options
   }
 );
 ```
 
 ---
 
-## 8. Segurança e Validação
+## 8. Security and Validation
 
 ### 8.1 LaTeX Escaping
 ```typescript
@@ -411,7 +411,7 @@ function escapeLatex(str: string): string {
 }
 ```
 
-### 8.2 Validação de Position JSON
+### 8.2 Position JSON Validation
 ```typescript
 function validatePosition(pos: unknown): Position | null {
   if (!pos || typeof pos !== 'object') return null;
@@ -428,37 +428,37 @@ function validatePosition(pos: unknown): Position | null {
 
 ## 9. Performance & Caching
 
-### 9.1 Cache de Anotações
-- Carregar anotações uma vez ao abrir PDF
-- Manter em memória webview
-- Atualizar incrementalmente via eventos
+### 9.1 Annotation Cache
+- Load annotations once when the PDF is opened
+- Keep in webview memory
+- Update incrementally via events
 
-### 9.2 Cache de Summaries
-- Armazenar último summary gerado
-- Verificar checksum de anotações
-- Regenerar apenas se mudanças detectadas
+### 9.2 Summary Cache
+- Store the last generated summary
+- Check annotation checksum
+- Regenerate only if changes are detected
 
-### 9.3 Lazy Loading de Páginas
-- Renderizar apenas páginas visíveis + buffer
-- Descarregar páginas fora de view
-- Aplicar anotações apenas a páginas visíveis
+### 9.3 Lazy Page Loading
+- Render only visible pages plus a buffer
+- Unload pages outside the viewport
+- Apply annotations only to visible pages
 
 ---
 
 ## 10. Testing Strategy
 
 ### 10.1 Unit Tests
-- `AnnotationManager`: CRUD de anotações
-- `ThemeManager`: mapeamento de temas
-- `LatexExporter`: geração de LaTeX
-- Escaping e validação
+- `AnnotationManager`: annotation CRUD
+- `ThemeManager`: theme mapping
+- `LatexExporter`: LaTeX generation
+- Escaping and validation
 
 ### 10.2 Integration Tests
-- Fluxo completo: abrir PDF → criar highlight → exportar
-- Sincronização tema (VS Code → PDF)
-- Inserção em documento LaTeX
+- Full flow: open PDF → create highlight → export
+- Theme synchronization (VS Code → PDF)
+- Insertion into a LaTeX document
 
-### 10.3 E2E Tests (se aplicável)
-- Abrir extensão com test PDF
-- Criar anotações
-- Exportar e validar conteúdo
+### 10.3 E2E Tests (if applicable)
+- Open extension with test PDF
+- Create annotations
+- Export and validate content

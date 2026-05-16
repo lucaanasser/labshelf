@@ -1,142 +1,141 @@
-# Plan: Reintroduzir importação, drag and drop e lote na UI Zotero-style
+# Plan: Reintroduce Import, Drag and Drop, and Batch in the Zotero-style UI
 
-TL;DR - Reintroduzir a capacidade de adicionar artigos no novo layout sem abandonar o padrão visual Zotero-style já adotado: a sidebar continua sendo a árvore de coleções e a lista continua em aba dedicada, mas ambas voltam a oferecer entrada clara para importação. O plano cobre importação manual de PDFs e pastas, drag and drop em qualquer ponto da sidebar, e processamento em lote com cada PDF tratado individualmente.
+TL;DR — Reintroduce the ability to add papers in the new layout without abandoning the Zotero-style visual pattern already adopted: the sidebar remains the collections tree and the list remains in a dedicated tab, but both re-expose a clear import entry point. The plan covers manual import of PDFs and folders, drag and drop anywhere in the sidebar, and batch processing with each PDF handled individually.
 
 ## Objectives
 
-- Reexpor uma ação clara de adicionar artigos na UI nova.
-- Permitir seleção manual de um PDF ou de uma pasta local.
-- Aceitar drag and drop de PDFs e pastas em qualquer área da sidebar.
-- Processar pastas como lote, expandindo para PDFs e importando cada arquivo separadamente.
-- Manter o padrão visual e a arquitetura atual da extensão.
+- Re-expose a clear action for adding papers in the new UI.
+- Allow manual selection of a single PDF or a local folder.
+- Accept drag and drop of PDFs and folders anywhere in the sidebar.
+- Process folders as a batch, expanding to PDFs and importing each file individually.
+- Maintain the current visual pattern and extension architecture.
 
 ## Plan
 
-1. Definir o contrato de UX e comandos para importação.
-   - A ação de adicionar deve aparecer em pelo menos dois pontos: toolbar da sidebar e toolbar da lista.
-   - Ambos os pontos devem disparar o mesmo fluxo base de importação.
-   - O picker manual deve aceitar tanto arquivos PDF quanto pastas.
-   - A pasta selecionada no picker deve ser tratada como um lote de PDFs.
+1. Define the UX contract and commands for import.
+   - The add action must appear in at least two places: the sidebar toolbar and the list toolbar.
+   - Both entry points must trigger the same base import flow.
+   - The manual picker must accept both PDF files and folders.
+   - A folder selected in the picker must be treated as a batch of PDFs.
 
-2. Reaproveitar o fluxo atual de importação unitária como núcleo.
-   - `PaperService.addPaperFromUri` continua sendo a unidade principal de processamento. Note que preciso gerar todos os metadados possiveis a partir do PDF, mas o processo de ingestão, persistência e eventos é o mesmo para um PDF único ou para cada PDF em um lote.
-   - 
-   - Parsing, persistência, escrita de artefatos e emissão de eventos devem permanecer centralizados.
-   - A nova lógica de lote deve ser construída em cima dessa unidade, não paralela a ela.
+2. Reuse the current single-item import flow as the core.
+   - `PaperService.addPaperFromUri` remains the main processing unit. Note that all possible metadata must be generated from the PDF, but the ingestion, persistence, and event flow is the same for a single PDF or for each PDF in a batch.
+   - Parsing, persistence, artifact writing, and event emission must remain centralized.
+   - The new batch logic must be built on top of that unit, not parallel to it.
 
-3. Criar um adaptador de lote no back-end.
-   - O adaptador deve aceitar uma lista de `Uri`s e também uma pasta local.
-   - Quando receber uma pasta, deve expandi-la para os PDFs contidos nela.
-   - A expansão deve ser recursiva, com filtro rígido por `.pdf`.
-   - Cada PDF deve ser processado individualmente.
-   - Falhas de um item não podem interromper os demais.
-   - O retorno do lote deve distinguir sucesso total, sucesso parcial, falha parcial e entradas inválidas.
+3. Create a batch adapter on the back end.
+   - The adapter must accept a list of `Uri`s and also a local folder.
+   - When given a folder, it must expand it to the PDFs it contains.
+   - The expansion must be recursive, with a strict `.pdf` filter.
+   - Each PDF must be processed individually.
+   - A failure for one item must not interrupt the others.
+   - The batch result must distinguish total success, partial success, partial failure, and invalid inputs.
 
-4. Definir drag and drop como entrada global na sidebar.
-   - O drop de PDFs e pastas deve funcionar em qualquer área da sidebar, não em uma zona específica.
-   - A sidebar deve capturar os eventos de drag over e drop no container inteiro.
-   - Deve haver feedback visual discreto quando a sidebar estiver em estado de drop ativo.
-   - O payload enviado para a extensão deve permitir distinguir arquivo, pasta e múltiplos itens.
+4. Define drag and drop as a global entry point in the sidebar.
+   - Dropping PDFs and folders must work anywhere in the sidebar, not in a specific drop zone.
+   - The sidebar must capture drag-over and drop events on the entire container.
+   - There must be subtle visual feedback when the sidebar is in an active drop state.
+   - The payload sent to the extension must allow distinguishing file, folder, and multiple items.
 
-5. Implementar o fluxo de front-end sem quebrar o padrão visual.
-   - A lista e a sidebar devem usar a mesma linguagem visual do redesign existente.
-   - A implementação não deve reintroduzir a antiga webview inteira da sidebar como superfície principal.
-   - Se o layout atual não comportar bem a seleção de pasta, usar comando, toolbar ou menu contextual, não um painel paralelo com visual inconsistente.
-   - A interação de drop deve ser simples, clara e previsível.
+5. Implement the front-end flow without breaking the visual pattern.
+   - The list and the sidebar must use the same visual language as the existing redesign.
+   - The implementation must not reintroduce the old full sidebar webview as the primary surface.
+   - If the current layout does not accommodate folder selection well, use a command, toolbar, or context menu — not a parallel panel with inconsistent visuals.
+   - The drop interaction must be simple, clear, and predictable.
 
-6. Implementar o fluxo de back-end para drag and drop.
-   - Validar as URIs recebidas.
-   - Converter caminhos quando necessário.
-   - Ignorar entradas não-PDF com logging estruturado.
-   - Lidar com arquivos e pastas locais.
-   - Encaminhar cada PDF para a mesma rotina de importação.
-   - Após cada item importado, emitir eventos para manter sidebar e lista sincronizadas.
+6. Implement the back-end flow for drag and drop.
+   - Validate the received URIs.
+   - Convert paths when necessary.
+   - Ignore non-PDF inputs with structured logging.
+   - Handle local files and folders.
+   - Forward each PDF to the same import routine.
+   - After each imported item, emit events to keep the sidebar and list in sync.
 
-7. Atualizar comandos, contributions e wiring da extensão.
-   - Registrar comandos para importação manual de arquivo, importação manual de pasta, importação por drop e refresh.
-   - Garantir que o fluxo de ativação continue coerente com a arquitetura atual.
-   - Não reintroduzir o caminho antigo inteiro de webview da sidebar.
-   - Preservar o modelo atual de TreeView para coleções e WebviewPanel para a lista.
+7. Update commands, contributions, and extension wiring.
+   - Register commands for manual file import, manual folder import, drop import, and refresh.
+   - Ensure the activation flow remains consistent with the current architecture.
+   - Do not reintroduce the old full sidebar webview path.
+   - Preserve the current model of TreeView for collections and WebviewPanel for the list.
 
-8. Atualizar specs para refletir o comportamento novo.
-   - O spec da sidebar deve descrever a entrada manual, o drop em qualquer área e o feedback visual de arraste.
-   - O spec da lista deve descrever o mesmo contrato de importação e atualização de estado.
-   - Se necessário, criar um spec novo para isolar as regras de ingestão/importação.
-   - Os specs devem cobrir falhas parciais, arquivos inválidos e lote por pasta.
+8. Update specs to reflect the new behavior.
+   - The sidebar spec must describe manual import, drop anywhere, and drag visual feedback.
+   - The list spec must describe the same import contract and state update.
+   - Create a new spec if needed to isolate the ingestion/import rules.
+   - Specs must cover partial failures, invalid files, and folder batches.
 
-9. Cobrir os caminhos críticos com testes automatizados.
-   - Testar importação de um PDF.
-   - Testar seleção manual de uma pasta com múltiplos PDFs.
-   - Testar drop de PDF em qualquer área da sidebar.
-   - Testar drop de pasta.
-   - Testar rejeição de não-PDF.
-   - Testar lote parcial com um item falhando.
-   - Testar atualização da UI quando eventos de `PaperService` são emitidos.
+9. Cover critical paths with automated tests.
+   - Test importing a single PDF.
+   - Test manual selection of a folder with multiple PDFs.
+   - Test dropping a PDF anywhere in the sidebar.
+   - Test dropping a folder.
+   - Test rejection of non-PDFs.
+   - Test partial batch with one failing item.
+   - Test UI update when `PaperService` events are emitted.
 
-10. Validar manualmente o fluxo final.
-   - Abrir o Extension Development Host.
-   - Confirmar que o botão de adicionar voltou.
-   - Confirmar que o picker aceita PDF e pasta.
-   - Confirmar que o drop funciona fora de uma zona fixa.
-   - Confirmar que uma pasta com vários PDFs gera múltiplos itens, cada um processado como artigo independente.
+10. Manually validate the final flow.
+    - Open the Extension Development Host.
+    - Confirm the add button is back.
+    - Confirm the picker accepts both PDF and folder.
+    - Confirm drop works outside a fixed drop zone.
+    - Confirm a folder with multiple PDFs produces multiple items, each processed as an independent paper.
 
 ## Relevant files
 
-- `/home/luca/labshelf/src/` — raiz do código-fonte da extensão, útil para navegação rápida entre `core`, `commands`, `pdf`, `storage` e `ui`
-- `/home/luca/labshelf/src/core/` — camada de domínio e eventos; concentra `paperService`, `eventBus`, `logger` e tipos compartilhados
-- `/home/luca/labshelf/src/commands/` — comandos da extensão e pontos de entrada da UI para importação e abertura de interfaces
-- `/home/luca/labshelf/src/pdf/` — parsing e normalização dos PDFs antes da persistência
-- `/home/luca/labshelf/src/ui/` — TreeView, WebviewPanel e HTML/CSS/JS da experiência Zotero-style
-- `/home/luca/labshelf/src/storage/` — utilitários de caminho, workspace e filesystem usados pelo fluxo de ingestão
-- `/home/luca/labshelf/documents/specs/` — specs funcionais que precisam refletir o contrato da UI e da importação
-- `/home/luca/labshelf/__tests__/core/` — testes do fluxo central de dados e eventos
-- `/home/luca/labshelf/__tests__/commands/` — testes dos comandos expostos para a UI
-- `/home/luca/labshelf/__tests__/ui/` — testes dos providers e do painel visual
+- `/home/luca/labshelf/src/` — source root of the extension, useful for quick navigation between `core`, `commands`, `pdf`, `storage`, and `ui`
+- `/home/luca/labshelf/src/core/` — domain and events layer; contains `paperService`, `eventBus`, `logger`, and shared types
+- `/home/luca/labshelf/src/commands/` — extension commands and UI entry points for import and interface opening
+- `/home/luca/labshelf/src/pdf/` — PDF parsing and normalization before persistence
+- `/home/luca/labshelf/src/ui/` — TreeView, WebviewPanel, and HTML/CSS/JS for the Zotero-style experience
+- `/home/luca/labshelf/src/storage/` — path, workspace, and filesystem utilities used by the ingestion flow
+- `/home/luca/labshelf/documents/specs/` — functional specs that must reflect the UI and import contract
+- `/home/luca/labshelf/__tests__/core/` — tests for the core data and events flow
+- `/home/luca/labshelf/__tests__/commands/` — tests for commands exposed to the UI
+- `/home/luca/labshelf/__tests__/ui/` — tests for providers and the visual panel
 
-- `/home/luca/labshelf/src/core/paperService.ts` — núcleo do processamento unitário e ponto para batch ingestion e eventos por item
-- `/home/luca/labshelf/src/pdf/pdfImportParser.ts` — parsing de metadados por PDF, usado em cada item individual
-- `/home/luca/labshelf/src/commands/registerCommands.ts` — comandos de importação manual e integração com a UI
-- `/home/luca/labshelf/src/ui/listWebviewPanel.ts` — local provável para restaurar ação de adicionar, receber drop e atualizar estado visual
-- `/home/luca/labshelf/src/ui/collectionsTreeDataProvider.ts` — local provável para expor ações de importação na sidebar sem quebrar o padrão visual
-- `/home/luca/labshelf/src/ui/sidebarWebviewProvider.ts` e `/home/luca/labshelf/src/ui/sidebarHtml.ts` — referência do contrato antigo de add, drop e mensagens
-- `/home/luca/labshelf/src/extension.ts` — wiring entre providers, comandos, serviços e eventos
-- `/home/luca/labshelf/documents/ui-redesign.md` — referência do layout e do comportamento que deve permanecer consistente
-- `/home/luca/labshelf/documents/specs/sidebar.spec.yaml` e `/home/luca/labshelf/documents/specs/list-panel.spec.yaml` — specs a atualizar para refletir importação, drop e lote
-- `/home/luca/labshelf/__tests__/ui/` e `/home/luca/labshelf/__tests__/core/` — testes de UI e de núcleo para cobrir importação simples, lote e erros
+- `/home/luca/labshelf/src/core/paperService.ts` — core of single-item processing and the point for batch ingestion and per-item events
+- `/home/luca/labshelf/src/pdf/pdfImportParser.ts` — per-PDF metadata parsing, used for each individual item
+- `/home/luca/labshelf/src/commands/registerCommands.ts` — manual import commands and UI integration
+- `/home/luca/labshelf/src/ui/listWebviewPanel.ts` — likely location to restore the add action, receive drops, and update visual state
+- `/home/luca/labshelf/src/ui/collectionsTreeDataProvider.ts` — likely location to expose import actions in the sidebar without breaking the visual pattern
+- `/home/luca/labshelf/src/ui/sidebarWebviewProvider.ts` and `/home/luca/labshelf/src/ui/sidebarHtml.ts` — reference for the old add, drop, and message contract
+- `/home/luca/labshelf/src/extension.ts` — wiring between providers, commands, services, and events
+- `/home/luca/labshelf/documents/ui-redesign.md` — reference for the layout and behavior that must remain consistent
+- `/home/luca/labshelf/documents/specs/sidebar.spec.yaml` and `/home/luca/labshelf/documents/specs/list-panel.spec.yaml` — specs to update to reflect import, drop, and batch
+- `/home/luca/labshelf/__tests__/ui/` and `/home/luca/labshelf/__tests__/core/` — UI and core tests to cover single import, batch, and errors
 
 ## Relevant symbols
 
-- `PaperService.addPaperFromUri(sourceUri)` — unidade base de ingestão de um artigo a partir de um PDF único
-- `PaperService.listPapers()` — fonte da lista usada pela UI para renderizar o acervo atual
-- `PaperService.updatePaperStatus(paperId, status)` — atualização de estado que deve continuar disparando refresh na UI
-- `PdfImportParser.parse(sourceUri)` — extração de metadados a partir do PDF de origem
-- `registerCommands(context, paperService, logger)` — registro dos comandos usados por toolbar, menu e webview
-- `SidebarWebviewProvider.handleMessage(message)` — contrato antigo de mensagens, útil como referência para drop e add
-- `SidebarWebviewProvider.handleAddFromUri(rawUris)` — referência do fluxo antigo de ingestão via URI
-- `SidebarWebviewProvider.parseFileUri(raw)` — conversão de payload textual para `vscode.Uri`
-- `ListWebviewPanel` — classe/ponto de entrada para criar e atualizar o painel da lista
-- `CollectionsTreeDataProvider` — provider da árvore de coleções e local provável para expor ações de importação na sidebar
-- `ExtensionEventBus.emit(eventName, payload)` — mecanismo de eventos usado para sinalizar adições e atualizações de papers
-- `WorkspacePaths.papersRoot()` — diretório base onde os PDFs importados são persistidos
-- `FileSystemService.ensureDirectory(targetFolder)` — criação segura de diretórios durante a ingestão
-- `BibTeXService.writePaperArtifacts(targetFolder, paper, sourcePath)` — geração de artefatos bibliográficos após a importação
+- `PaperService.addPaperFromUri(sourceUri)` — base ingestion unit for one paper from a single PDF
+- `PaperService.listPapers()` — data source for the list used by the UI to render the current library
+- `PaperService.updatePaperStatus(paperId, status)` — status update that must continue triggering a UI refresh
+- `PdfImportParser.parse(sourceUri)` — metadata extraction from the source PDF
+- `registerCommands(context, paperService, logger)` — registration of commands used by toolbar, menu, and webview
+- `SidebarWebviewProvider.handleMessage(message)` — old message contract, useful as a reference for drop and add
+- `SidebarWebviewProvider.handleAddFromUri(rawUris)` — reference for the old URI-based ingestion flow
+- `SidebarWebviewProvider.parseFileUri(raw)` — conversion of text payload to `vscode.Uri`
+- `ListWebviewPanel` — class/entry point for creating and updating the list panel
+- `CollectionsTreeDataProvider` — collections tree provider and likely location to expose import actions in the sidebar
+- `ExtensionEventBus.emit(eventName, payload)` — event mechanism used to signal paper additions and updates
+- `WorkspacePaths.papersRoot()` — base directory where imported PDFs are persisted
+- `FileSystemService.ensureDirectory(targetFolder)` — safe directory creation during ingestion
+- `BibTeXService.writePaperArtifacts(targetFolder, paper, sourcePath)` — bibliographic artifact generation after import
 
 ## Verification
 
-1. Rodar testes focados do slice alterado antes do suite completo, priorizando core e UI que cubram importação e eventos.
-2. Executar `npm run compile` para garantir que os novos contratos de comando, provider, payload e eventos continuam válidos.
-3. Validar no Extension Development Host o caminho manual de PDF único, pasta com vários PDFs e drop em qualquer área da sidebar.
-4. Confirmar que os specs e os testes descrevem os mesmos casos, incluindo falhas parciais, entradas inválidas e atualização por evento.
+1. Run focused tests for the modified slice before the full suite, prioritizing core and UI tests covering import and events.
+2. Run `npm run compile` to ensure that the new command, provider, payload, and event contracts remain valid.
+3. Validate in the Extension Development Host the manual single PDF path, a folder with multiple PDFs, and drop anywhere in the sidebar.
+4. Confirm that specs and tests describe the same cases, including partial failures, invalid inputs, and event-driven updates.
 
 ## Decisions
 
-- A entrada principal deve voltar sem recuperar a antiga sidebar inteira; a UI nova permanece sendo sidebar de coleções e aba de lista.
-- O lote deve ser processado por arquivo, com falha isolada por item e sem interromper o restante da pasta.
-- O drag and drop deve aceitar arquivos e pastas em qualquer parte da sidebar, mas a unidade real de processamento sempre será o PDF individual.
-- Não incluir deduplicação avançada, organização automática por coleção ou sync externo nesta entrega, a menos que isso se torne necessário para a importação funcionar.
+- The main entry point must return without restoring the old full sidebar; the new UI remains a collections sidebar and a list tab.
+- Batch must be processed file by file, with failure isolated per item and without interrupting the rest of the folder.
+- Drag and drop must accept files and folders anywhere in the sidebar, but the actual processing unit is always the individual PDF.
+- Do not include advanced deduplication, automatic collection organization, or external sync in this delivery unless they become necessary for import to work.
 
 ## Further Considerations
 
-1. O seletor manual pode aceitar apenas PDF e pasta de uma vez, ou separar em ações distintas; a recomendação é aceitar ambos no mesmo fluxo para reduzir atrito.
-2. A expansão de pasta deve ser recursiva com filtro rígido para `.pdf`, porque isso atende o caso de lotes grandes sem exigir configuração extra.
-3. Se o design atual ficar apertado, o melhor fallback é um menu de adição com opções claras para arquivo, pasta e arrastar e soltar, mantendo um contrato de back-end único.
+1. The manual picker can accept only PDF and folder at once, or separate them into distinct actions; the recommendation is to accept both in the same flow to reduce friction.
+2. Folder expansion should be recursive with a strict `.pdf` filter, because this handles large batches without requiring extra configuration.
+3. If the current design feels cramped, the best fallback is an add menu with clear options for file, folder, and drag and drop, maintaining a single back-end contract.

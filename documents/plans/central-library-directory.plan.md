@@ -1,261 +1,252 @@
-# Plan: Biblioteca Central Fora do Workspace
+# Plan: Central Library Outside the Workspace
 
 ## TL;DR
 
-Implementar um modo de biblioteca central configurável no primeiro uso, persistido globalmente, para que o LabShelf funcione com ou sem pasta aberta no VS Code. Todos os papers passam a ser importados para um diretório único escolhido pelo usuário (ex.: `~/Research/LabShelfLibrary`) em vez de depender do workspace atual.
+Implement a configurable central library mode set up on first use, persisted globally, so that LabShelf works with or without a folder open in VS Code. All papers are imported into a single user-chosen directory (e.g. `~/Research/LabShelfLibrary`) instead of depending on the current workspace.
 
-## Objetivo
+## Objective
 
-- Permitir uso da extensão sem workspace aberto.
-- Centralizar armazenamento de dados/papers em um diretório único configurado pelo usuário.
-- Manter o fluxo atual de importação (PDF único, lote, drag and drop), alterando apenas a origem dos caminhos.
-- Preservar fallback, logs estruturados e eventos já existentes.
+- Allow use of the extension without an open workspace.
+- Centralize data/paper storage in a single directory configured by the user.
+- Maintain the current import flow (single PDF, batch, drag and drop), changing only the path origin.
+- Preserve existing fallback, structured logging, and events.
 
-## Estado Atual (Baseline)
+## Current State (Baseline)
 
-1. A extensão exige `workspaceFolder` para ativar: [src/extension.ts](src/extension.ts#L23) e [src/extension.ts](src/extension.ts#L26).
-2. Os caminhos de dados dependem da raiz do workspace via `WorkspacePaths`: [src/storage/workspacePaths.ts](src/storage/workspacePaths.ts#L8).
-3. Importação de paper grava em `papers/<id>` dentro do workspace: [src/core/paperService.ts](src/core/paperService.ts#L29).
-4. Índice SQLite usa `.research/index.sqlite` na pasta do workspace: [src/storage/workspacePaths.ts](src/storage/workspacePaths.ts#L24).
-5. UI e comandos já estão desacoplados do caminho físico e consomem `PaperService`, o que facilita a mudança: [src/commands/registerCommands.ts](src/commands/registerCommands.ts#L18), [src/ui/listWebviewPanel.ts](src/ui/listWebviewPanel.ts#L11), [src/ui/collectionsTreeDataProvider.ts](src/ui/collectionsTreeDataProvider.ts#L20).
+1. The extension requires `workspaceFolder` to activate: [src/extension.ts](src/extension.ts#L23) and [src/extension.ts](src/extension.ts#L26).
+2. Data paths depend on the workspace root via `WorkspacePaths`: [src/storage/workspacePaths.ts](src/storage/workspacePaths.ts#L8).
+3. Paper import writes to `papers/<id>` inside the workspace: [src/core/paperService.ts](src/core/paperService.ts#L29).
+4. SQLite index uses `.research/index.sqlite` in the workspace folder: [src/storage/workspacePaths.ts](src/storage/workspacePaths.ts#L24).
+5. UI and commands are already decoupled from the physical path and consume `PaperService`, which makes the change easier: [src/commands/registerCommands.ts](src/commands/registerCommands.ts#L18), [src/ui/listWebviewPanel.ts](src/ui/listWebviewPanel.ts#L11), [src/ui/collectionsTreeDataProvider.ts](src/ui/collectionsTreeDataProvider.ts#L20).
 
-## Resultado Esperado da Feature
+## Expected Feature Outcome
 
-1. No primeiro comando que exige biblioteca, se não houver diretório configurado, abrir wizard.
+1. On the first command that requires a library, if no directory is configured, open the wizard.
 2. Wizard:
-- Selecionar pasta base (`showOpenDialog`).
-- Informar nome da biblioteca (`showInputBox`).
-- Criar diretório final e subpastas necessárias (`.research`, `papers`, `.research/logs`).
-3. Persistir configuração de forma global (não vinculada ao workspace).
-4. Reusar esse diretório em qualquer janela VS Code (com ou sem pasta aberta).
-5. Se o caminho estiver inválido/inacessível, orientar reconfiguração sem crash.
+   - Select a base folder (`showOpenDialog`).
+   - Enter the library name (`showInputBox`).
+   - Create the final directory and required subdirectories (`.research`, `papers`, `.research/logs`).
+3. Persist the configuration globally (not tied to a workspace).
+4. Reuse that directory in any VS Code window (with or without an open folder).
+5. If the path is invalid or inaccessible, guide reconfiguration without crashing.
 
-## Arquitetura Proposta
+## Proposed Architecture
 
-### 1) Nova camada de configuração da biblioteca
+### 1) New library configuration layer
 
-- Adicionar módulo dedicado para resolver e persistir o caminho da biblioteca central.
-- Responsabilidades:
-1. Ler configuração persistida.
-2. Executar setup inicial quando necessário.
-3. Validar existência/permissão mínima do diretório.
-4. Expor URI raiz para os serviços.
+- Add a dedicated module to resolve and persist the central library path.
+- Responsibilities:
+  1. Read the persisted configuration.
+  2. Run initial setup when needed.
+  3. Validate the directory's existence and minimum permissions.
+  4. Expose the root URI to services.
 
-Sugestão de arquivo novo:
-- `src/storage/libraryLocation.ts` (resolver + setup + validação)
+Suggested new file:
+- `src/storage/libraryLocation.ts` (resolver + setup + validation)
 
-### 2) Evolução de `WorkspacePaths` para caminho de biblioteca
+### 2) Evolving `WorkspacePaths` into a library path
 
-- Opção A (preferida): substituir por `LibraryPaths` com assinatura baseada em `vscode.Uri` raiz.
-- Opção B: manter `WorkspacePaths` e remover dependência de `WorkspaceFolder`, aceitando URI raiz arbitrária.
+- Option A (preferred): replace with `LibraryPaths` with a signature based on a `vscode.Uri` root.
+- Option B: keep `WorkspacePaths` and remove the dependency on `WorkspaceFolder`, accepting an arbitrary root URI.
 
-Impacto direto:
+Direct impact:
 - [src/storage/workspacePaths.ts](src/storage/workspacePaths.ts)
 - [src/core/paperService.ts](src/core/paperService.ts#L20)
 - [src/core/logger.ts](src/core/logger.ts)
 - [src/extension.ts](src/extension.ts#L22)
 
-### 3) Ativação sem workspace obrigatório
+### 3) Activation without a required workspace
 
-- Remover early return por ausência de workspace.
-- Durante `activate`, resolver biblioteca central:
-1. Se configurada e válida, inicializar normalmente.
-2. Se ausente, inicializar estado mínimo e disparar setup no primeiro comando de escrita (ou setup imediato com confirmação).
+- Remove the early return caused by absence of a workspace.
+- During `activate`, resolve the central library:
+  1. If configured and valid, initialize normally.
+  2. If absent, initialize minimal state and trigger setup on the first write command (or immediate setup with confirmation).
 
-Impacto direto:
+Direct impact:
 - [src/extension.ts](src/extension.ts)
 
-### 4) Guard de biblioteca para comandos mutáveis
+### 4) Library guard for mutable commands
 
-- Comandos como `labshelf.addPaper` devem garantir biblioteca configurada antes de importar.
-- Leitura (`openPaper`, `searchLibrary`) também deve checar disponibilidade do índice.
+- Commands such as `labshelf.addPaper` must ensure the library is configured before importing.
+- Read commands (`openPaper`, `searchLibrary`) must also check index availability.
 
-Impacto direto:
+Direct impact:
 - [src/commands/registerCommands.ts](src/commands/registerCommands.ts)
 
-### 5) Persistência da configuração
+### 5) Configuration persistence
 
-Decisão de armazenamento (escolher 1):
-1. `context.globalState` (recomendado para controle total da extensão).
-2. `labshelf.libraryRoot` em `settings.json` de escopo usuário.
+Choose one storage option:
+1. `context.globalState` (recommended for full extension control).
+2. `labshelf.libraryRoot` in user-scope `settings.json`.
 
-Critérios:
-- Funcionar sem workspace.
-- Permitir update explícito por comando de reconfiguração.
-- Facilitar testes e migração.
+Criteria:
+- Must work without a workspace.
+- Must allow explicit update via a reconfiguration command.
+- Must be easy to test and migrate.
 
-## Arquivos e Funções Relacionadas (Mapeamento Completo)
+## Affected Files and Functions (Complete Mapping)
 
-### Entrada e composição de serviços
+### Entry point and service composition
 
 - [src/extension.ts](src/extension.ts)
-1. `activate(context)`
-: hoje exige workspace; deve passar a resolver biblioteca central.
-2. `initializeDatabase(indexPath, fileSystemService)`
-: continuará igual, mas `indexPath` virá da biblioteca central.
+  1. `activate(context)`: currently requires workspace; must resolve central library instead.
+  2. `initializeDatabase(indexPath, fileSystemService)`: unchanged, but `indexPath` will come from the central library.
 
-### Caminhos e armazenamento
+### Paths and storage
 
 - [src/storage/workspacePaths.ts](src/storage/workspacePaths.ts)
-1. `researchRoot()`
-2. `papersRoot()`
-3. `logsRoot()`
-4. `indexPath()`
-5. `appLogPath()`
-: todos devem deixar de depender de `WorkspaceFolder`.
+  1. `researchRoot()`
+  2. `papersRoot()`
+  3. `logsRoot()`
+  4. `indexPath()`
+  5. `appLogPath()`: all must stop depending on `WorkspaceFolder`.
 
 - [src/storage/fileSystemService.ts](src/storage/fileSystemService.ts)
-1. `ensureDirectory(uri)`
-2. `writeText(uri, content)`
-3. `readText(uri)`
-: já suporta URI arbitrária; sem mudança estrutural esperada.
+  1. `ensureDirectory(uri)`
+  2. `writeText(uri, content)`
+  3. `readText(uri)`: already supports arbitrary URIs; no structural change expected.
 
-### Núcleo de importação
+### Import core
 
 - [src/core/paperService.ts](src/core/paperService.ts)
-1. `addPaperFromUri(sourceUri)` usa `paths.papersRoot()`.
-2. `addPapersFromUris(uris)` e expansão recursiva continuam válidas.
-3. `deletePaper(paperId, deleteFiles)` mantém remoção física na biblioteca central.
-4. `regenerateBibTeX()` mantém geração no diretório de cada paper.
+  1. `addPaperFromUri(sourceUri)` uses `paths.papersRoot()`.
+  2. `addPapersFromUris(uris)` and recursive expansion remain valid.
+  3. `deletePaper(paperId, deleteFiles)` maintains physical removal in the central library.
+  4. `regenerateBibTeX()` maintains generation in each paper's directory.
 
-### Banco e logging
+### Database and logging
 
 - [src/db/sqliteResearchDatabase.ts](src/db/sqliteResearchDatabase.ts)
-1. `initialize()` garante criação do diretório do banco.
-2. `upsertPaper`, `listPapers`, `deletePaper`, `appendLog` sem mudança funcional.
+  1. `initialize()` ensures the database directory is created.
+  2. `upsertPaper`, `listPapers`, `deletePaper`, `appendLog` — no functional change.
 
-- [src/core/logger.ts](src/core/logger.ts)
-: escreve logs em `app.log`; precisa receber caminhos da nova raiz central.
+- [src/core/logger.ts](src/core/logger.ts): writes logs to `app.log`; must receive paths from the new central root.
 
-### UI e comandos
+### UI and commands
 
 - [src/commands/registerCommands.ts](src/commands/registerCommands.ts)
-1. `registerCommands(...)`
-: incluir guard/setup de biblioteca antes de operações dependentes de storage/db.
+  1. `registerCommands(...)`: add library guard/setup before storage/db-dependent operations.
 
-- [src/ui/collectionsTreeDataProvider.ts](src/ui/collectionsTreeDataProvider.ts)
-: fluxo permanece, mas deve mostrar erro amigável se biblioteca indisponível.
+- [src/ui/collectionsTreeDataProvider.ts](src/ui/collectionsTreeDataProvider.ts): flow unchanged, but must show a friendly error if the library is unavailable.
 
-- [src/ui/listWebviewPanel.ts](src/ui/listWebviewPanel.ts)
-: ações (`addPaper`, `dropPapers`, `openPdf`) passam a depender do mesmo guard.
+- [src/ui/listWebviewPanel.ts](src/ui/listWebviewPanel.ts): actions (`addPaper`, `dropPapers`, `openPdf`) now depend on the same guard.
 
-### Especificações impactadas
+### Affected specs
 
 - [documents/specs/core-library.spec.yaml](documents/specs/core-library.spec.yaml)
 - [documents/specs/sidebar.spec.yaml](documents/specs/sidebar.spec.yaml)
 - [documents/specs/commands.spec.yaml](documents/specs/commands.spec.yaml)
 - [documents/specs/database.spec.yaml](documents/specs/database.spec.yaml)
 
-Atualizações mínimas em spec:
-1. `architecture.inputs` sem obrigatoriedade de workspace.
-2. `errors.expected_failures` com caminho central inválido/não configurado.
-3. `ui` incluindo fluxo de setup inicial e comando de reconfiguração.
-4. `tests` cobrindo operação sem workspace.
+Minimum spec updates:
+1. `architecture.inputs` without workspace requirement.
+2. `errors.expected_failures` with invalid/unconfigured central path.
+3. `ui` including initial setup flow and reconfiguration command.
+4. `tests` covering operation without a workspace.
 
-### Testes existentes relacionados
+### Related existing tests
 
 - [__tests__/core/paperService.test.ts](__tests__/core/paperService.test.ts)
 - [__tests__/commands/registerCommands.test.ts](__tests__/commands/registerCommands.test.ts)
 - [__tests__/storage/fileSystemService.test.ts](__tests__/storage/fileSystemService.test.ts)
 - [__tests__/db/database.test.ts](__tests__/db/database.test.ts)
 
-Observação importante:
-- Há sinais de descompasso entre testes antigos e APIs atuais (ex.: assinatura de `registerCommands`, `FileSystemService`, `SqliteResearchDatabase`). A entrega deve incluir alinhamento incremental desses testes para evitar falsa cobertura.
+Important note: there are signs of drift between old tests and current APIs (e.g. `registerCommands`, `FileSystemService`, `SqliteResearchDatabase` signatures). The delivery must include incremental test alignment by layer to avoid false coverage.
 
-## Diretórios Envolvidos
+## Directories Involved
 
-Código-fonte:
+Source code:
 - [src/core](src/core)
 - [src/storage](src/storage)
 - [src/db](src/db)
 - [src/commands](src/commands)
 - [src/ui](src/ui)
 
-Especificações:
+Specs:
 - [documents/specs](documents/specs)
 
-Testes:
+Tests:
 - [__tests__/core](__tests__/core)
 - [__tests__/commands](__tests__/commands)
 - [__tests__/storage](__tests__/storage)
 - [__tests__/db](__tests__/db)
 
-Planejamento:
+Planning:
 - [documents/plans](documents/plans)
 
-## Plano de Implementação (Fases)
+## Implementation Plan (Phases)
 
-1. Fase 1 - Infra de caminho central
-- Criar resolver de biblioteca central + persistência global.
-- Adaptar classe de paths para receber raiz arbitrária.
-- Garantir criação de estrutura base.
+1. Phase 1 — Central path infrastructure
+   - Create central library resolver + global persistence.
+   - Adapt the paths class to accept an arbitrary root.
+   - Ensure the base directory structure is created.
 
-2. Fase 2 - Ativação e wiring
-- Remover dependência de workspace no `activate`.
-- Inicializar DB/logger/services com paths centrais.
+2. Phase 2 — Activation and wiring
+   - Remove workspace dependency from `activate`.
+   - Initialize DB/logger/services with central paths.
 
-3. Fase 3 - UX de configuração
-- Implementar wizard no primeiro uso.
-- Adicionar comando `labshelf.configureLibrary` para reconfigurar.
+3. Phase 3 — Configuration UX
+   - Implement wizard on first use.
+   - Add `labshelf.configureLibrary` command for reconfiguration.
 
-4. Fase 4 - Robustez e erros
-- Mensagens claras para biblioteca ausente/inválida.
-- Logs estruturados para setup, fallback e falhas de acesso.
+4. Phase 4 — Robustness and errors
+   - Clear messages for missing/invalid library.
+   - Structured logs for setup, fallback, and access failures.
 
-5. Fase 5 - Specs e testes
-- Atualizar specs impactados no mesmo PR.
-- Criar/ajustar testes unitários e integração para modo sem workspace.
+5. Phase 5 — Specs and tests
+   - Update affected specs in the same change.
+   - Create/adjust unit and integration tests for workspace-free mode.
 
-## Fluxo Funcional Proposto
+## Proposed Functional Flow
 
-1. Usuário executa `labshelf.addPaper` sem biblioteca configurada.
-2. Extensão abre wizard (pasta base + nome da biblioteca).
-3. Extensão cria diretório final e subestrutura.
-4. Caminho é persistido globalmente.
-5. Importação segue normalmente para `papers/<id>/paper.pdf` na biblioteca central.
-6. Em qualquer janela futura, a extensão reaproveita a mesma biblioteca.
+1. User runs `labshelf.addPaper` without a configured library.
+2. Extension opens the wizard (base folder + library name).
+3. Extension creates the final directory and subdirectory structure.
+4. Path is persisted globally.
+5. Import continues normally to `papers/<id>/paper.pdf` in the central library.
+6. In any future window, the extension reuses the same library.
 
-## Contratos de Erro (Propostos)
+## Proposed Error Contracts
 
-1. Biblioteca não configurada
-- Mensagem: orientar setup.
-- Ação: abrir wizard ou cancelar sem mutar estado.
+1. Library not configured
+   - Message: guide to setup.
+   - Action: open wizard or cancel without mutating state.
 
-2. Caminho não existe mais
-- Mensagem: biblioteca indisponível; oferecer reconfiguração.
-- Log: `WARN` com caminho salvo e contexto.
+2. Path no longer exists
+   - Message: library unavailable; offer reconfiguration.
+   - Log: `WARN` with saved path and context.
 
-3. Sem permissão de escrita
-- Mensagem: falha de acesso ao diretório.
-- Log: `ERROR` com stack/contexto.
+3. No write permission
+   - Message: directory access failure.
+   - Log: `ERROR` with stack/context.
 
-4. Falha no SQLite
-- Comportamento atual de fallback in-memory pode ser mantido, mas deve ser explícito ao usuário que o modo não persistente está ativo.
+4. SQLite failure
+   - Current in-memory fallback behavior may be kept, but it must be explicitly communicated to the user that non-persistent mode is active.
 
-## Checklist de Aceite
+## Acceptance Checklist
 
-1. Extensão ativa sem workspace aberto.
-2. Primeiro add dispara setup quando necessário.
-3. Biblioteca central é persistida entre sessões.
-4. Importação funciona em qualquer pasta/projeto aberto.
-5. Drag and drop da sidebar continua funcional.
-6. `openPaperPdf` e `openPaperFolder` funcionam com caminhos centrais.
-7. Specs atualizados na mesma mudança.
-8. Testes atualizados e `npm test` passando.
+1. Extension activates without an open workspace.
+2. First add triggers setup when necessary.
+3. Central library is persisted across sessions.
+4. Import works in any open folder/project.
+5. Sidebar drag and drop continues to work.
+6. `openPaperPdf` and `openPaperFolder` work with central paths.
+7. Specs updated in the same change.
+8. Tests updated and `npm test` passing.
 
-## Fora de Escopo (Nesta Entrega)
+## Out of Scope (This Delivery)
 
-1. Múltiplas bibliotecas simultâneas com switcher completo.
-2. Sincronização em nuvem.
-3. Migração automática de bibliotecas antigas por workspace (pode virar comando separado depois).
+1. Multiple simultaneous libraries with a full switcher.
+2. Cloud synchronization.
+3. Automatic migration of old per-workspace libraries (may become a separate command later).
 
-## Riscos e Mitigações
+## Risks and Mitigations
 
-1. Risco: quebra de fluxos que assumem workspace.
-- Mitigação: encapsular resolução de path em uma única camada e usar guard central.
+1. Risk: breaking flows that assume a workspace.
+   - Mitigation: encapsulate path resolution in a single layer and use a central guard.
 
-2. Risco: regressão em testes legados já desalinhados.
-- Mitigação: estabilizar testes por camada começando por `core` e `commands`.
+2. Risk: regression in already-drifted legacy tests.
+   - Mitigation: stabilize tests by layer starting from `core` and `commands`.
 
-3. Risco: usuário configurar pasta inválida.
-- Mitigação: validação imediata + comando de reconfiguração + mensagens acionáveis.
+3. Risk: user configures an invalid folder.
+   - Mitigation: immediate validation + reconfiguration command + actionable messages.

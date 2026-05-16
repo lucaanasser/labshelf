@@ -1,58 +1,58 @@
-# PDF Viewer com Anotações e Integração LaTeX
+# PDF Viewer with Annotations and LaTeX Integration
 
-**Data de criação**: Maio 2026  
-**Status**: Planejamento  
-**Prioridade**: Alta  
-
----
-
-## 1. Visão Geral
-
-Implementar um PDF viewer interativo dentro da LabShelf que:
-- Substitua o abrir PDF em aplicação externa
-- Funcione como painel webview nativo no VS Code
-- Sincronize tema com o tema do VS Code (claro/escuro)
-- Permita customização manual do tema do PDF na navbar
-- Suporte anotações (highlights, notas, comentários)
-- Exporte anotações e resumos em formato LaTeX
-- Se integre com a extensão LaTeX Workshop para inserção direta em documentos
+**Creation date**: May 2026  
+**Status**: Planning  
+**Priority**: High  
 
 ---
 
-## 2. Funcionalidades Principais
+## 1. Overview
 
-### 2.1 Visualização de PDF
-- ✅ Renderizar PDF completo via PDF.js
-- ✅ Navegação página-a-página (primeira, última, próxima, anterior, ir para página)
+Implement an interactive PDF viewer inside LabShelf that:
+- Replaces opening PDFs in an external application
+- Works as a native webview panel in VS Code
+- Synchronizes its theme with the VS Code theme (light/dark)
+- Allows manual PDF theme customization in the navbar
+- Supports annotations (highlights, notes, comments)
+- Exports annotations and summaries in LaTeX format
+- Integrates with the LaTeX Workshop extension for direct insertion into documents
+
+---
+
+## 2. Main Features
+
+### 2.1 PDF Viewing
+- ✅ Render full PDF via PDF.js
+- ✅ Page-by-page navigation (first, last, next, previous, go to page)
 - ✅ Zoom (presets: 50%, 75%, 100%, 125%, 150%, 200%)
-- ✅ Busca de texto dentro do PDF
-- ✅ Exibição do índice/outline do PDF (se disponível)
+- ✅ Text search within the PDF
+- ✅ Display PDF outline/table of contents (if available)
 
-### 2.2 Temas e Aparência
-- ✅ Tema padrão sincronizado com VS Code (dark/light/auto-detect)
-- ✅ Dropdown na navbar para mudar tema PDF independentemente
-- ✅ Opções de tema:
-  - `auto` (segue VS Code)
+### 2.2 Themes and Appearance
+- ✅ Default theme synchronized with VS Code (dark/light/auto-detect)
+- ✅ Navbar dropdown to change PDF theme independently
+- ✅ Theme options:
+  - `auto` (follows VS Code)
   - `light`
   - `dark`
-  - `sepia` (tons quentes)
-  - `high-contrast` (para acessibilidade)
-- ✅ Persistência de preferência de tema por paper na DB
+  - `sepia` (warm tones)
+  - `high-contrast` (for accessibility)
+- ✅ Per-paper theme preference persisted in the database
 
-### 2.3 Anotações
-- ✅ **Highlights**: selecionar texto e grifar com cores (amarelo, verde, azul, rosa, vermelho)
-- ✅ **Notas marginais**: adicionar texto livre flutuante na margem da página
-- ✅ **Comentários**: associar texto longo/estruturado a uma seleção
-- ✅ **Tags de referência**: marcar trechos importantes com tags customizáveis
-- ✅ Visualizar lista de anotações em painel lateral
-- ✅ Clicar em anotação na lista → ir para página + destacar
+### 2.3 Annotations
+- ✅ **Highlights**: select text and highlight with colors (yellow, green, blue, pink, red)
+- ✅ **Margin notes**: add free-floating text in the page margin
+- ✅ **Comments**: associate long/structured text with a selection
+- ✅ **Reference tags**: mark important passages with customizable tags
+- ✅ View annotation list in a side panel
+- ✅ Click an annotation in the list → navigate to page + highlight it
 
-### 2.4 Exportação e LaTeX
-- ✅ **Exportar resumo**: gerar arquivo Markdown/LaTeX com todas as notas + highlights + estrutura
-- ✅ **Inserir no LaTeX Workshop**: 
-  - Botão "Insert into document" que abre seletor de arquivo .tex aberto
-  - Insere um bloco estruturado com citação + notas
-  - Exemplo:
+### 2.4 Export and LaTeX
+- ✅ **Export summary**: generate a Markdown/LaTeX file with all notes + highlights + structure
+- ✅ **Insert into LaTeX Workshop**: 
+  - "Insert into document" button that opens a selector for open .tex files
+  - Inserts a structured block with citation + notes
+  - Example:
     ```latex
     % From: [citekey] - Title
     % Date: 2026-05-13
@@ -63,69 +63,69 @@ Implementar um PDF viewer interativo dentro da LabShelf que:
       \item [highlight 2]
     \end{itemize}
     ```
-- ✅ **Criar novo documento LaTeX**: gerar .tex com template de resumo baseado no PDF
-- ✅ **Exportar BibTeX atualizado**: incluir anotações como campos personalizados (annote, keywords)
+- ✅ **Create new LaTeX document**: generate a .tex file with a summary template based on the PDF
+- ✅ **Export updated BibTeX**: include annotations as custom fields (annote, keywords)
 
-### 2.5 Integração com LaTeX Workshop
-- ✅ Verificar se LaTeX Workshop está instalado (sem erro se não estiver)
-- ✅ Oferecer "Insert into document" apenas se há arquivo .tex aberto
+### 2.5 LaTeX Workshop Integration
+- ✅ Check if LaTeX Workshop is installed (no error if it is not)
+- ✅ Offer "Insert into document" only if a .tex file is open
 - ✅ Command palette: "LabShelf: Insert highlights from current PDF into LaTeX"
-- ✅ Quick pick para selecionar qual arquivo .tex destino
+- ✅ Quick pick to select which .tex file to use as destination
 
-### 2.6 Gestão de Anotações
-- ✅ Editar/deletar anotações existentes
-- ✅ Buscar dentro de anotações de um paper
-- ✅ Sincronizar anotações entre múltiplas aberturas do mesmo paper
-- ✅ Backup automático de anotações em arquivo JSON ou SQL
+### 2.6 Annotation Management
+- ✅ Edit/delete existing annotations
+- ✅ Search within a paper's annotations
+- ✅ Synchronize annotations across multiple openings of the same paper
+- ✅ Automatic backup of annotations in JSON or SQL file
 
 ---
 
-## 3. Arquitetura Proposta
+## 3. Proposed Architecture
 
-### 3.1 Novas Camadas
+### 3.1 New Layers
 ```
 src/
-├── pdf-viewer/              (nova)
+├── pdf-viewer/              (new)
 │   ├── PdfViewerPanel.ts
-│   ├── PdfRenderer.ts       (controle PDF.js)
-│   ├── AnnotationManager.ts (gerenciar highlights + notas)
-│   ├── ThemeManager.ts      (sincronizar com VS Code)
+│   ├── PdfRenderer.ts       (PDF.js control)
+│   ├── AnnotationManager.ts (manage highlights + notes)
+│   ├── ThemeManager.ts      (synchronize with VS Code)
 │   └── index.ts
 │
-├── pdf-export/              (nova)
-│   ├── LatexExporter.ts     (gerar LaTeX a partir de anotações)
+├── pdf-export/              (new)
+│   ├── LatexExporter.ts     (generate LaTeX from annotations)
 │   ├── MarkdownExporter.ts
-│   └── BibTeXEnhancer.ts    (adicionar campos customizados)
+│   └── BibTeXEnhancer.ts    (add custom fields)
 │
-├── latex-integration/       (nova)
-│   ├── LatexWorkshopBridge.ts (detectar e comunicar com LaTeX Workshop)
-│   └── DocumentInserter.ts  (inserir conteúdo em arquivos .tex)
+├── latex-integration/       (new)
+│   ├── LatexWorkshopBridge.ts (detect and communicate with LaTeX Workshop)
+│   └── DocumentInserter.ts  (insert content into .tex files)
 │
 └── ui/
-    ├── pdfViewerWebview/    (nova)
+    ├── pdfViewerWebview/    (new)
     │   ├── pdfViewer.html
     │   ├── pdfViewer.css
-    │   ├── pdfViewer.js     (lógica webview)
+    │   ├── pdfViewer.js     (webview logic)
     │   └── annotationUI.ts
 ```
 
-### 3.2 Banco de Dados (Novas Tabelas)
+### 3.2 Database (New Tables)
 ```sql
--- Anotações por paper
+-- Annotations per paper
 CREATE TABLE annotations (
   id TEXT PRIMARY KEY,
   paperId TEXT NOT NULL,
   type TEXT NOT NULL,          -- 'highlight' | 'note' | 'comment' | 'tag'
   pageNumber INTEGER NOT NULL,
-  content TEXT NOT NULL,       -- texto da nota ou highlight
-  color TEXT,                  -- para highlights: 'yellow', 'green', 'blue', etc.
-  position JSON,               -- {x, y, width, height} para localização exata
+  content TEXT NOT NULL,       -- note text or highlight text
+  color TEXT,                  -- for highlights: 'yellow', 'green', 'blue', etc.
+  position JSON,               -- {x, y, width, height} for exact location
   createdAt DATETIME NOT NULL,
   updatedAt DATETIME NOT NULL,
   FOREIGN KEY (paperId) REFERENCES papers(id) ON DELETE CASCADE
 );
 
--- Preferências de tema por paper
+-- Per-paper theme preferences
 CREATE TABLE paperThemePreferences (
   paperId TEXT PRIMARY KEY,
   theme TEXT NOT NULL DEFAULT 'auto', -- 'auto' | 'light' | 'dark' | 'sepia' | 'high-contrast'
@@ -133,7 +133,7 @@ CREATE TABLE paperThemePreferences (
   FOREIGN KEY (paperId) REFERENCES papers(id) ON DELETE CASCADE
 );
 
--- Cache de resumos gerados
+-- Generated summary cache
 CREATE TABLE generatedSummaries (
   id TEXT PRIMARY KEY,
   paperId TEXT NOT NULL,
@@ -144,9 +144,9 @@ CREATE TABLE generatedSummaries (
 );
 ```
 
-### 3.3 Eventos do Event Bus
+### 3.3 Event Bus Events
 ```typescript
-// Emitidos
+// Emitted
 export const PDF_VIEWER_OPENED = 'pdf:viewer:opened';
 export const PDF_VIEWER_CLOSED = 'pdf:viewer:closed';
 export const ANNOTATION_CREATED = 'annotation:created';
@@ -159,160 +159,160 @@ export const LATEX_INSERT_REQUESTED = 'latex:insert:requested';
 
 ---
 
-## 4. Fluxos de Interação Principais
+## 4. Main Interaction Flows
 
-### 4.1 Abrir PDF
+### 4.1 Open PDF
 ```
-Usuário clica em paper na lista
-  → ListWebviewPanel emite comando 'labshelf.openPdfViewer'
+User clicks paper in list
+  → ListWebviewPanel emits command 'labshelf.openPdfViewer'
   → PdfViewerPanel.createOrShow()
-  → Renderiza PDF com PDF.js
-  → Restaura anotações do banco
-  → Aplica tema (preferência ou auto)
+  → Renders PDF with PDF.js
+  → Restores annotations from database
+  → Applies theme (preference or auto)
   → Event: PDF_VIEWER_OPENED
 ```
 
-### 4.2 Criar Highlight
+### 4.2 Create Highlight
 ```
-Usuário seleciona texto no PDF
-  → Context menu ou popup de seleção
-  → Escolhe cor
+User selects text in PDF
+  → Context menu or selection popup
+  → Chooses color
   → AnnotationManager.createHighlight()
-    → Salva em DB (annotations)
-    → Emite ANNOTATION_CREATED
-  → Highlight renderizado permanentemente
+    → Save to DB (annotations)
+    → Emit ANNOTATION_CREATED
+  → Highlight rendered permanently
 ```
 
-### 4.3 Exportar para LaTeX
+### 4.3 Export to LaTeX
 ```
-Usuário clica "Export to LaTeX"
-  → Dialog pergunta formato (resumo estruturado / resumo simples / BibTeX+notas)
-  → LatexExporter gera conteúdo baseado em template
-  → Opção 1: Salvar arquivo
-  → Opção 2: Copiar para clipboard
-  → Opção 3: Inserir em arquivo .tex aberto
+User clicks "Export to LaTeX"
+  → Dialog asks for format (structured summary / simple summary / BibTeX+notes)
+  → LatexExporter generates content based on template
+  → Option 1: Save file
+  → Option 2: Copy to clipboard
+  → Option 3: Insert into open .tex file
 ```
 
-### 4.4 Inserir em LaTeX Workshop
+### 4.4 Insert into LaTeX Workshop
 ```
-Usuário clica "Insert into LaTeX Document"
-  → Verifica se LaTeX Workshop está ativo
-  → Lista arquivos .tex abertos
-  → User seleciona arquivo destino
-  → Insere bloco estruturado com \cite{} e notas
+User clicks "Insert into LaTeX Document"
+  → Check if LaTeX Workshop is active
+  → List open .tex files
+  → User selects destination file
+  → Insert structured block with \cite{} and notes
   → Event: LATEX_INSERT_REQUESTED
-  → Log e confirmação
+  → Log and confirmation
 ```
 
 ---
 
-## 5. Fases de Implementação
+## 5. Implementation Phases
 
-### Fase 1: MVP - PDF Viewer Básico (Sprint 1)
-- [ ] Criar `PdfViewerPanel` renderizando PDF.js
-- [ ] Navegação básica (próx/ant, zoom)
-- [ ] Tema sincronizado com VS Code (auto-detect)
+### Phase 1: MVP — Basic PDF Viewer (Sprint 1)
+- [ ] Create `PdfViewerPanel` rendering PDF.js
+- [ ] Basic navigation (next/prev, zoom)
+- [ ] Theme synchronized with VS Code (auto-detect)
 - [ ] Spec: `pdf-viewer-basic.spec.yaml`
-- [ ] Testes: ~60% cobertura
+- [ ] Tests: ~60% coverage
 
-### Fase 2: Anotações Simples (Sprint 2)
-- [ ] Tabelas `annotations` e `paperThemePreferences`
-- [ ] Criar/visualizar highlights com cores
-- [ ] Sidebar de anotações
+### Phase 2: Simple Annotations (Sprint 2)
+- [ ] Tables `annotations` and `paperThemePreferences`
+- [ ] Create/view highlights with colors
+- [ ] Annotation sidebar
 - [ ] Spec: `annotations.spec.yaml`
-- [ ] Testes: ~70% cobertura
+- [ ] Tests: ~70% coverage
 
-### Fase 3: Temas Avançados (Sprint 3)
-- [ ] UI de seleção de tema na navbar
-- [ ] Preferências persistidas por paper
-- [ ] Temas: light, dark, sepia, high-contrast
-- [ ] Atualizar spec existente
+### Phase 3: Advanced Themes (Sprint 3)
+- [ ] Theme selection UI in the navbar
+- [ ] Preferences persisted per paper
+- [ ] Themes: light, dark, sepia, high-contrast
+- [ ] Update existing spec
 
-### Fase 4: Exportação LaTeX (Sprint 4)
-- [ ] `LatexExporter` gerando templates
-- [ ] Comando "Export to LaTeX"
-- [ ] Gerar resumos estruturados
+### Phase 4: LaTeX Export (Sprint 4)
+- [ ] `LatexExporter` generating templates
+- [ ] "Export to LaTeX" command
+- [ ] Generate structured summaries
 - [ ] Spec: `latex-export.spec.yaml`
-- [ ] Testes: ~75% cobertura
+- [ ] Tests: ~75% coverage
 
-### Fase 5: Integração com LaTeX Workshop (Sprint 5)
-- [ ] Detectar LaTeX Workshop (extensão ativa)
-- [ ] `LatexWorkshopBridge` comunicando via VS Code API
-- [ ] Inserir blocos em arquivos .tex abertos
-- [ ] Comando palette commands
+### Phase 5: LaTeX Workshop Integration (Sprint 5)
+- [ ] Detect LaTeX Workshop (active extension)
+- [ ] `LatexWorkshopBridge` communicating via VS Code API
+- [ ] Insert blocks into open .tex files
+- [ ] Command palette commands
 - [ ] Spec: `latex-workshop-integration.spec.yaml`
-- [ ] Testes: ~80% cobertura
+- [ ] Tests: ~80% coverage
 
-### Fase 6: Polimento e Extras (Sprint 6+)
-- [ ] Busca dentro de anotações
-- [ ] Editar/deletar anotações inline
-- [ ] Tags customizáveis
-- [ ] Sincronização entre múltiplas aberturas
-- [ ] Tratamento de erros robusto
-- [ ] Performance otimizada
+### Phase 6: Polish and Extras (Sprint 6+)
+- [ ] Search within annotations
+- [ ] Edit/delete annotations inline
+- [ ] Customizable tags
+- [ ] Synchronization across multiple openings
+- [ ] Robust error handling
+- [ ] Optimized performance
 
 ---
 
-## 6. Considerações Técnicas
+## 6. Technical Considerations
 
 ### 6.1 PDF.js Worker
-- Já há infra para resolver worker corretamente em extension host
-- Reutilizar padrão existente de `require.resolve()` + `pathToFileURL`
+- Infrastructure to resolve the worker correctly in the extension host already exists
+- Reuse the existing pattern of `require.resolve()` + `pathToFileURL`
 
-### 6.2 Webview Segurança
-- Scripts habilitados no webview (necessário para PDF.js)
-- Validar conteúdo inserido em LaTeX (escapar caracteres especiais)
-- Sanitizar entrada de usuário em comentários
+### 6.2 Webview Security
+- Scripts enabled in the webview (required for PDF.js)
+- Validate content inserted into LaTeX (escape special characters)
+- Sanitize user input in comments
 
 ### 6.3 Performance
-- Carregar PDF com lazy-loading de páginas quando possível
-- Cache de páginas renderizadas
-- Debounce de eventos de seleção
-- Evitar re-render desnecessário
+- Load PDF with lazy page loading when possible
+- Cache rendered pages
+- Debounce selection events
+- Avoid unnecessary re-renders
 
-### 6.4 Estado Persistente
-- Anotações: SQLite
-- Preferência de tema: SQLite
-- Posição de scroll/página aberta: Memória webview (retainContextWhenHidden: true)
-
----
-
-## 7. Dependências Novas (Potencial)
-
-- ✅ `pdfjs-dist` (já presente)
-- ❓ `latex-parser` (parsing simples de .tex, opcional)
-- ❓ `dom-to-image` (exportar anotações como imagem, opcional)
-- ❓ `bibtex-parser` (já tem dependência, otimizar se necessário)
+### 6.4 Persistent State
+- Annotations: SQLite
+- Theme preference: SQLite
+- Scroll position/current page: Webview memory (retainContextWhenHidden: true)
 
 ---
 
-## 8. Riscos e Mitigações
+## 7. New Dependencies (Potential)
 
-| Risco | Probabilidade | Impacto | Mitigação |
-|-------|--------------|---------|-----------|
-| PDF.js lentidão com PDFs grandes | Média | Alto | Implementar virtualization / lazy-load |
-| LaTeX Workshop pode não estar instalado | Alta | Baixo | Graceful degradation, checks prévios |
-| Conflito de renderização webview/PDF.js | Baixa | Alto | Testar com PDFs complexos no MVP |
-| Sincronização de anotações entre aberturas | Média | Médio | Event bus + reload automático |
-| Exportação LaTeX com caracteres especiais | Média | Médio | Escapar + testar com diversos PDFs |
+- ✅ `pdfjs-dist` (already present)
+- ❓ `latex-parser` (simple .tex parsing, optional)
+- ❓ `dom-to-image` (export annotations as image, optional)
+- ❓ `bibtex-parser` (dependency already exists, optimize if needed)
 
 ---
 
-## 9. Métricas de Sucesso
+## 8. Risks and Mitigations
 
-- ✅ MVP aberto em <2s para papers normais
-- ✅ Highlights persistem e carregam corretamente
-- ✅ Exportação LaTeX válida testada com `pdflatex`
-- ✅ 75%+ cobertura de testes
-- ✅ Usuário consegue inserir resumo em documento .tex em <10 segundos
-- ✅ Zero erros não-tratados em logs
+| Risk | Probability | Impact | Mitigation |
+|------|-------------|--------|------------|
+| PDF.js slowness with large PDFs | Medium | High | Implement virtualization / lazy-load |
+| LaTeX Workshop may not be installed | High | Low | Graceful degradation, prior checks |
+| Rendering conflict webview/PDF.js | Low | High | Test with complex PDFs in the MVP |
+| Annotation synchronization across openings | Medium | Medium | Event bus + automatic reload |
+| LaTeX export with special characters | Medium | Medium | Escape + test with various PDFs |
 
 ---
 
-## 10. Próximos Passos Imediatos
+## 9. Success Metrics
 
-1. Feedback do usuário sobre este plano
-2. Criar spec YAML para PDF Viewer Básico (Fase 1)
-3. Esboçar HTML/CSS do webview PDF
-4. Iniciar implementação de `PdfViewerPanel`
-5. Configurar testes de integração com PDF.js
+- ✅ MVP opens in <2s for normal papers
+- ✅ Highlights persist and load correctly
+- ✅ Valid LaTeX export tested with `pdflatex`
+- ✅ 75%+ test coverage
+- ✅ User can insert summary into a .tex document in <10 seconds
+- ✅ Zero unhandled errors in logs
+
+---
+
+## 10. Immediate Next Steps
+
+1. User feedback on this plan
+2. Create spec YAML for Basic PDF Viewer (Phase 1)
+3. Sketch HTML/CSS for the PDF webview
+4. Begin implementing `PdfViewerPanel`
+5. Set up integration tests with PDF.js

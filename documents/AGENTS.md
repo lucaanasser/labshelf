@@ -1,19 +1,19 @@
 # LabShelf Implementation Rules
 
-Estas regras orientam qualquer alteração neste repositório.
+These rules guide any change made to this repository.
 
-## Arquitetura
+## Architecture
 
-- Preserve a separação entre `core`, `db`, `storage`, `pdf`, `bibtex`, `ui` e `commands`.
-- Não misture acesso a arquivos, banco de dados e UI no mesmo fluxo quando houver uma camada apropriada para isso.
-- Prefira serviços pequenos e explícitos com responsabilidades únicas.
-- Qualquer nova funcionalidade deve seguir o fluxo existente de eventos, serviços e UI antes de criar um caminho paralelo.
+- Preserve the separation between `core`, `db`, `storage`, `pdf`, `bibtex`, `ui`, and `commands`.
+- Do not mix file access, database access, and UI in the same flow when an appropriate layer exists for each concern.
+- Prefer small, explicit services with a single responsibility.
+- Any new feature must follow the existing flow of events, services, and UI before creating a parallel path.
 
-## Specs obrigatórias
+## Required specs
 
-- Toda funcionalidade nova ou mudança relevante deve ter ou atualizar um arquivo em `specs/*.spec.yaml`.
-- O nome do spec deve refletir o domínio da feature, por exemplo `sidebar.spec.yaml`, `database.spec.yaml` ou `pdf.spec.yaml`.
-- O spec deve descrever, no mínimo:
+- Every new feature or relevant change must have or update a file in `specs/*.spec.yaml`.
+- The spec name must reflect the feature domain, for example `sidebar.spec.yaml`, `database.spec.yaml`, or `pdf.spec.yaml`.
+- The spec must describe, at minimum:
   - `feature`
   - `architecture`
   - `database`
@@ -22,60 +22,60 @@ Estas regras orientam qualquer alteração neste repositório.
   - `ui`
   - `tests`
   - `ai_notes`
-- Mantenha os specs consistentes, específicos e verificáveis. Evite descrições vagas.
-- Se a implementação mudar o comportamento observado, o spec correspondente deve ser atualizado na mesma alteração.
+- Keep specs consistent, specific, and verifiable. Avoid vague descriptions.
+- If the implementation changes observed behavior, the corresponding spec must be updated in the same change.
 
-## Comentários e documentação
+## Comments and documentation
 
-- Use comentários apenas para explicar intenção, decisão arquitetural ou uma regra que não seja óbvia no código.
-- Prefira comentários de módulo curtos no topo dos arquivos quando forem úteis para resumir responsabilidade e dependências.
-- Não adicione comentários linha a linha para narrar código autoexplicativo.
-- Se uma regra de negócio ou decisão técnica for importante, documente-a no spec ou no código próximo ao ponto de decisão.
+- Use comments only to explain intent, architectural decisions, or rules that are not obvious from the code.
+- Prefer short module comments at the top of files when they are useful to summarize responsibilities and dependencies.
+- Do not add line-by-line comments to narrate self-explanatory code.
+- If a business rule or technical decision is important, document it in the spec or in the code near the decision point.
 
-## Ícones e emoji
+## Icons and emoji
 
-- É proibido usar emoji na UI, na documentação ou nas mensagens de agente, a não ser que o prompt do usuário peça explicitamente.
-- Prefira sempre ícones minimalistas em SVG, de bibliotecas padrão e profissionais quando possível, mantendo consistência visual entre telas e componentes.
-- Quando um ícone textual precisar ser substituído, use um conjunto coerente de SVGs inline ou arquivos SVG compartilhados em vez de caracteres Unicode decorativos.
+- Using emoji in the UI, in documentation, or in agent messages is forbidden unless the user's prompt explicitly requests it.
+- Always prefer minimal SVG icons from standard, professional libraries when possible, maintaining visual consistency across screens and components.
+- When a text icon needs to be replaced, use a coherent set of inline SVGs or shared SVG files instead of decorative Unicode characters.
 
 ## Logs
 
-- Registre eventos importantes com logging estruturado.
-- Erros devem ser logados com contexto suficiente para diagnosticar a causa sem depender de depuração manual.
-- Quando houver fallback, degradação ou comportamento alternativo, registre isso explicitamente.
-- Evite logs ruidosos em caminhos quentes; prefira logs significativos, consistentes e úteis para diagnóstico.
-- Use o logger existente do projeto quando possível, em vez de criar formatos paralelos.
+- Record important events with structured logging.
+- Errors must be logged with enough context to diagnose the cause without relying on manual debugging.
+- When there is a fallback, degradation, or alternative behavior, log it explicitly.
+- Avoid noisy logs on hot paths; prefer meaningful, consistent, diagnostically useful logs.
+- Use the project's existing logger when possible, instead of creating parallel formats.
 
-## Testes obrigatórios
+## Required tests
 
-Toda funcionalidade nova ou modificação relevante **DEVE** ter testes automatizados que validem a conformidade com a spec correspondente.
+Every new feature or relevant modification **MUST** have automated tests that validate conformance with the corresponding spec.
 
-### Regras de Testes
+### Testing rules
 
-- **Cobertura mínima**: 50% de cobertura em todas as camadas, 80%+ em caminhos críticos (database, file I/O, BibTeX parsing)
-- **Estrutura**: Testes organizados em `__tests__/<layer>/` espelhando a arquitetura em `src/<layer>/`
-- **Escopo**: Cada spec em `specs/*.spec.yaml` deve ter testes cobrindo todos os comportamentos listados na seção `tests`
-- **Execução**: `npm test` deve passar localmente antes de qualquer commit
-- **Naming**: Arquivos de teste devem ser `<module>.test.ts` ou `<feature>.spec.ts`
+- **Minimum coverage**: 50% coverage across all layers, 80%+ on critical paths (database, file I/O, BibTeX parsing)
+- **Structure**: Tests organized in `__tests__/<layer>/` mirroring the architecture in `src/<layer>/`
+- **Scope**: Each spec in `specs/*.spec.yaml` must have tests covering all behaviors listed in the `tests` section
+- **Execution**: `npm test` must pass locally before any commit
+- **Naming**: Test files must be `<module>.test.ts` or `<feature>.spec.ts`
 
-### O que testar
+### What to test
 
-1. **Unit Tests**: Cada função pública e classe deve ter pelo menos um teste
-2. **Integration Tests**: Interações entre módulos especificados na spec
-3. **Error Scenarios**: Todos os erros listados em `errors` na spec devem ser testados
-4. **Fixtures**: Usar dados consistentes em `__tests__/fixtures/`
+1. **Unit Tests**: Every public function and class must have at least one test
+2. **Integration Tests**: Interactions between modules specified in the spec
+3. **Error Scenarios**: All errors listed in `errors` in the spec must be tested
+4. **Fixtures**: Use consistent data in `__tests__/fixtures/`
 
-### Rejeição de mudanças
+### Change rejection
 
-Mudanças serão rejeitadas se:
-- Não tiverem testes correspondentes à funcionalidade
-- Quebrarem testes existentes
-- Reduzirem cobertura sem justificativa documentada
-- Não atualizarem testes quando o spec mudar
+Changes will be rejected if they:
+- Have no tests corresponding to the feature
+- Break existing tests
+- Reduce coverage without documented justification
+- Do not update tests when the spec changes
 
-## Qualidade da implementação
+## Implementation quality
 
-- Antes de finalizar uma mudança, verifique se há testes, validação ou compilação aplicáveis ao trecho alterado.
-- Não entregue comportamento novo sem atualizar o spec correspondente.
-- Não submeta código sem testes que validem a spec associada.
-- Se a mudança introduzir nova responsabilidade, revise também a documentação do repositório quando fizer sentido.
+- Before finalizing a change, verify whether there are tests, validation, or compilation steps applicable to the modified code.
+- Do not deliver new behavior without updating the corresponding spec.
+- Do not submit code without tests that validate the associated spec.
+- If the change introduces new responsibility, also review the repository documentation when it makes sense.

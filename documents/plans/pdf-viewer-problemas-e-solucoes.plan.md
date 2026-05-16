@@ -1,138 +1,138 @@
-# PDF Viewer: Problemas Encontrados e Soluções Aplicadas
+# PDF Viewer: Problems Found and Solutions Applied
 
-Data: 2026-05-13  
-Escopo: Fases 1, 2 e 3 (viewer básico, anotações e temas)
+Date: 2026-05-13  
+Scope: Phases 1, 2, and 3 (basic viewer, annotations, and themes)
 
-## 1. Resumo Executivo
+## 1. Executive Summary
 
-Durante a análise do PDF Viewer foram identificados dois problemas principais:
+During the PDF Viewer analysis, two main problems were identified:
 
-1. Lentidão perceptível na abertura de PDFs.
-2. Tema não aplicado corretamente ao conteúdo da página do PDF.
+1. Noticeable slowness when opening PDFs.
+2. Theme not applied correctly to the PDF page content.
 
-As correções implementadas resolveram a causa raiz de ambos os problemas sem quebrar testes existentes.
+The fixes implemented resolved the root cause of both problems without breaking existing tests.
 
-## 2. Problemas Identificados
+## 2. Problems Identified
 
-### 2.1 Abertura lenta do PDF
+### 2.1 Slow PDF opening
 
-Sintoma observado:
-- O viewer demorava para mostrar o PDF ao abrir um paper.
+Observed symptom:
+- The viewer took a long time to display the PDF when opening a paper.
 
-Causas técnicas:
-- O fluxo de inicialização aguardava etapas extras antes de entregar o primeiro paint.
-- A estrutura do painel fazia trabalho desnecessário em cenários de troca de tema.
-- Existia reconstrução completa do HTML do webview em operações onde bastava atualização incremental.
+Technical causes:
+- The initialization flow waited for extra steps before delivering the first paint.
+- The panel structure performed unnecessary work in theme-switching scenarios.
+- There was a complete HTML rebuild of the webview in operations where incremental updates would have sufficed.
 
-Impacto:
-- Tempo de abertura maior que o esperado para uso interativo.
-- Sensação de lentidão em comparação com leitores como Zotero e vscode-pdfviewer.
+Impact:
+- Opening time greater than expected for interactive use.
+- Perceived slowness compared to readers such as Zotero and vscode-pdfviewer.
 
-### 2.2 Tema não aplicado no conteúdo do PDF
+### 2.2 Theme not applied to PDF content
 
-Sintoma observado:
-- Toolbar e container mudavam de tema, mas a página do PDF permanecia visualmente igual.
+Observed symptom:
+- Toolbar and container changed theme, but the PDF page remained visually unchanged.
 
-Causa raiz:
-- O conteúdo do PDF é renderizado em canvas (pixels).
-- Troca de variáveis CSS do container não altera os pixels já rasterizados do canvas.
-- O handler de applyTheme atualizava estado, porém não aplicava transformação visual efetiva ao canvas.
+Root cause:
+- PDF content is rendered on canvas (pixels).
+- Swapping CSS variables on the container does not alter the already-rasterized pixels on the canvas.
+- The `applyTheme` handler was updating state but not applying an effective visual transformation to the canvas.
 
-Impacto:
-- Funcionalidade de temas parecia quebrada para o usuário final.
-- Diferença clara entre comportamento esperado e comportamento real.
+Impact:
+- The themes feature appeared broken to the end user.
+- Clear discrepancy between expected and actual behavior.
 
-## 3. Soluções Implementadas
+## 3. Solutions Implemented
 
-### 3.1 Tema aplicado de forma real no conteúdo do PDF
+### 3.1 Theme applied effectively to PDF content
 
-O que foi feito:
-- Definidas variáveis de filtro visual por tema para o canvas.
-- Aplicação de filtro do canvas na folha de estilos do webview.
-- Ajuste do script para aplicar tema efetivo imediatamente ao receber mensagem de applyTheme.
-- Envio separado de preferência de tema e tema efetivo para suportar modo auto com sincronização correta.
+What was done:
+- Defined per-theme visual filter variables for the canvas.
+- Applied the canvas filter in the webview stylesheet.
+- Adjusted the script to apply the effective theme immediately upon receiving an `applyTheme` message.
+- Sent theme preference and effective theme separately to support auto mode with correct synchronization.
 
-Resultado:
-- Light, Dark, Sepia e High Contrast passam a afetar o conteúdo visível da página.
-- Troca de tema fica instantânea, sem necessidade de recarregar o viewer inteiro.
+Result:
+- Light, Dark, Sepia, and High Contrast now affect the visible page content.
+- Theme switching is instantaneous, without needing to reload the entire viewer.
 
-### 3.2 Remoção de rerender completo na troca de tema
+### 3.2 Removal of full re-render on theme change
 
-O que foi feito:
-- Substituída estratégia de reconstruir webview.html por atualização via postMessage.
-- No modo auto, mudança de tema do VS Code agora envia apenas atualização de tema efetivo.
+What was done:
+- Replaced the strategy of rebuilding `webview.html` with updates via `postMessage`.
+- In auto mode, VS Code theme changes now send only an effective theme update.
 
-Resultado:
-- Menos custo de processamento.
-- Menos perda de estado e menos trabalho redundante.
-- Melhor responsividade ao alternar tema.
+Result:
+- Less processing overhead.
+- Less state loss and less redundant work.
+- Better responsiveness when switching themes.
 
-### 3.3 Otimização da abertura inicial
+### 3.3 Initial opening optimization
 
-O que foi feito:
-- Inicialização passou a priorizar first paint do viewer.
-- Carregamento de anotações movido para etapa assíncrona após render inicial.
+What was done:
+- Initialization was changed to prioritize the viewer's first paint.
+- Annotation loading was moved to an asynchronous step after the initial render.
 
-Resultado:
-- PDF aparece antes na tela.
-- Sidebar e overlays são atualizados em seguida sem bloquear a abertura inicial.
+Result:
+- PDF appears on screen sooner.
+- Sidebar and overlays are updated afterward without blocking the initial opening.
 
-## 4. Evidências de Validação
+## 4. Validation Evidence
 
-Validações executadas:
-- Compilação TypeScript sem erros.
-- Testes focados do PDF viewer com aprovação total.
+Validations performed:
+- TypeScript compilation without errors.
+- Focused PDF viewer tests with full pass.
 
-Comandos validados:
+Commands validated:
 - npm run compile
 - npm test -- pdf-viewer
 
 Status:
-- Todas as suítes de teste relacionadas ao viewer passaram.
+- All test suites related to the viewer passed.
 
-## 5. Comparação com Leitores de Referência
+## 5. Comparison with Reference Readers
 
-Foi analisado o comportamento do ecossistema vscode-pdfviewer (baseado no viewer completo do PDF.js).
+The behavior of the vscode-pdfviewer ecosystem (based on the full PDF.js viewer) was analyzed.
 
-Pontos de arquitetura relevantes observados:
-- Estratégia incremental de renderização.
-- Fila de renderização com prioridade de páginas visíveis.
-- Cache e reaproveitamento de estado para evitar trabalho redundante.
-- Suporte de pageColors no pipeline de renderização do PDF.js.
+Relevant architectural points observed:
+- Incremental rendering strategy.
+- Render queue with priority for visible pages.
+- State caching and reuse to avoid redundant work.
+- `pageColors` support in the PDF.js rendering pipeline.
 
-Conclusão:
-- O ganho de desempenho desses leitores vem principalmente de arquitetura incremental e cache, não apenas de CSS.
-- As correções aplicadas nesta iteração alinham a base do LabShelf com esse caminho.
+Conclusion:
+- The performance gains in those readers come mainly from incremental architecture and caching, not just CSS.
+- The fixes applied in this iteration align LabShelf's foundation with that approach.
 
-## 6. Riscos e Limitações Atuais
+## 6. Current Risks and Limitations
 
-1. O uso de filtros de canvas resolve rapidamente a experiência visual, mas não substitui totalmente pageColors nativo do PDF.js em todos os casos.
-2. Ainda há espaço para acelerar PDFs muito grandes com virtualização mais agressiva.
-3. A renderização permanece de página única por vez no fluxo atual.
+1. Using canvas filters resolves the visual experience quickly, but does not fully replace native PDF.js `pageColors` in all cases.
+2. There is still room to speed up very large PDFs with more aggressive virtualization.
+3. Rendering remains single-page-at-a-time in the current flow.
 
-## 7. Próximas Melhorias Recomendadas
+## 7. Recommended Next Improvements
 
 ### 7.1 Performance
-- Implementar cache de página por escala.
-- Pré-render da próxima página e da anterior.
-- Virtualização para documentos longos.
-- Debounce adicional para eventos de zoom/navegação intensiva.
+- Implement per-scale page cache.
+- Pre-render the next and previous pages.
+- Virtualization for long documents.
+- Additional debounce for intensive zoom/navigation events.
 
 ### 7.2 Theming
-- Evoluir de filtro visual para estratégia baseada em pageColors quando aplicável.
-- Expandir testes visuais para contraste e legibilidade por tema.
+- Evolve from visual filters to a `pageColors`-based strategy where applicable.
+- Expand visual tests for contrast and readability per theme.
 
-### 7.3 Observabilidade
-- Adicionar métricas de tempo de abertura (ms até first paint).
-- Log estruturado para operações de render e troca de tema.
+### 7.3 Observability
+- Add opening time metrics (ms to first paint).
+- Structured logging for render operations and theme changes.
 
-## 8. Conclusão
+## 8. Conclusion
 
-Os problemas principais reportados (lentidão de abertura e tema não aplicado) foram rastreados até causas arquiteturais e de rendering no canvas.
+The main reported problems (slow opening and theme not applied) were traced to architectural and canvas rendering causes.
 
-As correções entregues:
-- Eliminam rerender desnecessário na troca de tema.
-- Aplicam tema de forma visível ao conteúdo do PDF.
-- Reduzem tempo percebido na abertura ao priorizar first paint.
+The delivered fixes:
+- Eliminate unnecessary re-renders on theme change.
+- Apply the theme visibly to PDF content.
+- Reduce perceived opening time by prioritizing first paint.
 
-Com isso, o viewer fica funcionalmente consistente com a proposta das fases 1 a 3 e mais próximo da experiência esperada em leitores de referência.
+With these changes, the viewer is functionally consistent with the proposal from phases 1 to 3 and closer to the expected experience in reference readers.
