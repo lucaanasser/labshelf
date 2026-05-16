@@ -12,7 +12,7 @@ import { ExtensionEventBus } from "./eventBus.js";
 import type { ResearchDatabase } from "../db/database.js";
 import { FileSystemService } from "../storage/fileSystemService.js";
 import type { ILibraryPaths } from "../storage/paths/libraryPaths.js";
-import { PdfImportParser } from "../pdf/pdfImportParser.js";
+import { PdfImportParser } from "../pdf/index.js";
 import { BibTeXService } from "../bibtex/bibtexService.js";
 
 export class PaperService {

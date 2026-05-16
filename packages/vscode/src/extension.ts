@@ -30,7 +30,7 @@ import { ListWebviewPanel } from "./ui/list/index.js";
 import { PdfViewerPanel } from "./pdf-viewer/PdfViewerPanel.js";
 import { registerCommands } from "./commands/registerCommands.js";
 import type { ActiveServices } from "./commands/registerCommands.js";
-import { PdfImportParser } from "./pdf/pdfImportParser.js";
+import { PdfImportParser } from "./pdf/index.js";
 import { BibTeXService } from "./bibtex/bibtexService.js";
 import { ThemeManager } from "./pdf-viewer/ThemeManager.js";
 import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
