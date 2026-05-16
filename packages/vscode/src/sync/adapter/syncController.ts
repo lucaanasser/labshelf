@@ -8,15 +8,15 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILibraryPaths } from "../storage/paths/libraryPaths.js";
-import type { ExtensionEventBus } from "../core/eventBus.js";
-import { GoogleDriveAuth } from "./googleDriveAuth.js";
-import { createGoogleDriveProvider } from "./googleDriveProvider.js";
-import { SyncEngine } from "./syncEngine.js";
-import { SyncManifest } from "./syncManifest.js";
+import type { ILibraryPaths } from "../../storage/paths/libraryPaths.js";
+import type { ExtensionEventBus } from "../../core/eventBus.js";
+import { GoogleDriveAuth } from "../auth/googleDriveAuth.js";
+import { createGoogleDriveProvider } from "../drive/googleDriveProvider.js";
+import { SyncEngine } from "../core/syncEngine.js";
+import { SyncManifest } from "../core/syncManifest.js";
 import { VscodeLocalFileSystem } from "./vscodeLocalFileSystem.js";
-import type { SyncResult } from "./syncTypes.js";
-import type { FolderNameMaps } from "./syncEngine.js";
+import type { SyncResult } from "../core/syncTypes.js";
+import type { FolderNameMaps } from "../core/syncEngine.js";
 
 const DEBOUNCE_MS = 30_000;
 const PROVIDER_ID = "google-drive";

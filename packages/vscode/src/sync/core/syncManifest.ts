@@ -9,7 +9,7 @@ import type {
   ManifestData,
   ManifestEntry,
 } from "./syncTypes.js";
-import type { RemoteNamespace } from "./remoteProvider.js";
+import type { RemoteNamespace } from "../provider/remoteProvider.js";
 
 function emptyData(providerId: string): ManifestData {
   return { providerId, namespaces: { library: {}, appdata: {} } };

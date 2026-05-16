@@ -1,13 +1,15 @@
 /**
- * Module: Sync (barrel)
- * Responsibility: Public surface of the provider-agnostic sync layer
- * Dependencies: sync submodules
+ * Module: Sync (root barrel)
+ * Responsibility: Public surface of the sync layer — re-exports all public
+ *   symbols from the six subdirectories
  */
 export type {
   RemoteProvider,
   RemoteFile,
   RemoteNamespace,
-} from "./remoteProvider.js";
+} from "./provider/index.js";
+export { RemotePathResolver, splitPath } from "./provider/index.js";
+
 export type {
   LocalFileSystem,
   LocalStat,
@@ -18,18 +20,23 @@ export type {
   SyncOperation,
   NamespaceResult,
   SyncResult,
-} from "./syncTypes.js";
-export { SyncManifest } from "./syncManifest.js";
-export { diffNamespace } from "./syncDiff.js";
-export { applyOperations } from "./syncApply.js";
-export type { ApplyContext } from "./syncApply.js";
-export { RemotePathResolver, splitPath } from "./remotePathResolver.js";
-export { conflictPath, isoDate } from "./conflictName.js";
-export { sha256Hex } from "./contentHash.js";
-export { scanLocalTree, scanRemoteTree } from "./treeScan.js";
-export { SyncEngine } from "./syncEngine.js";
-export type { SyncEngineDeps, NamespaceRoots } from "./syncEngine.js";
-export { DriveClient } from "./googleDriveClient.js";
-export type { DriveFile, DriveFileList } from "./googleDriveClient.js";
-export { GoogleDriveAuth } from "./googleDriveAuth.js";
-export { GoogleDriveProvider, createGoogleDriveProvider } from "./googleDriveProvider.js";
+} from "./core/index.js";
+export { SyncManifest } from "./core/index.js";
+export { diffNamespace } from "./core/index.js";
+export { applyOperations } from "./core/index.js";
+export type { ApplyContext } from "./core/index.js";
+export { scanLocalTree, scanRemoteTree } from "./core/index.js";
+export { SyncEngine } from "./core/index.js";
+export type { SyncEngineDeps, NamespaceRoots, FolderNameMaps } from "./core/index.js";
+
+export { DriveClient } from "./drive/index.js";
+export type { DriveFile, DriveFileList } from "./drive/index.js";
+export { GoogleDriveProvider, createGoogleDriveProvider } from "./drive/index.js";
+
+export { GoogleDriveAuth } from "./auth/index.js";
+
+export { sha256Hex } from "./util/index.js";
+export { conflictPath, isoDate } from "./util/index.js";
+
+export { VscodeLocalFileSystem } from "./adapter/index.js";
+export { SyncController } from "./adapter/index.js";

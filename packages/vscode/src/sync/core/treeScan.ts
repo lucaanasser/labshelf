@@ -5,9 +5,9 @@
  * Dependencies: syncTypes, remoteProvider, remotePathResolver, contentHash
  */
 import type { LocalFileSystem, TreeNode } from "./syncTypes.js";
-import type { RemoteProvider } from "./remoteProvider.js";
-import type { RemotePathResolver } from "./remotePathResolver.js";
-import { sha256Hex } from "./contentHash.js";
+import type { RemoteProvider } from "../provider/remoteProvider.js";
+import type { RemotePathResolver } from "../provider/remotePathResolver.js";
+import { sha256Hex } from "../util/contentHash.js";
 
 function joinPath(prefix: string, name: string): string {
   return prefix ? `${prefix}/${name}` : name;

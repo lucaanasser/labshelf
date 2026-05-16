@@ -10,7 +10,7 @@ import type {
   TreeNode,
 } from "./syncTypes.js";
 import type { SyncManifest } from "./syncManifest.js";
-import type { RemoteNamespace } from "./remoteProvider.js";
+import type { RemoteNamespace } from "../provider/remoteProvider.js";
 
 /** True when a node differs from its recorded base. */
 function localChanged(node: TreeNode, baseHash: string): boolean {

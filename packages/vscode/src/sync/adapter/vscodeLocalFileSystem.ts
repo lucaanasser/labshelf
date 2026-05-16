@@ -5,7 +5,7 @@
  * Dependencies: vscode
  */
 import * as vscode from "vscode";
-import type { LocalFileSystem, LocalStat } from "./syncTypes.js";
+import type { LocalFileSystem, LocalStat } from "../core/syncTypes.js";
 
 export class VscodeLocalFileSystem implements LocalFileSystem {
   async listDir(dirPath: string): Promise<string[]> {

@@ -37,7 +37,7 @@ import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
 import { PaperDataStore } from "./storage/data/paperDataStore.js";
 import { LibraryIndexer } from "./storage/data/libraryIndexer.js";
 import { migrateSidecarsFromDb } from "./storage/data/migrateSidecars.js";
-import { SyncController } from "./sync/syncController.js";
+import { SyncController } from "./sync/adapter/syncController.js";
 import type { ResearchDatabase } from "./db/database.js";
 import type { PaperRecord } from "./core/types.js";
 

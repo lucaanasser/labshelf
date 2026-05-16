@@ -5,7 +5,7 @@
  * Dependencies: vscode, SyncController
  */
 import * as vscode from "vscode";
-import type { SyncController } from "../sync/syncController.js";
+import type { SyncController } from "../sync/adapter/syncController.js";
 
 type SyncItemKind = "status" | "action-connect" | "action-sync" | "action-disconnect";
 

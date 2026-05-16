@@ -4,10 +4,10 @@
  *   Maps the Drive API concepts to the provider-agnostic RemoteFile interface.
  */
 
-import type { RemoteProvider, RemoteFile, RemoteNamespace } from "./remoteProvider.js";
+import type { RemoteProvider, RemoteFile, RemoteNamespace } from "../provider/remoteProvider.js";
 import type { DriveFile } from "./googleDriveClient.js";
 import { DriveClient } from "./googleDriveClient.js";
-import { GoogleDriveAuth } from "./googleDriveAuth.js";
+import { GoogleDriveAuth } from "../auth/googleDriveAuth.js";
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const LIST_FIELDS = "files(id,name,mimeType,modifiedTime,size)";

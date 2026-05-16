@@ -5,17 +5,17 @@
  * Dependencies: syncTypes, remoteProvider, remotePathResolver, conflictName,
  *   syncManifest, contentHash
  */
-import type { RemoteProvider } from "./remoteProvider.js";
-import type { RemoteNamespace } from "./remoteProvider.js";
+import type { RemoteProvider } from "../provider/remoteProvider.js";
+import type { RemoteNamespace } from "../provider/remoteProvider.js";
 import type {
   LocalFileSystem,
   NamespaceResult,
   SyncOperation,
 } from "./syncTypes.js";
 import type { SyncManifest } from "./syncManifest.js";
-import { RemotePathResolver, splitPath } from "./remotePathResolver.js";
-import { conflictPath } from "./conflictName.js";
-import { sha256Hex } from "./contentHash.js";
+import { RemotePathResolver, splitPath } from "../provider/remotePathResolver.js";
+import { conflictPath } from "../util/conflictName.js";
+import { sha256Hex } from "../util/contentHash.js";
 
 /** Context the apply step needs beyond the operation list. */
 export interface ApplyContext {

@@ -5,7 +5,7 @@
  * Dependencies: remoteProvider, syncTypes, syncManifest, syncDiff, syncApply,
  *   treeScan, remotePathResolver
  */
-import type { RemoteProvider, RemoteNamespace } from "./remoteProvider.js";
+import type { RemoteProvider, RemoteNamespace } from "../provider/remoteProvider.js";
 import type {
   LocalFileSystem,
   NamespaceResult,
@@ -15,7 +15,7 @@ import type { SyncManifest } from "./syncManifest.js";
 import { diffNamespace } from "./syncDiff.js";
 import { applyOperations } from "./syncApply.js";
 import { scanLocalTree, scanRemoteTree } from "./treeScan.js";
-import { RemotePathResolver } from "./remotePathResolver.js";
+import { RemotePathResolver } from "../provider/remotePathResolver.js";
 
 /** Maps each namespace to its absolute local root directory. */
 export type NamespaceRoots = Record<RemoteNamespace, string>;
