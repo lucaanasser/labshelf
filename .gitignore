@@ -1,0 +1,15 @@
+node_modules/
+packages/*/node_modules/
+out/
+packages/*/out/
+packages/*/dist/
+.research/
+.vscode-test/
+coverage/
+*.vsix
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.local
+
