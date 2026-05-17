@@ -198,54 +198,30 @@ export class SqliteResearchDatabase implements ResearchDatabase {
   async createAnnotation(data: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>): Promise<Annotation> {
     const now = new Date().toISOString();
     const id = `ann-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    this.requireConnection().prepare(`
-      INSERT INTO annotations (id, paperId, type, pageNumber, content, color, position, createdAt, updatedAt)
-      VALUES (@id, @paperId, @type, @pageNumber, @content, @color, @position, @createdAt, @updatedAt)
-    `).run({
-      id,
-      paperId: data.paperId,
-      type: data.type,
-      pageNumber: data.pageNumber,
-      content: data.content,
-      color: data.color ?? null,
-      position: data.position ? JSON.stringify(data.position) : null,
-      createdAt: now,
-      updatedAt: now,
-    });
+    this.requireConnection().prepare(
+      `INSERT INTO annotations (id, paperId, type, pageNumber, content, color, position, createdAt, updatedAt)
+       VALUES (@id, @paperId, @type, @pageNumber, @content, @color, @position, @createdAt, @updatedAt)`,
+    ).run({ id, paperId: data.paperId, type: data.type, pageNumber: data.pageNumber, content: data.content,
+      color: data.color ?? null, position: data.position ? JSON.stringify(data.position) : null, createdAt: now, updatedAt: now });
     return { ...data, id, createdAt: now, updatedAt: now };
   }
 
   async upsertAnnotation(annotation: Annotation): Promise<void> {
-    this.requireConnection().prepare(`
-      INSERT INTO annotations (id, paperId, type, pageNumber, content, color, position, createdAt, updatedAt)
-      VALUES (@id, @paperId, @type, @pageNumber, @content, @color, @position, @createdAt, @updatedAt)
-      ON CONFLICT(id) DO UPDATE SET
-        paperId = excluded.paperId,
-        type = excluded.type,
-        pageNumber = excluded.pageNumber,
-        content = excluded.content,
-        color = excluded.color,
-        position = excluded.position,
-        createdAt = excluded.createdAt,
-        updatedAt = excluded.updatedAt
-    `).run({
-      id: annotation.id,
-      paperId: annotation.paperId,
-      type: annotation.type,
-      pageNumber: annotation.pageNumber,
-      content: annotation.content,
-      color: annotation.color ?? null,
+    this.requireConnection().prepare(
+      `INSERT INTO annotations (id, paperId, type, pageNumber, content, color, position, createdAt, updatedAt)
+       VALUES (@id, @paperId, @type, @pageNumber, @content, @color, @position, @createdAt, @updatedAt)
+       ON CONFLICT(id) DO UPDATE SET paperId=excluded.paperId, type=excluded.type,
+         pageNumber=excluded.pageNumber, content=excluded.content, color=excluded.color,
+         position=excluded.position, createdAt=excluded.createdAt, updatedAt=excluded.updatedAt`,
+    ).run({ id: annotation.id, paperId: annotation.paperId, type: annotation.type,
+      pageNumber: annotation.pageNumber, content: annotation.content, color: annotation.color ?? null,
       position: annotation.position ? JSON.stringify(annotation.position) : null,
-      createdAt: annotation.createdAt,
-      updatedAt: annotation.updatedAt,
-    });
+      createdAt: annotation.createdAt, updatedAt: annotation.updatedAt });
   }
 
   async updateAnnotation(id: string, content: string): Promise<Annotation | null> {
     const now = new Date().toISOString();
-    this.requireConnection().prepare(`
-      UPDATE annotations SET content = @content, updatedAt = @updatedAt WHERE id = @id
-    `).run({ id, content, updatedAt: now });
+    this.requireConnection().prepare(`UPDATE annotations SET content = @content, updatedAt = @updatedAt WHERE id = @id`).run({ id, content, updatedAt: now });
     return this.findAnnotation(id);
   }
 
@@ -254,55 +230,38 @@ export class SqliteResearchDatabase implements ResearchDatabase {
   }
 
   async getAnnotationsByPaper(paperId: string): Promise<Annotation[]> {
-    const rows = this.requireConnection().prepare(`
-      SELECT * FROM annotations WHERE paperId = ? ORDER BY pageNumber ASC, createdAt ASC
-    `).all(paperId) as AnnotationRow[];
+    const rows = this.requireConnection().prepare(`SELECT * FROM annotations WHERE paperId = ? ORDER BY pageNumber ASC, createdAt ASC`).all(paperId) as AnnotationRow[];
     return rows.map(rowToAnnotation);
   }
 
   async getAnnotationsByPage(paperId: string, pageNumber: number): Promise<Annotation[]> {
-    const rows = this.requireConnection().prepare(`
-      SELECT * FROM annotations WHERE paperId = @paperId AND pageNumber = @pageNumber ORDER BY createdAt ASC
-    `).all({ paperId, pageNumber }) as AnnotationRow[];
+    const rows = this.requireConnection().prepare(`SELECT * FROM annotations WHERE paperId = @paperId AND pageNumber = @pageNumber ORDER BY createdAt ASC`).all({ paperId, pageNumber }) as AnnotationRow[];
     return rows.map(rowToAnnotation);
   }
 
   async getThemePreference(paperId: string): Promise<PdfTheme> {
-    const row = this.requireConnection().prepare(`
-      SELECT theme FROM paperThemePreferences WHERE paperId = ?
-    `).get(paperId) as { theme: string } | undefined;
+    const row = this.requireConnection().prepare(`SELECT theme FROM paperThemePreferences WHERE paperId = ?`).get(paperId) as { theme: string } | undefined;
     return (row?.theme as PdfTheme) ?? 'auto';
   }
 
   async setThemePreference(paperId: string, theme: PdfTheme): Promise<void> {
     const now = new Date().toISOString();
-    this.requireConnection().prepare(`
-      INSERT INTO paperThemePreferences (paperId, theme, updatedAt)
-      VALUES (@paperId, @theme, @updatedAt)
-      ON CONFLICT(paperId) DO UPDATE SET theme = excluded.theme, updatedAt = excluded.updatedAt
-    `).run({ paperId, theme, updatedAt: now });
+    this.requireConnection().prepare(
+      `INSERT INTO paperThemePreferences (paperId, theme, updatedAt) VALUES (@paperId, @theme, @updatedAt)
+       ON CONFLICT(paperId) DO UPDATE SET theme = excluded.theme, updatedAt = excluded.updatedAt`,
+    ).run({ paperId, theme, updatedAt: now });
   }
 
   async appendLog(entry: LogEntry): Promise<void> {
-    this.requireConnection().prepare(`
-      INSERT INTO logs (timestamp, level, module, message, stack, context)
-      VALUES (@timestamp, @level, @module, @message, @stack, @context)
-    `).run({
-      timestamp: entry.timestamp,
-      level: entry.level,
-      module: entry.module,
-      message: entry.message,
-      stack: entry.stack ?? null,
-      context: JSON.stringify(entry.context),
+    this.requireConnection().prepare(`INSERT INTO logs (timestamp, level, module, message, stack, context) VALUES (@timestamp, @level, @module, @message, @stack, @context)`).run({
+      timestamp: entry.timestamp, level: entry.level, module: entry.module, message: entry.message,
+      stack: entry.stack ?? null, context: JSON.stringify(entry.context),
     });
   }
 
   // Returns the live DatabaseSync or throws if initialize() was never called.
   private requireConnection(): DatabaseSync {
-    if (!this.connection) {
-      throw new Error("SQLite database has not been initialized");
-    }
-
+    if (!this.connection) { throw new Error("SQLite database has not been initialized"); }
     return this.connection;
   }
 
@@ -338,7 +297,6 @@ export class SqliteResearchDatabase implements ResearchDatabase {
     const row = this.requireConnection().prepare(`SELECT * FROM annotations WHERE id = ?`).get(id) as AnnotationRow | undefined;
     return row ? rowToAnnotation(row) : null;
   }
-
   // Creates the annotations table and its paperId/pageNumber index if they do not exist.
   private ensureAnnotationsTable(): void {
     this.requireConnection().exec(`
@@ -357,7 +315,6 @@ export class SqliteResearchDatabase implements ResearchDatabase {
       CREATE INDEX IF NOT EXISTS idx_annotations_paperId_page ON annotations(paperId, pageNumber);
     `);
   }
-
   // Creates the paperThemePreferences table if it does not exist.
   private ensureThemePreferencesTable(): void {
     this.requireConnection().exec(`
