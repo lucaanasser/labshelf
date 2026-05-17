@@ -3,9 +3,8 @@
 import * as vscode from "vscode";
 import * as http from "node:http";
 import * as crypto from "node:crypto";
+import { CLIENT_ID, CLIENT_SECRET } from "./googleDriveCredentials.js";
 
-const CLIENT_ID = "REDACTED_CLIENT_ID";
-const CLIENT_SECRET = "REDACTED_CLIENT_SECRET";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const REVOKE_URL = "https://oauth2.googleapis.com/revoke";

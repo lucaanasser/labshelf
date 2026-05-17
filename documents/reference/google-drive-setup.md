@@ -4,12 +4,9 @@ This page covers how to update the OAuth client credentials used by the sync fea
 
 ## OAuth client credentials
 
-The extension uses a standard OAuth 2.0 Authorization Code + PKCE loopback flow. The credentials live in `packages/vscode/src/sync/googleDriveAuth.ts`:
+The extension uses a standard OAuth 2.0 Authorization Code + PKCE loopback flow. The credentials are kept out of source control. They live in `packages/vscode/src/sync/auth/googleDriveCredentials.ts`, which is gitignored. A template `googleDriveCredentials.example.ts` is committed alongside it.
 
-```ts
-const CLIENT_ID     = "REDACTED_CLIENT_ID";
-const CLIENT_SECRET = "REDACTED_CLIENT_SECRET";
-```
+To set up credentials locally, copy `googleDriveCredentials.example.ts` to `googleDriveCredentials.ts` (same directory) and fill in the values from the Google Cloud Console.
 
 ### How to update the Client ID and Client Secret
 
@@ -17,7 +14,7 @@ const CLIENT_SECRET = "REDACTED_CLIENT_SECRET";
 2. Go to **APIs & Services → Credentials**.
 3. Open the OAuth 2.0 Client ID of type **Desktop app** (or create one if it does not exist).
 4. Copy the new Client ID and Client Secret.
-5. Replace both constants at the top of `packages/vscode/src/sync/googleDriveAuth.ts`.
+5. Copy `googleDriveCredentials.example.ts` to `googleDriveCredentials.ts` and fill in the values from the Google Cloud Console (this file is gitignored — never commit it).
 6. Make sure the following **Authorized redirect URIs** are listed on the client:
    - `http://127.0.0.1` (the loopback server uses a random ephemeral port, so only the host is checked by the loopback flow; the port is included at runtime via `redirect_uri` in the request)
 7. Save the client and rebuild the extension.
