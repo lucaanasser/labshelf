@@ -4,7 +4,7 @@ let _paperId = 0;
 function nextPaperId() { return `paper-${++_paperId}`; }
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
-import { PaperDataStore } from '../../src/storage/paperDataStore';
+import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 import { ExtensionEventBus } from '../../src/core/eventBus';
 import { EVENTS } from '../../src/constants/events';

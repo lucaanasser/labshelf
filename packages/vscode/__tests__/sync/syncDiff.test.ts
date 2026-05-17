@@ -1,6 +1,6 @@
-import { diffNamespace } from "../../src/sync/syncDiff.js";
-import { SyncManifest } from "../../src/sync/syncManifest.js";
-import type { TreeNode } from "../../src/sync/syncTypes.js";
+import { diffNamespace } from "../../src/sync/core/syncDiff.js";
+import { SyncManifest } from "../../src/sync/core/syncManifest.js";
+import type { TreeNode } from "../../src/sync/core/syncTypes.js";
 import { MemoryFileSystem } from "./fakes.js";
 
 function localNode(path: string, hash: string): TreeNode {

@@ -4,12 +4,12 @@
 import type {
   LocalFileSystem,
   LocalStat,
-} from "../../src/sync/syncTypes.js";
+} from "../../src/sync/core/syncTypes.js";
 import type {
   RemoteFile,
   RemoteNamespace,
   RemoteProvider,
-} from "../../src/sync/remoteProvider.js";
+} from "../../src/sync/provider/remoteProvider.js";
 
 /** In-memory filesystem keyed by absolute POSIX paths. */
 export class MemoryFileSystem implements LocalFileSystem {

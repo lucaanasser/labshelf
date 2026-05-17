@@ -1,5 +1,5 @@
-import { SyncEngine } from "../../src/sync/syncEngine.js";
-import { SyncManifest } from "../../src/sync/syncManifest.js";
+import { SyncEngine } from "../../src/sync/core/syncEngine.js";
+import { SyncManifest } from "../../src/sync/core/syncManifest.js";
 import { MemoryFileSystem, FakeRemoteProvider } from "./fakes.js";
 
 async function build(): Promise<{

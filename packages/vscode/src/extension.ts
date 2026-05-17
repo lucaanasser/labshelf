@@ -299,9 +299,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 /** Called by VS Code on extension deactivation — cleanup is handled via disposables. @usedBy vscode runtime. @returns void */
-export function deactivate(): void {
-  return;
-}
+export function deactivate(): void { return; }
 
 // Returns true when the folder name is non-empty and contains no path separators.
 function isValidFolderName(value: string): boolean {

@@ -4,7 +4,7 @@ import {
   persistLibraryRoot,
   ensureLibraryStructure,
   runLibrarySetupWizard,
-} from '../../src/storage/libraryLocation';
+} from '../../src/storage/paths/libraryLocation';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 
 function makeUri(fsPath: string): vscode.Uri {

@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { LibraryIndexer } from '../../src/storage/libraryIndexer';
-import { PaperDataStore } from '../../src/storage/paperDataStore';
+import { LibraryIndexer } from '../../src/storage/data/libraryIndexer';
+import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
-import { LibraryPaths } from '../../src/storage/libraryPaths';
+import { LibraryPaths } from '../../src/storage/paths/libraryPaths';
 import { InMemoryResearchDatabase } from '../../src/db/database';
 
 // Fake FileSystemService backed by an in-memory map. readDirectory/readText are

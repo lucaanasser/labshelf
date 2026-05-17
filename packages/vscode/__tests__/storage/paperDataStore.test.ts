@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { PaperDataStore } from '../../src/storage/paperDataStore';
+import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 
 // In-memory FileSystemService: keeps a fsPath -> content map so tests do not

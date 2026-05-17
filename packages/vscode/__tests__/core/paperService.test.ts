@@ -3,7 +3,7 @@ import { PaperService } from '../../src/core/paperService';
 import type { ResearchDatabase } from '../../src/db/database';
 import type { ExtensionEventBus } from '../../src/core/eventBus';
 import type { FileSystemService } from '../../src/storage/fileSystemService';
-import type { ILibraryPaths } from '../../src/storage/libraryPaths';
+import type { ILibraryPaths } from '../../src/storage/paths/libraryPaths';
 import type { PdfImportParser } from '../../src/pdf/pdfImportParser';
 import type { BibTeXService } from '../../src/bibtex/bibtexService';
 

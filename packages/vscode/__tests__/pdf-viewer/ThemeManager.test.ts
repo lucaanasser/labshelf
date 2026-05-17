@@ -1,5 +1,5 @@
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
-import { PaperDataStore } from '../../src/storage/paperDataStore';
+import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 
 const vscode = require('vscode');

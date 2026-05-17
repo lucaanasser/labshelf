@@ -2,7 +2,7 @@
  * Unit tests for DriveClient -- fetch is mocked so no real HTTP occurs.
  */
 
-import { DriveClient } from "../../src/sync/googleDriveClient.js";
+import { DriveClient } from "../../src/sync/drive/googleDriveClient.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
