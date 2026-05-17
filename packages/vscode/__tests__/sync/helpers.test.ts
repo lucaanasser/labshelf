@@ -1,6 +1,6 @@
-import { conflictPath, isoDate } from "../../src/sync/conflictName.js";
-import { sha256Hex } from "../../src/sync/contentHash.js";
-import { splitPath, RemotePathResolver } from "../../src/sync/remotePathResolver.js";
+import { conflictPath, isoDate } from "../../src/sync/util/conflictName.js";
+import { sha256Hex } from "../../src/sync/util/contentHash.js";
+import { splitPath, RemotePathResolver } from "../../src/sync/provider/remotePathResolver.js";
 import { FakeRemoteProvider } from "./fakes.js";
 
 describe("conflictName", () => {
@@ -10,12 +10,12 @@ describe("conflictName", () => {
 
   it("preserves the extension when renaming", () => {
     expect(conflictPath("papers/a/paper.pdf", new Date("2026-05-16T00:00:00Z")))
-      .toBe("papers/a/paper (conflito 2026-05-16).pdf");
+      .toBe("papers/a/paper (conflict 2026-05-16).pdf");
   });
 
   it("handles paths without an extension", () => {
     expect(conflictPath("README", new Date("2026-05-16T00:00:00Z")))
-      .toBe("README (conflito 2026-05-16)");
+      .toBe("README (conflict 2026-05-16)");
   });
 });
 

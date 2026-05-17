@@ -115,13 +115,13 @@ describe('PdfRenderer', () => {
       const html = renderer.generateHtml(makeParams({ themePreference: 'sepia' }));
       expect(html).toContain('--pdf-bg');
       // Sepia has warm background
-      expect(html).toContain('#f4efe4');
-      expect(html).toContain(':root[data-pdf-theme="sepia"]');
+      expect(html).toContain('#e8dfc8');
+      expect(html).toContain('[data-pdf-theme="sepia"]');
     });
 
     it('sets the initial data-pdf-theme attribute to the effective theme', () => {
       const html = renderer.generateHtml(makeParams({ themePreference: 'auto' }));
-      expect(html).toContain('<html lang="en" data-pdf-theme="dark">');
+      expect(html).toContain('<html id="root" lang="en" data-pdf-theme="dark">');
     });
 
     it('escapes special characters in paper title', () => {

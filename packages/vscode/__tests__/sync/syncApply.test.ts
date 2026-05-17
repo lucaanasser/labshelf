@@ -1,9 +1,9 @@
-import { applyOperations } from "../../src/sync/syncApply.js";
-import type { ApplyContext } from "../../src/sync/syncApply.js";
-import { SyncManifest } from "../../src/sync/syncManifest.js";
-import { RemotePathResolver } from "../../src/sync/remotePathResolver.js";
-import { sha256Hex } from "../../src/sync/contentHash.js";
-import type { TreeNode } from "../../src/sync/syncTypes.js";
+import { applyOperations } from "../../src/sync/core/syncApply.js";
+import type { ApplyContext } from "../../src/sync/core/syncApply.js";
+import { SyncManifest } from "../../src/sync/core/syncManifest.js";
+import { RemotePathResolver } from "../../src/sync/provider/remotePathResolver.js";
+import { sha256Hex } from "../../src/sync/util/contentHash.js";
+import type { TreeNode } from "../../src/sync/core/syncTypes.js";
 import { MemoryFileSystem, FakeRemoteProvider } from "./fakes.js";
 
 async function makeContext(): Promise<{
@@ -128,7 +128,7 @@ describe("applyOperations", () => {
     ]);
 
     expect(result.conflicts).toEqual(["papers/a/paper.pdf"]);
-    const conflictPath = "papers/a/paper (conflito 2026-05-16).pdf";
+    const conflictPath = "papers/a/paper (conflict 2026-05-16).pdf";
     expect(fs.text(`/lib/${conflictPath}`)).toBe("REMOTE");
     expect(manifest.get("library", conflictPath)).toBeDefined();
     expect(manifest.get("library", "papers/a/paper.pdf")).toBeDefined();
