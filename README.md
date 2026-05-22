@@ -21,14 +21,14 @@ This is a [pnpm](https://pnpm.io) monorepo with five packages:
 
 ```
 packages/
-  core/       @labshelf/core    — domain logic, types, event bus, PDF parser, BibTeX (no VS Code dependency)
-  vscode/     @labshelf/vscode  — VS Code extension: UI, commands, SQLite adapter, filesystem adapter
+  core/       @labshelf/core    — shared logic: types, interfaces, event bus, PDF parser, BibTeX, full sync engine and Drive client (no VS Code, no Node-only APIs, no browser APIs)
+  vscode/     @labshelf/vscode  — VS Code extension: UI, commands, SQLite adapter, filesystem + Drive auth adapters, NodePdfOpener
   ai/         @labshelf/ai      — AI provider abstraction and paper summariser (planned)
   latex/      @labshelf/latex   — LaTeX cite-key formatter and bib-sync service (planned)
-  browser/    @labshelf/browser — Browser extension surface (planned)
+  browser/    @labshelf/browser — Browser extension surface (planned) — will reuse @labshelf/core via its own adapters (IndexedDB filesystem, chrome.identity auth, browser PdfDocumentOpener)
 ```
 
-`@labshelf/core` has no dependency on `vscode`, `better-sqlite3`, or any browser API. Every platform-specific concern is implemented as an adapter in the consuming package and injected via constructor.
+`@labshelf/core` has no dependency on `vscode`, `node:sqlite`, `node:http`, `node:fs`, `node:crypto`, or any browser API. Every platform-specific concern is implemented as an adapter in the consuming package and injected via constructor (`IFileSystem`, `IResearchDatabase`, `ILogger`, `LocalFileSystem`, `PdfDocumentOpener`, `IAuthProvider`).
 
 ---
 

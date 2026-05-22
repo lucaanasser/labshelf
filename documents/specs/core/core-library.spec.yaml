@@ -1,6 +1,6 @@
 feature:
   name: Core Library
-  module: core
+  module: "@labshelf/core, @labshelf/vscode"
   description: >
     Import PDFs into a local-first paper library and persist metadata.
     Supports single-PDF import via addPaperFromUri and batch import via
@@ -8,6 +8,14 @@ feature:
     expands folders recursively, filters to .pdf files, processes each PDF
     individually, and isolates failures so one bad item does not abort the
     rest.
+
+    Shared, platform-agnostic logic (types, interfaces, event bus,
+    InMemoryResearchDatabase, PDF parser, DOI resolver, BibTeX service,
+    SyncEngine, RemoteProvider, Google Drive client) lives in
+    @labshelf/core. The VS Code package provides the platform adapters
+    (FileSystemService, VscodeFileSystem, VscodeLocalFileSystem, NodePdfOpener,
+    SqliteResearchDatabase, GoogleDriveAuth) and wires everything via
+    dependency injection in extension.ts.
 
 architecture:
   inputs:
@@ -20,14 +28,22 @@ architecture:
     - metadata.yaml and bib.bib artifacts
     - paper:added event per successfully imported paper
     - BatchImportResult with success, failed, and skipped entries
+  modules:
+    - "@labshelf/core types: PaperRecord, Annotation, BatchImportResult, LogEntry"
+    - "@labshelf/core interfaces: IFileSystem, IResearchDatabase, ILogger"
+    - "@labshelf/core events: ExtensionEventBus, EVENTS"
+    - "@labshelf/core io/pdf: PdfImportParser (accepts PdfDocumentOpener), DOI/arXiv resolver"
+    - "@labshelf/core io/bibtex: BibTeXService (accepts IFileSystem)"
+    - "@labshelf/core sync: SyncEngine, SyncManifest, RemoteProvider, GoogleDriveProvider, DriveClient, IAuthProvider, util/contentHash (WebCrypto sha256Hex), util/conflictName"
+    - "@labshelf/core db: InMemoryResearchDatabase"
+    - "@labshelf/vscode adapters: VscodeFileSystem (IFileSystem), VscodeLocalFileSystem (LocalFileSystem), NodePdfOpener (PdfDocumentOpener), SqliteResearchDatabase, GoogleDriveAuth (IAuthProvider)"
+    - "@labshelf/vscode services: PaperService, WorkspaceLogger"
   dependencies:
     - vscode workspace.fs
     - storage/fileSystemService
+    - storage/vscodeFileSystem
     - storage/paths/libraryPaths
-    - db/database
-    - io/pdf
-    - io/bibtex
-    - core/eventBus
+    - "@labshelf/core (workspace dep)"
 
 database:
   tables_used:
@@ -66,6 +82,9 @@ tests:
     - addPapersFromUris records failed items and continues with the rest
     - _findPdfsInFolder recurses into sub-folders
     - _findPdfsInFolder filters strictly by .pdf extension
+    - PdfImportParser parses raw bytes via an injected PdfDocumentOpener
+    - BibTeXService writes metadata.yaml and bib.bib through IFileSystem
+    - sha256Hex returns a stable digest via Web Crypto
   integration:
     - import flow end-to-end writes files, database rows, and BibTeX artifacts
     - batch import of mixed content keeps successful items even when one fails
