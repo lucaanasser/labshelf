@@ -9,17 +9,18 @@
   <body>
     <main class="popup">
       <header class="popup__header">
-        <h1 class="popup__title">LabShelf</h1>
-        <span id="status" class="popup__status" data-state="idle">disconnected</span>
+        <span class="popup__title">CAPTURE</span>
+        <span id="status" class="popup__status" data-state="idle">DISCONNECTED</span>
       </header>
       <section class="popup__body">
+        <button id="capture" class="popup__btn popup__btn--primary">Save current page</button>
+        <button id="open-library" class="popup__btn">Open library</button>
+        <button id="sync-now" class="popup__btn" disabled>Sync now</button>
         <button id="connect" class="popup__btn">Connect to Drive</button>
-        <button id="sync-now" class="popup__btn popup__btn--secondary" disabled>Sync now</button>
-        <button id="open-library" class="popup__btn popup__btn--secondary">Open library</button>
-        <button id="capture" class="popup__btn popup__btn--secondary">Capture current page</button>
       </section>
       <footer class="popup__footer">
         <small id="sync-status"></small>
+        <small id="capture-source"></small>
       </footer>
     </main>
     <script type="module" src="index.js"></script>

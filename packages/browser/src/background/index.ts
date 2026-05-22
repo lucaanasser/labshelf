@@ -68,8 +68,12 @@ async function handle(msg: RuntimeMessage): Promise<unknown> {
       const tabs = await bx.tabs.query({ active: true, currentWindow: true });
       const tab = tabs[0];
       if (!tab?.id) throw new Error("No active tab found.");
-      const paper = await captureActiveTab(tab.id, tab.url ?? "");
-      return { title: paper.title, citeKey: paper.citeKey } satisfies CaptureResultData;
+      const { paper, pdfSource } = await captureActiveTab(tab.id, tab.url ?? "");
+      return {
+        title: paper.title,
+        citeKey: paper.citeKey,
+        pdfSource,
+      } satisfies CaptureResultData;
     }
     default: {
       const exhaustive: never = msg;

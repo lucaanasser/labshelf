@@ -1,90 +1,108 @@
+/*
+ * Terminal/brutalist aesthetic for the toolbar popup.
+ * Shared design language: monospace, sharp corners, bracketed labels,
+ * uppercase headers, status bar at the bottom.
+ */
 :root {
-  color-scheme: light dark;
-  --bg: #ffffff;
-  --fg: #1f2328;
-  --muted: #6b7280;
-  --accent: #2563eb;
-  --accent-fg: #ffffff;
-  --border: #e5e7eb;
+  color-scheme: dark;
+  --bg: #0e0e10;
+  --bg-elev: #161618;
+  --fg: #f1ecdf;
+  --fg-dim: #b8b3a4;
+  --muted: #6e6a60;
+  --accent: #d39157;
+  --accent-dim: #a76f3f;
+  --ok: #6ba56b;
+  --warn: #d05750;
+  --border: #2a2823;
+  --border-dim: #1d1c19;
+  --mono: ui-monospace, "JetBrains Mono", "IBM Plex Mono", "Berkeley Mono", Menlo, Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1f2328;
-    --fg: #f5f5f5;
-    --muted: #9ca3af;
-    --accent: #3b82f6;
-    --border: #374151;
-  }
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-family: var(--mono);
+  font-size: 12px;
   background: var(--bg);
   color: var(--fg);
-  min-width: 280px;
+  min-width: 320px;
+  line-height: 1.45;
 }
 
 .popup {
   display: flex;
   flex-direction: column;
-  padding: 14px 16px;
-  gap: 14px;
+  border: 1px solid var(--border);
 }
 
 .popup__header {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
-}
-
-.popup__title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.popup__status {
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   font-size: 11px;
-  color: var(--muted);
-  text-transform: lowercase;
 }
 
-.popup__status[data-state="connected"] {
-  color: var(--accent);
-}
+.popup__title { color: var(--accent); }
+.popup__title::before { content: "▮ "; }
+
+.popup__status { color: var(--muted); }
+.popup__status::before { content: "• "; }
+.popup__status[data-state="connected"] { color: var(--ok); }
+.popup__status[data-state="error"] { color: var(--warn); }
 
 .popup__body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  padding: 12px;
 }
 
 .popup__btn {
   appearance: none;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-fg);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.popup__btn--secondary {
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--fg);
-  border-color: var(--border);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: left;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.popup__btn:hover {
-  filter: brightness(1.05);
+.popup__btn::before { content: "[ "; color: var(--muted); }
+.popup__btn::after { content: " ]"; color: var(--muted); }
+
+.popup__btn--primary {
+  border-color: var(--accent-dim);
+  color: var(--accent);
 }
+.popup__btn--primary::before, .popup__btn--primary::after { color: var(--accent-dim); }
+
+.popup__btn:hover:not(:disabled) {
+  border-color: var(--fg-dim);
+  color: var(--fg);
+}
+
+.popup__btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .popup__footer {
   border-top: 1px solid var(--border);
-  padding-top: 8px;
+  padding: 6px 12px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
 }
+
+.popup__footer small { color: inherit; }

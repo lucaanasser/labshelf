@@ -29,6 +29,8 @@ export interface SyncStatusData {
 export interface CaptureResultData {
   title: string;
   citeKey: string;
+  /** Which resolver produced the PDF: "page-hint", "arxiv", "crossref", "unpaywall", "sci-hub". */
+  pdfSource: string;
 }
 
 export const RUNTIME_CHANNEL = "labshelf.runtime";

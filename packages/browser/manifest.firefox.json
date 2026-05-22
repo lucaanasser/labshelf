@@ -20,7 +20,14 @@
   ],
   "host_permissions": [
     "https://www.googleapis.com/*",
-    "https://oauth2.googleapis.com/*"
+    "https://oauth2.googleapis.com/*",
+    "https://api.crossref.org/*",
+    "https://api.unpaywall.org/*",
+    "https://eutils.ncbi.nlm.nih.gov/*",
+    "https://export.arxiv.org/*",
+    "https://arxiv.org/*",
+    "https://*/*",
+    "http://*/*"
   ],
   "background": {
     "scripts": ["background/index.js"]

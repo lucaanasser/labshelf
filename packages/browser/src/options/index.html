@@ -7,19 +7,51 @@
   </head>
   <body>
     <main class="options">
-      <h1>LabShelf options</h1>
-      <section>
-        <h2>Sync</h2>
-        <label>
-          Auto-sync interval (minutes)
-          <input id="sync-interval" type="number" min="1" max="240" value="15" disabled />
+      <header class="options__header">
+        <span class="options__title">SETTINGS</span>
+        <span class="options__sub">LABSHELF</span>
+      </header>
+
+      <section class="section">
+        <h2 class="section__title">SYNC</h2>
+        <label class="field">
+          <span class="field__label">Auto-sync interval (minutes)</span>
+          <input id="sync-interval" type="number" min="0" max="240" value="15" />
         </label>
-        <p class="muted">Configuration arrives in a later phase.</p>
+        <label class="field">
+          <span class="field__label">Contact email · used by Unpaywall &amp; CrossRef</span>
+          <input id="contact-email" type="email" placeholder="you@example.com" />
+        </label>
+        <button id="save-sync" class="btn">Save sync settings</button>
+        <p id="save-sync-msg" class="muted"></p>
       </section>
-      <section>
-        <h2>Recent log</h2>
+
+      <section class="section">
+        <h2 class="section__title">PDF RESOLUTION</h2>
+        <p class="muted">
+          LabShelf tries page-hints → arXiv → CrossRef → Unpaywall in order.
+          When everything else fails, an optional Sci-Hub fallback can run.
+        </p>
+        <label class="field field--row">
+          <input id="enable-scihub" type="checkbox" />
+          <span class="field__label">Enable Sci-Hub fallback</span>
+        </label>
+        <label class="field">
+          <span class="field__label">Sci-Hub mirror</span>
+          <input id="scihub-mirror" type="url" placeholder="https://sci-hub.se" />
+        </label>
+        <button id="save-pdf" class="btn">Save PDF settings</button>
+        <p id="save-pdf-msg" class="muted"></p>
+      </section>
+
+      <section class="section">
+        <h2 class="section__title">RECENT LOG</h2>
         <pre id="log" class="log">loading…</pre>
       </section>
+
+      <footer class="options__footer">
+        <small>LABSHELF · BROWSER EXTENSION</small>
+      </footer>
     </main>
     <script type="module" src="index.js"></script>
   </body>
