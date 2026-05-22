@@ -48,9 +48,9 @@ async function refresh(view: View): Promise<void> {
 }
 
 async function toggleConnection(view: View): Promise<void> {
-  const { connected } = await send<{ connected: boolean }>({ type: "auth.status" });
   view.connectBtn.disabled = true;
   try {
+    const { connected } = await send<{ connected: boolean }>({ type: "auth.status" });
     const next = connected
       ? await send<{ connected: boolean }>({ type: "auth.disconnect" })
       : await send<{ connected: boolean }>({ type: "auth.connect" });

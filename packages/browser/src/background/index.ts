@@ -23,16 +23,16 @@ bx.runtime.onStartup.addListener(() => {
   void log.info("browser startup");
 });
 
-bx.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+bx.runtime.onMessage.addListener(async (message, _sender) => {
   const msg = message as RuntimeMessage;
-  handle(msg)
-    .then((data) => sendResponse({ ok: true, data } satisfies RuntimeResponse))
-    .catch((err: unknown) => {
-      const error = err instanceof Error ? err.message : String(err);
-      void log.error("background", err, { type: msg?.type });
-      sendResponse({ ok: false, error } satisfies RuntimeResponse);
-    });
-  return true;
+  try {
+    const data = await handle(msg);
+    return { ok: true, data } satisfies RuntimeResponse;
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err.message : String(err);
+    void log.error("background", err, { type: msg?.type });
+    return { ok: false, error } satisfies RuntimeResponse;
+  }
 });
 
 async function handle(msg: RuntimeMessage): Promise<unknown> {
