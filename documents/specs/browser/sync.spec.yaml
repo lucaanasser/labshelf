@@ -1,0 +1,87 @@
+feature:
+  name: Browser Sync Controller
+  module: "@labshelf/browser"
+  description: >
+    Wires the @labshelf/core SyncEngine to the browser extension's local store
+    (IndexedDbFileSystem) and Drive provider (BrowserDriveAuth + GoogleDriveProvider).
+    The controller runs in the MV3 service worker, exposing sync.now and sync.status
+    messages to the popup. The sync manifest (merge-base state) is persisted in
+    the IDB "manifest" store via IdbManifestFileSystem so it survives
+    service-worker restarts. After each successful sync the paperRecordStore is
+    rebuilt from updated metadata.yaml files so the library page always reflects
+    the latest state.
+
+architecture:
+  inputs:
+    - popup sends { type: "sync.now" } to trigger a manual sync
+    - popup sends { type: "sync.status" } to poll current state
+    - Phase 7 auto-sync scheduler calls sync.now via alarms
+  outputs:
+    - SyncResult returned to background; sync.status data returned to popup
+    - Files written to IndexedDB "files" store (downloaded from Drive)
+    - Files uploaded from IndexedDB "files" store to Drive
+    - IDB "manifest" store updated with the new merge-base after each run
+    - IDB "metadata" store rebuilt from metadata.yaml files after each run
+
+  modules:
+    - "sync/browserSyncController: BrowserSyncController — orchestrates engine + manifest + cache rebuild"
+    - "storage/idbManifestFileSystem: LocalFileSystem shim over the IDB manifest store"
+    - "sync/auth/browserDriveAuth: IAuthProvider (Phase 2)"
+    - "storage/indexedDbFileSystem: LocalFileSystem over IDB files store (Phase 3)"
+    - "storage/paperRecordStore: rebuilt after each successful sync"
+    - "@labshelf/core SyncEngine, SyncManifest, createGoogleDriveProvider"
+
+  dependencies:
+    - "@labshelf/core SyncEngine, SyncManifest, createGoogleDriveProvider, IAuthProvider"
+    - storage layer (Phase 3)
+    - auth layer (Phase 2)
+
+  local_roots:
+    library: "papers"    # relative path in the IDB file store
+    appdata: "appdata"   # same; mirrors the Drive appDataFolder namespace
+
+database:
+  tables_used:
+    - files (via IndexedDbFileSystem)
+    - manifest (via IdbManifestFileSystem)
+    - metadata (rebuilt by rebuildFromFiles after each sync)
+  migrations: []
+
+events:
+  emits: []
+  listens:
+    - runtime onMessage: sync.now, sync.status
+
+errors:
+  expected_failures:
+    - Not authenticated — sync() throws "Not connected to Google Drive"
+    - Concurrent sync — second sync() throws "Sync already in progress"
+    - Drive API failure (network error, quota, 401) — error stored in lastError,
+      re-thrown so background can log it; popup shows the error string on next status poll
+    - IDB quota exceeded during file write — propagates as sync failure; lastError set
+    - Corrupt manifest in IDB — SyncManifest.load falls back to empty manifest;
+      next sync does a full rebuild (all remote files treated as remote-new)
+  handling_strategy: >
+    All errors are caught in BrowserSyncController.sync(), stored in lastError,
+    re-thrown so the background logger records them, and surfaced to the popup via
+    the sync.status response. The sync.now background handler fires-and-forgets
+    to keep the popup responsive; the popup polls once after 5 seconds to pick up
+    the completion state.
+
+ui:
+  components:
+    - popup "Sync now" button (disabled when not connected)
+    - popup sync-status footer line showing last sync time or error
+    - Phase 7 will add toolbar badge updates driven by SyncStatus
+
+tests:
+  unit: []
+  integration:
+    - "Connect to Drive then click Sync now — files from Drive appear in IDB files store"
+    - "Add a paper locally then sync — paper appears in Drive LabShelf Library folder"
+    - "Reload extension while connected — sync.status returns lastSyncTime from IDB manifest"
+    - "Drive returns 401 — sync.status.lastError is set; subsequent auth.connect clears it"
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

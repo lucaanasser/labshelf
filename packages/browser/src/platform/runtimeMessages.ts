@@ -19,4 +19,11 @@ export type RuntimeResponse =
   | { ok: true; data?: unknown }
   | { ok: false; error: string };
 
+export interface SyncStatusData {
+  connected: boolean;
+  syncing: boolean;
+  lastSyncTime: string | null;
+  lastError: string | null;
+}
+
 export const RUNTIME_CHANNEL = "labshelf.runtime";
