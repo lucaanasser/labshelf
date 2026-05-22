@@ -15,6 +15,7 @@
     "alarms",
     "idle",
     "activeTab",
+    "scripting",
     "downloads"
   ],
   "host_permissions": [

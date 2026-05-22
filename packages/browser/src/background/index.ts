@@ -1,17 +1,19 @@
 /**
  * Background entry. In MV3 Chrome this runs as a service worker; in Firefox
- * it runs as a non-persistent background script. Wires Drive auth and the sync
- * controller into the runtime message channel so popup / options pages can
- * drive connect, disconnect, status checks, and manual sync triggers.
+ * it runs as a non-persistent background script. Wires Drive auth, sync
+ * controller, and the capture service into the runtime message channel so
+ * popup / options pages can drive connect, disconnect, status checks, manual
+ * sync triggers, and toolbar captures.
  * @depends platform/browserApi, platform/logger, platform/runtimeMessages,
- *          sync/auth/browserDriveAuth, sync/browserSyncController.
+ *          sync/auth/browserDriveAuth, sync/browserSyncController, capture/index.
  * @dependents none (entry point).
  */
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";
-import type { RuntimeMessage, RuntimeResponse } from "../platform/runtimeMessages";
+import type { RuntimeMessage, RuntimeResponse, CaptureResultData } from "../platform/runtimeMessages";
 import { BrowserDriveAuth } from "../sync/auth/browserDriveAuth";
 import { BrowserSyncController } from "../sync/browserSyncController";
+import { captureActiveTab } from "../capture/index";
 
 const log = new BrowserLogger("background");
 const auth = new BrowserDriveAuth();
@@ -62,8 +64,13 @@ async function handle(msg: RuntimeMessage): Promise<unknown> {
       });
       return sync.status();
     }
-    case "capture.activeTab":
-      throw new Error("Not implemented yet: capture.activeTab");
+    case "capture.activeTab": {
+      const tabs = await bx.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs[0];
+      if (!tab?.id) throw new Error("No active tab found.");
+      const paper = await captureActiveTab(tab.id, tab.url ?? "");
+      return { title: paper.title, citeKey: paper.citeKey } satisfies CaptureResultData;
+    }
     default: {
       const exhaustive: never = msg;
       throw new Error(`Unhandled message type: ${JSON.stringify(exhaustive)}`);

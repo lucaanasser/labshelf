@@ -26,4 +26,9 @@ export interface SyncStatusData {
   lastError: string | null;
 }
 
+export interface CaptureResultData {
+  title: string;
+  citeKey: string;
+}
+
 export const RUNTIME_CHANNEL = "labshelf.runtime";

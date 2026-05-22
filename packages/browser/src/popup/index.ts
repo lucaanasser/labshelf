@@ -6,7 +6,7 @@
  * @dependents popup/index.html.
  */
 import { bx } from "../platform/browserApi";
-import type { RuntimeMessage, RuntimeResponse, SyncStatusData } from "../platform/runtimeMessages";
+import type { RuntimeMessage, RuntimeResponse, SyncStatusData, CaptureResultData } from "../platform/runtimeMessages";
 
 function $(id: string): HTMLElement {
   const el = document.getElementById(id);
@@ -109,8 +109,17 @@ async function init(): Promise<void> {
 
   view.connectBtn.addEventListener("click", () => { void toggleConnection(view); });
   view.syncBtn.addEventListener("click", () => { void triggerSync(view); });
-  view.captureBtn.addEventListener("click", () => {
-    setStatus(view, "idle", "capture not implemented yet");
+  view.captureBtn.addEventListener("click", async () => {
+    view.captureBtn.disabled = true;
+    setStatus(view, "idle", "capturing…");
+    try {
+      const r = await send<CaptureResultData>({ type: "capture.activeTab" });
+      setStatus(view, "connected", `Saved: ${r.title}`);
+    } catch (err) {
+      setStatus(view, "error", err instanceof Error ? err.message : String(err));
+    } finally {
+      view.captureBtn.disabled = false;
+    }
   });
   view.libraryBtn.addEventListener("click", async () => {
     const url = bx.runtime.getURL("library-page/index.html");
