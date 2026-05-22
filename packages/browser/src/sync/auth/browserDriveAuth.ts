@@ -1,8 +1,10 @@
 /**
  * Google Drive OAuth via the WebExtension identity API. Uses
- * `bx.identity.launchWebAuthFlow` with the chromiumapp.org redirect (emulated
- * on Firefox by the polyfill) and the implicit `response_type=token` flow, so
- * no client secret is ever shipped with the extension.
+ * `bx.identity.launchWebAuthFlow` with a single "Web application" OAuth client
+ * that has both the chromiumapp.org (Chrome) and allizom.org (Firefox) redirect
+ * URIs registered. The redirect URI is selected at runtime via
+ * `bx.identity.getRedirectURL()`. Uses the implicit `response_type=token`
+ * flow — no client secret is needed or shipped with the extension.
  *
  * Because the implicit flow returns no refresh token, this provider renews
  * the access token by re-running the same flow with `interactive: false`
@@ -17,29 +19,16 @@
 import type { IAuthProvider } from "@labshelf/core";
 import { bx } from "../../platform/browserApi";
 import { clearToken, loadToken, saveToken, type StoredToken } from "./tokenStore";
-import { CLIENT_ID_CHROME, CLIENT_ID_FIREFOX, SCOPES } from "./oauthConfig";
+import { CLIENT_ID, SCOPES } from "./oauthConfig";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const REFRESH_LEEWAY_MS = 60_000;
 
-/** Returns true when the host browser is Firefox (moz-extension://). */
-function isFirefox(): boolean {
-  try {
-    return bx.runtime.getURL("/").startsWith("moz-extension://");
-  } catch {
-    return false;
-  }
-}
-
-function clientId(): string {
-  return isFirefox() ? CLIENT_ID_FIREFOX : CLIENT_ID_CHROME;
-}
-
 function buildAuthUrl(redirectUri: string, prompt: "none" | "consent"): string {
   const url = new URL(AUTH_URL);
   url.searchParams.set("response_type", "token");
-  url.searchParams.set("client_id", clientId());
+  url.searchParams.set("client_id", CLIENT_ID);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("scope", SCOPES.join(" "));
   url.searchParams.set("prompt", prompt);

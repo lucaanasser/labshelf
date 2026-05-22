@@ -1,22 +1,19 @@
 /**
- * Google OAuth client IDs for the browser extension. Copy this file to
- * `oauthConfig.ts` (same directory) and fill in the real values from the
+ * Google OAuth client ID for the browser extension. Copy this file to
+ * `oauthConfig.ts` (same directory) and fill in the real value from the
  * Google Cloud Console. `oauthConfig.ts` is gitignored — never commit it.
  *
- * Two clients are needed because Chrome and Firefox use different OAuth client
- * types in the Google Cloud Console:
- *   - Chrome: "Chrome Extension" client (uses the extension ID directly).
- *   - Firefox: "Web application" client with the chromiumapp.org redirect URI
- *     pre-registered (the polyfill emulates the same redirect on Firefox).
- *
- * Both clients are public — no client secret is shipped with the browser
- * because the implicit / `response_type=token` flow does not require one.
+ * A single "Web application" client covers both Chrome and Firefox:
+ *   - Register https://<chrome-ext-id>.chromiumapp.org/ as a redirect URI.
+ *   - Register https://<firefox-hash>.extensions.allizom.org/ as a redirect URI.
+ * The redirect URI is selected automatically at runtime via
+ * `bx.identity.getRedirectURL()`, which returns the correct value per browser.
+ * No client secret is needed — the implicit `response_type=token` flow is used.
  *
  * @depends none
  * @dependents browserDriveAuth
  */
-export const CLIENT_ID_CHROME = "YOUR_CHROME_EXTENSION_OAUTH_CLIENT_ID.apps.googleusercontent.com";
-export const CLIENT_ID_FIREFOX = "YOUR_FIREFOX_WEB_APP_OAUTH_CLIENT_ID.apps.googleusercontent.com";
+export const CLIENT_ID = "YOUR_WEB_APP_OAUTH_CLIENT_ID.apps.googleusercontent.com";
 
 export const SCOPES = [
   "https://www.googleapis.com/auth/drive.file",
