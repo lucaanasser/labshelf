@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LabShelf</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="popup">
+      <header class="popup__header">
+        <h1 class="popup__title">LabShelf</h1>
+        <span id="status" class="popup__status" data-state="idle">disconnected</span>
+      </header>
+      <section class="popup__body">
+        <button id="connect" class="popup__btn">Connect to Drive</button>
+        <button id="open-library" class="popup__btn popup__btn--secondary">Open library</button>
+        <button id="capture" class="popup__btn popup__btn--secondary">Capture current page</button>
+      </section>
+      <footer class="popup__footer">
+        <small id="last-sync">never synced</small>
+      </footer>
+    </main>
+    <script type="module" src="index.js"></script>
+  </body>
+</html>

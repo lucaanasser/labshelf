@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>LabShelf — Options</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="options">
+      <h1>LabShelf options</h1>
+      <section>
+        <h2>Sync</h2>
+        <label>
+          Auto-sync interval (minutes)
+          <input id="sync-interval" type="number" min="1" max="240" value="15" disabled />
+        </label>
+        <p class="muted">Configuration arrives in a later phase.</p>
+      </section>
+      <section>
+        <h2>Recent log</h2>
+        <pre id="log" class="log">loading…</pre>
+      </section>
+    </main>
+    <script type="module" src="index.js"></script>
+  </body>
+</html>

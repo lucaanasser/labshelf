@@ -1,0 +1,76 @@
+feature:
+  name: Browser Shell
+  module: "@labshelf/browser"
+  description: >
+    MV3 WebExtension scaffold for LabShelf. Builds two distributable bundles —
+    dist/chrome (Manifest V3 service worker) and dist/firefox (Manifest V3 with
+    background.scripts) — from a single TypeScript source tree using esbuild.
+    Phase 1 only establishes the runtime layout, the cross-browser API surface
+    (webextension-polyfill), the structured logger backed by storage.local, and
+    placeholder popup / options / library-page entries that confirm the message
+    channel between the background script and UI surfaces.
+
+architecture:
+  inputs:
+    - target flag (--target=chrome | --target=firefox)
+    - manifest.chrome.json and manifest.firefox.json (per target)
+    - source tree under src/
+  outputs:
+    - dist/chrome/manifest.json + bundled background, popup, options, library-page
+    - dist/firefox/manifest.json + bundled background, popup, options, library-page
+    - structured log entries persisted in browser storage.local
+  modules:
+    - "platform/browserApi: webextension-polyfill re-export"
+    - "platform/logger: BrowserLogger : ILogger with ring buffer in storage.local"
+    - "platform/runtimeMessages: discriminated RuntimeMessage / RuntimeResponse"
+    - "background/index: lifecycle listeners + message router"
+    - "popup/index: connect / capture / open library actions (placeholders)"
+    - "options/index: shows recent BrowserLogger entries"
+    - "library-page/index: three-column placeholder layout"
+    - "build/build.mjs: esbuild per-target bundler"
+    - "build/copyAssets.mjs: manifest + static HTML/CSS copier"
+  dependencies:
+    - "@labshelf/core (ILogger, LogEntry)"
+    - webextension-polyfill
+    - esbuild (devDep)
+    - typescript (devDep)
+    - web-ext (devDep, for Firefox lint)
+
+database:
+  tables_used: []
+  migrations: []
+
+events:
+  emits: []
+  listens:
+    - chrome.runtime.onInstalled
+    - chrome.runtime.onStartup
+    - chrome.runtime.onMessage (ping)
+
+errors:
+  expected_failures:
+    - background message handler throws — caller receives { ok: false, error }
+    - storage.local quota exceeded when persisting log buffer — falls back to in-memory copy
+    - missing manifest for the requested target — build script throws with a clear message
+  handling_strategy: >
+    The message envelope is a discriminated union; every handler returns either
+    { ok: true, data } or { ok: false, error } so the UI never sees a thrown
+    exception across the channel. Logger writes fall back to the in-memory ring
+    if storage.local is unavailable.
+
+ui:
+  components:
+    - toolbar action popup with status indicator and three placeholder buttons
+    - options page with recent-log viewer
+    - standalone library page mounted at chrome-extension://<id>/library-page/index.html
+
+tests:
+  unit: []
+  integration:
+    - "pnpm --filter @labshelf/browser build produces dist/chrome and dist/firefox"
+    - "load unpacked dist/chrome in chrome://extensions and confirm popup opens"
+    - "web-ext lint --source-dir=dist/firefox passes with zero errors"
+
+ai_notes:
+  embeddings: false
+  semantic_search: false

@@ -1,18 +1,24 @@
 {
   "name": "@labshelf/browser",
   "version": "0.1.0",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "private": true,
   "scripts": {
-    "build": "tsc -p ./",
+    "build": "node build/build.mjs",
+    "build:chrome": "node build/build.mjs --target=chrome",
+    "build:firefox": "node build/build.mjs --target=firefox",
     "typecheck": "tsc --noEmit -p ./",
+    "lint:manifest": "web-ext lint --source-dir=dist/firefox --self-hosted",
     "test": "echo \"No tests yet\""
   },
   "dependencies": {
     "@labshelf/core": "workspace:*",
-    "@labshelf/ai": "workspace:*"
+    "idb": "^8.0.0",
+    "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
-    "typescript": "*"
+    "@types/webextension-polyfill": "^0.12.1",
+    "esbuild": "^0.24.0",
+    "typescript": "*",
+    "web-ext": "^8.0.0"
   }
 }

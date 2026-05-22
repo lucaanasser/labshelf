@@ -25,7 +25,7 @@ packages/
   vscode/     @labshelf/vscode  — VS Code extension: UI, commands, SQLite adapter, filesystem + Drive auth adapters, NodePdfOpener
   ai/         @labshelf/ai      — AI provider abstraction and paper summariser (planned)
   latex/      @labshelf/latex   — LaTeX cite-key formatter and bib-sync service (planned)
-  browser/    @labshelf/browser — Browser extension surface (planned) — will reuse @labshelf/core via its own adapters (IndexedDB filesystem, chrome.identity auth, browser PdfDocumentOpener)
+  browser/    @labshelf/browser — Chrome + Firefox MV3 WebExtension (in progress) — shell + cross-browser API + structured logger landed; sync, capture, and library UI arrive in later phases
 ```
 
 `@labshelf/core` has no dependency on `vscode`, `node:sqlite`, `node:http`, `node:fs`, `node:crypto`, or any browser API. Every platform-specific concern is implemented as an adapter in the consuming package and injected via constructor (`IFileSystem`, `IResearchDatabase`, `ILogger`, `LocalFileSystem`, `PdfDocumentOpener`, `IAuthProvider`).
