@@ -15,4 +15,5 @@ coverage/
 
 # Local-only Google OAuth credentials — never commit
 packages/vscode/src/sync/auth/googleDriveCredentials.ts
+packages/browser/src/sync/auth/oauthConfig.ts
 

@@ -1,0 +1,71 @@
+feature:
+  name: Browser Drive Auth
+  module: "@labshelf/browser"
+  description: >
+    Authenticates the browser extension against Google Drive using the
+    WebExtension identity API (`bx.identity.launchWebAuthFlow`) with the
+    chromiumapp.org redirect (emulated on Firefox by webextension-polyfill).
+    The implicit OAuth 2.0 flow is used, so no client secret is shipped with
+    the extension. Because the implicit flow returns no refresh token, the
+    provider renews the access token by re-running the same flow with
+    `interactive: false` shortly before the current token expires. The
+    provider implements `@labshelf/core` IAuthProvider so the same Drive
+    RemoteProvider can be reused from both VS Code and the browser.
+
+architecture:
+  inputs:
+    - user click on "Connect to Drive" in the popup
+    - sync engine calls to getAccessToken before each Drive request (Phase 4+)
+  outputs:
+    - access token persisted in `bx.storage.local` under labshelf.gdrive.token
+    - structured log entries (INFO on connect/disconnect, ERROR on flow failure)
+    - runtime messages: auth.status returns { connected }, auth.connect / auth.disconnect flip it
+  modules:
+    - "sync/auth/oauthConfig: client IDs (Chrome ext + Firefox web app) + scopes"
+    - "sync/auth/tokenStore: load/save/clear StoredToken in bx.storage.local"
+    - "sync/auth/browserDriveAuth: BrowserDriveAuth implements IAuthProvider"
+    - "sync/auth/index: barrel"
+    - "background/index: routes auth.status, auth.connect, auth.disconnect"
+    - "popup/index: shows status, drives connect/disconnect"
+  dependencies:
+    - "@labshelf/core IAuthProvider"
+    - webextension-polyfill (identity, storage)
+    - Google OAuth 2.0 implicit endpoint
+
+database:
+  tables_used: []
+  migrations: []
+
+events:
+  emits: []
+  listens:
+    - chrome.runtime.onMessage (auth.status, auth.connect, auth.disconnect)
+
+errors:
+  expected_failures:
+    - user closes the OAuth window or denies consent — launchWebAuthFlow rejects
+    - silent refresh refused (revoked consent, expired session) — token is dropped and the next call surfaces the need to re-authenticate
+    - storage.local quota errors when persisting the token — token stays in memory; next launch falls back to a fresh sign-in
+    - placeholder client ID still in oauthConfig.ts — Google rejects with invalid_client; surfaced via the standard OAuth error
+  handling_strategy: >
+    All failures bubble up as RuntimeResponse { ok: false, error } from the
+    background handler. The popup catches the error and shows it inline. The
+    refresh path swallows refusals silently and clears the token so the next
+    user-initiated call goes through interactive consent again.
+
+ui:
+  components:
+    - popup "Connect to Drive" / "Disconnect" toggle with status indicator
+    - options page (placeholder reveal of revoke action arrives in Phase 7)
+
+tests:
+  unit: []
+  integration:
+    - "click Connect — OAuth window appears, granting consent returns to the popup with status=connected"
+    - "click Disconnect — token cleared from storage.local and revoke endpoint hit"
+    - "reload extension while connected — status=connected without prompting"
+    - "wait until token close to expiry — getAccessToken triggers a silent refresh without user interaction"
+
+ai_notes:
+  embeddings: false
+  semantic_search: false
