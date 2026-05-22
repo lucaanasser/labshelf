@@ -23,7 +23,7 @@ bx.runtime.onStartup.addListener(() => {
   void log.info("browser startup");
 });
 
-bx.runtime.onMessage.addListener(async (message, _sender) => {
+bx.runtime.onMessage.addListener(async (message: unknown, _sender: unknown) => {
   const msg = message as RuntimeMessage;
   try {
     const data = await handle(msg);

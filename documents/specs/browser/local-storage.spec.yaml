@@ -1,0 +1,104 @@
+feature:
+  name: Browser Local Storage (IndexedDB)
+  module: "@labshelf/browser"
+  description: >
+    Provides a local-first storage layer for the browser extension, implementing
+    @labshelf/core's LocalFileSystem interface over IndexedDB. All paper files
+    (PDF, metadata.yaml, .bib, data.json) are stored as binary rows in the
+    "files" store, keyed by their POSIX path relative to the library root.
+    A separate "metadata" store caches parsed PaperRecord objects so the library
+    UI can query by folder or search by title without re-parsing YAML on every
+    render. A "manifest" store persists the Drive sync state between sessions.
+
+architecture:
+  inputs:
+    - sync engine writes (Phase 4) via LocalFileSystem.writeFile / deleteFile
+    - capture flow writes (Phase 5) via writeFile
+    - library-page reads (Phase 6) via paperRecordStore / folderTreeStore
+  outputs:
+    - file bytes served back to the sync engine for upload / comparison
+    - PaperRecord lists for the library UI
+    - folder tree for the collections tree view
+
+  modules:
+    - "storage/idb/schema: TypeScript types for the three IDB object stores"
+    - "storage/idb/db: singleton openDB call and schema upgrade handler"
+    - "storage/indexedDbFileSystem: LocalFileSystem backed by the files store"
+    - "storage/paperRecordStore: CRUD over the metadata store + YAML parsing"
+    - "storage/folderTreeStore: derived folder tree from file path keys"
+    - "storage/index: barrel"
+
+  dependencies:
+    - idb (Jake Archibald, ~1.5KB) — Promise-based IndexedDB wrapper
+    - "@labshelf/core LocalFileSystem, LocalStat, PaperRecord, sha256Hex"
+    - yaml — for parsing metadata.yaml in paperRecordStore
+
+database:
+  engine: IndexedDB
+  db_name: labshelf
+  version: 1
+  stores:
+    - name: files
+      keyPath: path
+      indexes:
+        - name: byHash
+          field: hash
+      fields:
+        - path: string — POSIX path relative to library root (e.g. "papers/foo/paper.pdf")
+        - bytes: Uint8Array
+        - mtime: number — epoch ms of last write
+        - hash: string — SHA-256 hex, computed on write via WebCrypto
+
+    - name: metadata
+      keyPath: paperId
+      indexes:
+        - name: byFolder
+          field: folderPath
+      fields:
+        - paperId: string — matches PaperRecord.id
+        - record: PaperRecord — full parsed record
+        - folderPath: string — "papers/<citeKey>", used by byFolder index
+
+    - name: manifest
+      keyPath: providerId
+      fields:
+        - providerId: string — Drive provider identifier
+        - json: string — serialised ManifestData
+
+events:
+  emits: []
+  listens: []
+
+errors:
+  expected_failures:
+    - IDB quota exceeded on write — writeFile / put throws; caller must surface to user
+    - File not found on readFile — throws "File not found: <path>"; sync engine handles as missing
+    - Corrupt metadata.yaml — upsertFromYaml silently skips records missing id or title
+  handling_strategy: >
+    Errors from IDB propagate as rejected Promises. The sync controller (Phase 4)
+    catches these and logs them via BrowserLogger. UI-visible errors are surfaced
+    through the RuntimeResponse { ok: false, error } channel so the popup can
+    display them inline.
+
+ui:
+  components: []
+
+tests:
+  unit:
+    - "listDir('') returns top-level directory names derived from all file keys"
+    - "listDir('papers/foo') returns immediate children of that prefix only"
+    - "stat on a file path returns isFile=true with correct size and mtime"
+    - "stat on a prefix with children returns isDirectory=true"
+    - "stat on an absent path returns undefined"
+    - "writeFile stores bytes and hash; readFile returns identical bytes"
+    - "deleteFile removes the row; subsequent readFile throws"
+    - "deleteDir removes all rows under the prefix and nothing else"
+    - "upsertRecord + listByFolder returns only records in the given prefix"
+    - "searchRecords filters case-insensitively by title and authors"
+    - "rebuildFromFiles clears metadata store and re-populates from files store"
+    - "buildFolderTree returns nested FolderNode tree for 'papers' prefix"
+  integration: []
+
+ai_notes:
+  embeddings: false
+  semantic_search: false
