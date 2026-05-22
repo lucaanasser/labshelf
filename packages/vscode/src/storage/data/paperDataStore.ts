@@ -1,13 +1,13 @@
 /**
  * Owns the per-paper sidecar JSON (.research/papers/<id>/data.json), the authoritative source for annotations and theme preferences.
  *
- * @depends core/types, storage/fileSystemService
+ * @depends @labshelf/core, storage/fileSystemService
  * @dependents extension.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, storage/data/index.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts, storage/index.ts
  */
 import * as vscode from "vscode";
 import { randomUUID } from "crypto";
 
-import type { Annotation, PdfTheme } from "../../core/types.js";
+import type { Annotation, PdfTheme } from "@labshelf/core";
 import { FileSystemService } from "../fileSystemService.js";
 
 export interface PaperData {

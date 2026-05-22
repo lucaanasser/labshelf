@@ -241,6 +241,7 @@
     "test:commands": "jest __tests__/commands"
   },
   "dependencies": {
+    "@labshelf/core": "workspace:*",
     "@thednp/dommatrix": "^3.0.4",
     "pdfjs-dist": "^5.7.284",
     "yaml": "^2.7.1"

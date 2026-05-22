@@ -1,14 +1,13 @@
 /**
  * Rebuilds the SQLite cache by scanning metadata.yaml files and data.json sidecars on disk.
  *
- * @depends core/types, db/database, storage/fileSystemService, storage/paths/libraryPaths, storage/data/paperDataStore
+ * @depends @labshelf/core, storage/fileSystemService, storage/paths/libraryPaths, storage/data/paperDataStore
  * @dependents extension.ts, storage/data/index.ts, storage/index.ts
  */
 import * as vscode from "vscode";
 import YAML from "yaml";
 
-import type { PaperRecord } from "../../core/types.js";
-import type { ResearchDatabase } from "../../db/database.js";
+import type { PaperRecord, IResearchDatabase } from "@labshelf/core";
 import { FileSystemService } from "../fileSystemService.js";
 import type { ILibraryPaths } from "../paths/libraryPaths.js";
 import { PaperDataStore } from "./paperDataStore.js";
@@ -21,7 +20,7 @@ export class LibraryIndexer {
   constructor(
     private readonly paths: ILibraryPaths,
     private readonly fsService: FileSystemService,
-    private readonly database: ResearchDatabase,
+    private readonly database: IResearchDatabase,
     private readonly paperDataStore: PaperDataStore,
   ) {}
 

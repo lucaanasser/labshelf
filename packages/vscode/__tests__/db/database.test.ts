@@ -3,8 +3,8 @@
  * SqliteResearchDatabase integration tests require a compatible better-sqlite3
  * build (run `npm rebuild` if NODE_MODULE_VERSION mismatches).
  */
-import { InMemoryResearchDatabase } from '../../src/db/database';
-import type { PaperRecord } from '../../src/core/types';
+import { InMemoryResearchDatabase } from '@labshelf/core';
+import type { PaperRecord } from '@labshelf/core';
 
 function makePaper(overrides: Partial<PaperRecord> = {}): PaperRecord {
   return {

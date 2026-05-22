@@ -1,6 +1,6 @@
-/** Adapts vscode.workspace.fs (Uri-based) to the LocalFileSystem interface (absolute-path string-based) required by the sync engine. @depends vscode, syncTypes. @dependents syncController */
+/** Adapts vscode.workspace.fs (Uri-based) to the LocalFileSystem interface (absolute-path string-based) required by the sync engine. @depends vscode, @labshelf/core. @dependents syncController */
 import * as vscode from "vscode";
-import type { LocalFileSystem, LocalStat } from "../core/syncTypes.js";
+import type { LocalFileSystem, LocalStat } from "@labshelf/core";
 
 export class VscodeLocalFileSystem implements LocalFileSystem {
   async listDir(dirPath: string): Promise<string[]> {

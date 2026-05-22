@@ -1,14 +1,14 @@
 /**
  * Generates the complete HTML document for the PDF viewer webview, resolving PDF.js asset URIs and injecting theme CSS and the viewer script.
  *
- * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/config.ts, pdf-viewer/renderer/template.css.ts, pdf-viewer/renderer/template.js.ts, core/types.ts
+ * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/config.ts, pdf-viewer/renderer/template.css.ts, pdf-viewer/renderer/template.js.ts, @labshelf/core
  * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/PdfRenderer.ts (re-export shim), pdf-viewer/renderer/index.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
 import * as path from "node:path";
 import { ThemeManager } from "../ThemeManager.js";
 import { PDF_VIEWER_CONFIG } from "../config.js";
-import type { Annotation } from "../../core/types.js";
+import type { Annotation } from "@labshelf/core";
 import { buildCss } from "./template.css.js";
 import { buildJs } from "./template.js.js";
 

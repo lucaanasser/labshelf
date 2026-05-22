@@ -1,5 +1,4 @@
-import { ExtensionEventBus } from '../../src/core/eventBus';
-import { EVENTS } from '../../src/constants/events';
+import { ExtensionEventBus, EVENTS } from '@labshelf/core';
 
 describe('ExtensionEventBus', () => {
   let eventBus: ExtensionEventBus;

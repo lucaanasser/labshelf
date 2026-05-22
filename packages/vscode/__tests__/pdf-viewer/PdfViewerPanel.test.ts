@@ -1,4 +1,4 @@
-import { PdfTheme } from '../../src/core/types';
+import { PdfTheme, ExtensionEventBus, EVENTS } from '@labshelf/core';
 import { PdfViewerPanel } from '../../src/pdf-viewer/PdfViewerPanel';
 let _paperId = 0;
 function nextPaperId() { return `paper-${++_paperId}`; }
@@ -6,8 +6,6 @@ import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
-import { ExtensionEventBus } from '../../src/core/eventBus';
-import { EVENTS } from '../../src/constants/events';
 
 const vscode = require('vscode');
 

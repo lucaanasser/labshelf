@@ -1,13 +1,12 @@
 /**
  * Manages create, read, update, and delete operations for paper annotations, delegating persistence to PaperDataStore and emitting events on each change.
  *
- * @depends pdf-viewer/config.ts, storage/data/paperDataStore.ts, core/eventBus.ts, core/types.ts, constants/events.ts
+ * @depends pdf-viewer/config.ts, storage/data/paperDataStore.ts, @labshelf/core
  * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/index.ts
  */
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import type { ExtensionEventBus } from "../core/eventBus.js";
-import type { Annotation, AnnotationType, AnnotationColor, AnnotationPosition } from "../core/types.js";
-import { EVENTS } from "../constants/events.js";
+import type { ExtensionEventBus, Annotation, AnnotationType, AnnotationColor, AnnotationPosition } from "@labshelf/core";
+import { EVENTS } from "@labshelf/core";
 import { PDF_VIEWER_CONFIG } from "./config.js";
 
 const VALID_TYPES: AnnotationType[] = ['highlight', 'note', 'comment', 'tag'];

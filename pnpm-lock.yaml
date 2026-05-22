@@ -56,6 +56,9 @@ importers:
 
   packages/vscode:
     dependencies:
+      '@labshelf/core':
+        specifier: workspace:*
+        version: link:../core
       '@thednp/dommatrix':
         specifier: ^3.0.4
         version: 3.0.4

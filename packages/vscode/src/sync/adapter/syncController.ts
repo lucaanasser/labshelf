@@ -1,16 +1,20 @@
-/** Orchestrates the sync lifecycle — auth, engine wiring, debounced auto-sync on library events, periodic polling, and status bar feedback. @depends vscode, googleDriveAuth, googleDriveProvider, syncEngine, syncManifest, vscodeLocalFileSystem, libraryPaths, eventBus. @dependents extension */
+/** Orchestrates the sync lifecycle — auth, engine wiring, debounced auto-sync on library events, periodic polling, and status bar feedback. @depends vscode, @labshelf/core, googleDriveAuth, vscodeLocalFileSystem, libraryPaths. @dependents extension */
 import * as path from "node:path";
 import * as vscode from "vscode";
 
 import type { ILibraryPaths } from "../../storage/paths/libraryPaths.js";
-import type { ExtensionEventBus } from "../../core/eventBus.js";
+import {
+  createGoogleDriveProvider,
+  SyncEngine,
+  SyncManifest,
+} from "@labshelf/core";
+import type {
+  ExtensionEventBus,
+  SyncResult,
+  FolderNameMaps,
+} from "@labshelf/core";
 import { GoogleDriveAuth } from "../auth/googleDriveAuth.js";
-import { createGoogleDriveProvider } from "../drive/googleDriveProvider.js";
-import { SyncEngine } from "../core/syncEngine.js";
-import { SyncManifest } from "../core/syncManifest.js";
 import { VscodeLocalFileSystem } from "./vscodeLocalFileSystem.js";
-import type { SyncResult } from "../core/syncTypes.js";
-import type { FolderNameMaps } from "../core/syncEngine.js";
 
 const DEBOUNCE_MS = 30_000;
 const PROVIDER_ID = "google-drive";

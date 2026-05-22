@@ -1,15 +1,14 @@
 /**
  * Manages the central editor tab that displays the paper list for a selected collection folder with an inline detail sidebar, in a Zotero-style split layout.
  *
- * @depends ui/list/template.ts, ui/library/libraryTreeDataProvider.ts, core/paperService.ts, core/eventBus.ts, core/types.ts
+ * @depends ui/list/template.ts, ui/library/libraryTreeDataProvider.ts, core/paperService.ts, @labshelf/core
  * @dependents ui/list/index.ts, extension.ts
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { PaperService } from '../../core/paperService.js';
-import type { ExtensionEventBus } from '../../core/eventBus.js';
+import type { ExtensionEventBus, PaperRecord } from '@labshelf/core';
 import type { LibraryNode } from '../library/libraryTreeDataProvider.js';
-import type { PaperRecord } from '../../core/types.js';
 import { buildListPanelHtml, loadingHtml } from './template.js';
 
 export class ListWebviewPanel {

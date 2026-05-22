@@ -1,4 +1,4 @@
-import { SyncManifest } from "../../src/sync/core/syncManifest.js";
+import { SyncManifest } from "@labshelf/core";
 import { MemoryFileSystem } from "./fakes.js";
 
 describe("SyncManifest", () => {

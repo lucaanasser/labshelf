@@ -1,6 +1,4 @@
-import { conflictPath, isoDate } from "../../src/sync/util/conflictName.js";
-import { sha256Hex } from "../../src/sync/util/contentHash.js";
-import { splitPath, RemotePathResolver } from "../../src/sync/provider/remotePathResolver.js";
+import { conflictPath, isoDate, sha256Hex, splitPath, RemotePathResolver } from "@labshelf/core";
 import { FakeRemoteProvider } from "./fakes.js";
 
 describe("conflictName", () => {
@@ -20,8 +18,8 @@ describe("conflictName", () => {
 });
 
 describe("contentHash", () => {
-  it("produces a stable SHA-256 hex digest", () => {
-    expect(sha256Hex(Buffer.from("abc", "utf8"))).toBe(
+  it("produces a stable SHA-256 hex digest", async () => {
+    expect(await sha256Hex(new Uint8Array(Buffer.from("abc", "utf8")))).toBe(
       "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     );
   });

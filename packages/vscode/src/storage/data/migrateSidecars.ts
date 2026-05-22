@@ -1,11 +1,10 @@
 /**
  * One-time, idempotent migration that exports annotations and theme preferences from SQLite into per-paper sidecar JSON files.
  *
- * @depends core/types, db/database, storage/data/paperDataStore
+ * @depends @labshelf/core, storage/data/paperDataStore
  * @dependents extension.ts, storage/data/index.ts, storage/index.ts
  */
-import type { Annotation, PaperRecord } from "../../core/types.js";
-import type { ResearchDatabase } from "../../db/database.js";
+import type { Annotation, PaperRecord, IResearchDatabase } from "@labshelf/core";
 import type { PaperDataStore, PaperData } from "./paperDataStore.js";
 
 /**
@@ -14,7 +13,7 @@ import type { PaperDataStore, PaperData } from "./paperDataStore.js";
  * @returns object with the count of papers whose sidecar was updated
  */
 export async function migrateSidecarsFromDb(
-  database: ResearchDatabase,
+  database: IResearchDatabase,
   dataStore: PaperDataStore,
   papers: PaperRecord[],
 ): Promise<{ migratedPapers: number }> {

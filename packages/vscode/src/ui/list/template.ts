@@ -1,12 +1,12 @@
 /**
  * Generates the full HTML/CSS/JS document for the paper list webview panel, including the inline detail sidebar and all interactive controls.
  *
- * @depends ui/library/libraryTreeDataProvider.ts, core/types.ts, ui/list/template.css.ts, ui/list/template.icons.ts, ui/list/template.script.ts
+ * @depends ui/library/libraryTreeDataProvider.ts, @labshelf/core, ui/list/template.css.ts, ui/list/template.icons.ts, ui/list/template.script.ts
  * @dependents ui/list/listWebviewPanel.ts, ui/list/index.ts
  */
 import * as vscode from 'vscode';
 import type { LibraryNode } from '../library/libraryTreeDataProvider.js';
-import type { PaperRecord } from '../../core/types.js';
+import type { PaperRecord } from '@labshelf/core';
 import { listPanelCss } from './template.css.js';
 import { secIcon } from './template.icons.js';
 import { buildListScript } from './template.script.js';

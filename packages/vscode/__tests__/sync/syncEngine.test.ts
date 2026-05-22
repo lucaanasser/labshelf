@@ -1,5 +1,4 @@
-import { SyncEngine } from "../../src/sync/core/syncEngine.js";
-import { SyncManifest } from "../../src/sync/core/syncManifest.js";
+import { SyncEngine, SyncManifest } from "@labshelf/core";
 import { MemoryFileSystem, FakeRemoteProvider } from "./fakes.js";
 
 async function build(): Promise<{

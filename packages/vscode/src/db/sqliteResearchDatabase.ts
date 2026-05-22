@@ -1,15 +1,22 @@
 /**
- * SQLite-backed implementation of ResearchDatabase that persists papers, annotations, logs, and theme preferences.
+ * SQLite-backed implementation of IResearchDatabase that persists papers, annotations, logs, and theme preferences.
  *
- * @depends core/types, db/database, storage/fileSystemService
+ * @depends @labshelf/core, storage/fileSystemService
  * @dependents extension.ts
  */
 import * as path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import * as vscode from "vscode";
 
-import type { LogEntry, PaperRecord, Annotation, AnnotationColor, AnnotationType, PdfTheme } from "../core/types.js";
-import type { ResearchDatabase } from "./database.js";
+import type {
+  LogEntry,
+  PaperRecord,
+  Annotation,
+  AnnotationColor,
+  AnnotationType,
+  PdfTheme,
+  IResearchDatabase,
+} from "@labshelf/core";
 import { FileSystemService } from "../storage/fileSystemService.js";
 
 type AnnotationRow = {
@@ -75,10 +82,10 @@ type PaperRow = {
 };
 
 /**
- * Concrete ResearchDatabase backed by a WAL-mode SQLite file; applies additive schema migrations on initialize.
+ * Concrete IResearchDatabase backed by a WAL-mode SQLite file; applies additive schema migrations on initialize.
  * @usedBy extension.ts (via createSqliteResearchDatabase)
  */
-export class SqliteResearchDatabase implements ResearchDatabase {
+export class SqliteResearchDatabase implements IResearchDatabase {
   private connection: DatabaseSync | undefined;
 
   constructor(
@@ -341,8 +348,8 @@ export class SqliteResearchDatabase implements ResearchDatabase {
 /**
  * Factory that instantiates a SqliteResearchDatabase without calling initialize, leaving that to the caller.
  * @usedBy extension.ts
- * @returns uninitialised ResearchDatabase backed by the file at storageUri
+ * @returns uninitialised IResearchDatabase backed by the file at storageUri
  */
-export async function createSqliteResearchDatabase(storageUri: vscode.Uri, fileSystemService: FileSystemService): Promise<ResearchDatabase> {
+export async function createSqliteResearchDatabase(storageUri: vscode.Uri, fileSystemService: FileSystemService): Promise<IResearchDatabase> {
   return new SqliteResearchDatabase(storageUri, fileSystemService);
 }

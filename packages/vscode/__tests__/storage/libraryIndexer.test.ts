@@ -3,7 +3,7 @@ import { LibraryIndexer } from '../../src/storage/data/libraryIndexer';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 import { LibraryPaths } from '../../src/storage/paths/libraryPaths';
-import { InMemoryResearchDatabase } from '../../src/db/database';
+import { InMemoryResearchDatabase } from '@labshelf/core';
 
 // Fake FileSystemService backed by an in-memory map. readDirectory/readText are
 // keyed by fsPath; directories are listed by their declared entries.

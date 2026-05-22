@@ -5,7 +5,7 @@ import type { PaperService } from "../core/paperService.js";
 import type { WorkspaceLogger } from "../core/logger.js";
 import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
 import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
-import type { PaperRecord, PaperStatus, BatchImportResult } from "../core/types.js";
+import type { PaperRecord, PaperStatus, BatchImportResult } from "@labshelf/core";
 
 const LOG_MODULE = "commands/registerCommands";
 

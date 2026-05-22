@@ -6,7 +6,7 @@
  */
 import * as vscode from "vscode";
 
-import type { LogEntry } from "./types.js";
+import type { LogEntry } from "@labshelf/core";
 import { FileSystemService } from "../storage/fileSystemService.js";
 import type { ILibraryPaths } from "../storage/paths/libraryPaths.js";
 

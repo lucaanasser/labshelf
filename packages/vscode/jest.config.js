@@ -19,7 +19,7 @@ module.exports = {
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    'vscode': '<rootDir>/__mocks__/vscode.js',
+    '^vscode$': '<rootDir>/__mocks__/vscode.js',
     // pdfjs-dist uses import.meta.url (ESM-only) and cannot be loaded in Jest CJS mode
     'pdfjs-dist/legacy/build/pdf\\.worker\\.mjs': '<rootDir>/__mocks__/pdfjs-worker-legacy.js',
     'pdfjs-dist/legacy/build/pdf\\.mjs': '<rootDir>/__mocks__/pdfjs-dist-legacy.js',

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { BibTeXService } from '../../src/bibtex/bibtexService';
-import { FileSystemService } from '../../src/storage/fileSystemService';
-import type { PaperRecord } from '../../src/core/types';
+import { BibTeXService } from '@labshelf/core';
+import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
+import type { PaperRecord } from '@labshelf/core';
 
 function makePaper(overrides: Partial<PaperRecord> = {}): PaperRecord {
   return {
@@ -14,13 +14,13 @@ function makePaper(overrides: Partial<PaperRecord> = {}): PaperRecord {
   };
 }
 
-const fsService = new FileSystemService();
 let svc: BibTeXService;
 
 beforeEach(() => {
   jest.clearAllMocks();
   (vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined);
-  svc = new BibTeXService(fsService);
+  (vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined);
+  svc = new BibTeXService(new VscodeFileSystem());
 });
 
 describe('BibTeXService.generateBibTeX', () => {
@@ -65,7 +65,7 @@ describe('BibTeXService.generateBibTeX', () => {
 describe('BibTeXService.writePaperArtifacts', () => {
   it('writes metadata.yaml and bib.bib', async () => {
     const paper = makePaper({ authors: ['Alice'], year: 2024 });
-    const folder = vscode.Uri.file('/tmp/papers/test2024');
+    const folder = '/tmp/papers/test2024';
 
     await svc.writePaperArtifacts(folder, paper, '/src/paper.pdf');
 

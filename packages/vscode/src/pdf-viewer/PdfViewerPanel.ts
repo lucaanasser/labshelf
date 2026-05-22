@@ -1,14 +1,13 @@
 /**
  * Creates and manages VS Code webview panels for viewing PDFs with annotation support and live theme switching.
  *
- * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/PdfRenderer.ts, pdf-viewer/config.ts, core/paperService.ts, core/eventBus.ts, core/types.ts, constants/events.ts
+ * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/PdfRenderer.ts, pdf-viewer/config.ts, core/paperService.ts, @labshelf/core
  * @dependents extension.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
 import type { PaperService } from "../core/paperService.js";
-import type { ExtensionEventBus } from "../core/eventBus.js";
-import type { PaperRecord, Annotation, PdfTheme } from "../core/types.js";
-import { EVENTS } from "../constants/events.js";
+import type { ExtensionEventBus, PaperRecord, Annotation, PdfTheme } from "@labshelf/core";
+import { EVENTS } from "@labshelf/core";
 import { ThemeManager } from "./ThemeManager.js";
 import { AnnotationManager } from "./AnnotationManager.js";
 import { PdfRenderer, getPdfjsDirectory } from "./PdfRenderer.js";

@@ -2,11 +2,17 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { ExtensionEventBus } from "./core/eventBus.js";
+import {
+  ExtensionEventBus,
+  InMemoryResearchDatabase,
+  PdfImportParser,
+  BibTeXService,
+} from "@labshelf/core";
+import type { IResearchDatabase, PaperRecord } from "@labshelf/core";
 import { PaperService } from "./core/paperService.js";
 import { WorkspaceLogger } from "./core/logger.js";
-import { InMemoryResearchDatabase } from "./db/database.js";
 import { FileSystemService } from "./storage/fileSystemService.js";
+import { VscodeFileSystem } from "./storage/vscodeFileSystem.js";
 import { LibraryPaths } from "./storage/paths/libraryPaths.js";
 import {
   resolveLibraryRoot,
@@ -20,16 +26,13 @@ import { ListWebviewPanel } from "./ui/list/index.js";
 import { PdfViewerPanel } from "./pdf-viewer/PdfViewerPanel.js";
 import { registerCommands } from "./commands/registerCommands.js";
 import type { ActiveServices } from "./commands/registerCommands.js";
-import { PdfImportParser } from "./pdf/index.js";
-import { BibTeXService } from "./bibtex/bibtexService.js";
+import { NodePdfOpener } from "./pdf/nodePdfOpener.js";
 import { ThemeManager } from "./pdf-viewer/ThemeManager.js";
 import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
 import { PaperDataStore } from "./storage/data/paperDataStore.js";
 import { LibraryIndexer } from "./storage/data/libraryIndexer.js";
 import { migrateSidecarsFromDb } from "./storage/data/migrateSidecars.js";
 import { SyncController } from "./sync/adapter/syncController.js";
-import type { ResearchDatabase } from "./db/database.js";
-import type { PaperRecord } from "./core/types.js";
 
 /** Activates the extension, initializing services if a library is already configured. @usedBy vscode runtime. @returns void */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -320,8 +323,8 @@ async function buildServices(
   const logger = new WorkspaceLogger(fileSystemService, paths, {
     append: async (entry) => database.appendLog(entry),
   });
-  const pdfImportParser = new PdfImportParser();
-  const bibTeXService = new BibTeXService(fileSystemService);
+  const pdfImportParser = new PdfImportParser(new NodePdfOpener());
+  const bibTeXService = new BibTeXService(new VscodeFileSystem());
   const paperService = new PaperService(fileSystemService, database, eventBus, paths, pdfImportParser, bibTeXService);
   const paperDataStore = new PaperDataStore(paths.researchRoot(), fileSystemService);
   const indexer = new LibraryIndexer(paths, fileSystemService, database, paperDataStore);
@@ -333,7 +336,7 @@ async function buildServices(
 }
 
 // Tries to create the SQLite database; falls back to the in-memory implementation on failure.
-async function initializeDatabase(indexPath: vscode.Uri, fileSystemService: FileSystemService): Promise<ResearchDatabase> {
+async function initializeDatabase(indexPath: vscode.Uri, fileSystemService: FileSystemService): Promise<IResearchDatabase> {
   try {
     const { createSqliteResearchDatabase } = await import("./db/sqliteResearchDatabase.js");
     const database = await createSqliteResearchDatabase(indexPath, fileSystemService);

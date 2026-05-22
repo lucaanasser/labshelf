@@ -1,12 +1,12 @@
 /**
  * Provides the VS Code tree view for the LabShelf library by reading collection folders under the papers/ directory, and handles drag-and-drop PDF imports.
  *
- * @depends core/eventBus.ts
+ * @depends @labshelf/core
  * @dependents ui/library/index.ts, extension.ts
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { ExtensionEventBus } from '../../core/eventBus.js';
+import type { ExtensionEventBus } from '@labshelf/core';
 
 // A node is a "collection folder": a real directory under papers/ that is not
 // itself a paper folder. Paper folders are not shown as nodes — their papers

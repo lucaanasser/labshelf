@@ -1,11 +1,8 @@
 import * as vscode from 'vscode';
 import { PaperService } from '../../src/core/paperService';
-import type { ResearchDatabase } from '../../src/db/database';
-import type { ExtensionEventBus } from '../../src/core/eventBus';
+import type { IResearchDatabase, ExtensionEventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
 import type { FileSystemService } from '../../src/storage/fileSystemService';
 import type { ILibraryPaths } from '../../src/storage/paths/libraryPaths';
-import type { PdfImportParser } from '../../src/pdf/pdfImportParser';
-import type { BibTeXService } from '../../src/bibtex/bibtexService';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,7 +26,7 @@ function makeService(overrides: {
   fsStatResult?: (uri: vscode.Uri) => { type: number };
   fsReadDir?: (uri: vscode.Uri) => [string, number][];
 } = {}): PaperService {
-  const mockDb: Partial<ResearchDatabase> = {
+  const mockDb: Partial<IResearchDatabase> = {
     upsertPaper: jest.fn(async () => {}),
     listPapers: jest.fn(async () => overrides.dbPapers ?? []),
     deletePaper: jest.fn(async () => {}),
@@ -72,7 +69,7 @@ function makeService(overrides: {
 
   return new PaperService(
     mockFsService as FileSystemService,
-    mockDb as ResearchDatabase,
+    mockDb as IResearchDatabase,
     mockEventBus as ExtensionEventBus,
     mockPaths as ILibraryPaths,
     mockParser as PdfImportParser,

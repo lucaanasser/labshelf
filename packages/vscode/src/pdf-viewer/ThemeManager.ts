@@ -1,12 +1,12 @@
 /**
  * Maps VS Code color themes to PDF viewer themes, generates theme CSS, and persists per-paper theme preferences via PaperDataStore.
  *
- * @depends pdf-viewer/config.ts, storage/data/paperDataStore.ts, core/types.ts
+ * @depends pdf-viewer/config.ts, storage/data/paperDataStore.ts, @labshelf/core
  * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/renderer/PdfRenderer.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import type { PdfTheme } from "../core/types.js";
+import type { PdfTheme } from "@labshelf/core";
 import { PDF_VIEWER_CONFIG } from "./config.js";
 
 // Mapping from VS Code ColorThemeKind to pdf theme names

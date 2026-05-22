@@ -1,38 +1,11 @@
-/** Public surface of the sync layer — re-exports all public symbols from the six subdirectories. @depends provider, core, drive, auth, util, adapter. @dependents extension */
-export type {
-  RemoteProvider,
-  RemoteFile,
-  RemoteNamespace,
-} from "./provider/index.js";
-export { RemotePathResolver, splitPath } from "./provider/index.js";
-
-export type {
-  LocalFileSystem,
-  LocalStat,
-  ManifestData,
-  ManifestEntry,
-  DiffClass,
-  TreeNode,
-  SyncOperation,
-  NamespaceResult,
-  SyncResult,
-} from "./core/index.js";
-export { SyncManifest } from "./core/index.js";
-export { diffNamespace } from "./core/index.js";
-export { applyOperations } from "./core/index.js";
-export type { ApplyContext } from "./core/index.js";
-export { scanLocalTree, scanRemoteTree } from "./core/index.js";
-export { SyncEngine } from "./core/index.js";
-export type { SyncEngineDeps, NamespaceRoots, FolderNameMaps } from "./core/index.js";
-
-export { DriveClient } from "./drive/index.js";
-export type { DriveFile, DriveFileList } from "./drive/index.js";
-export { GoogleDriveProvider, createGoogleDriveProvider } from "./drive/index.js";
-
-export { GoogleDriveAuth } from "./auth/index.js";
-
-export { sha256Hex } from "./util/index.js";
-export { conflictPath, isoDate } from "./util/index.js";
-
-export { VscodeLocalFileSystem } from "./adapter/index.js";
-export { SyncController } from "./adapter/index.js";
+/**
+ * Public surface of the VS Code sync layer — auth and adapters that stay
+ * platform-specific. Provider, engine, manifest, and util types come from
+ * @labshelf/core directly.
+ *
+ * @depends auth, adapter
+ * @dependents extension (indirect)
+ */
+export { GoogleDriveAuth } from "./auth/googleDriveAuth.js";
+export { VscodeLocalFileSystem } from "./adapter/vscodeLocalFileSystem.js";
+export { SyncController } from "./adapter/syncController.js";

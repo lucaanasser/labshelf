@@ -1,9 +1,5 @@
-import { applyOperations } from "../../src/sync/core/syncApply.js";
-import type { ApplyContext } from "../../src/sync/core/syncApply.js";
-import { SyncManifest } from "../../src/sync/core/syncManifest.js";
-import { RemotePathResolver } from "../../src/sync/provider/remotePathResolver.js";
-import { sha256Hex } from "../../src/sync/util/contentHash.js";
-import type { TreeNode } from "../../src/sync/core/syncTypes.js";
+import { applyOperations, SyncManifest, RemotePathResolver, sha256Hex } from "@labshelf/core";
+import type { ApplyContext, TreeNode } from "@labshelf/core";
 import { MemoryFileSystem, FakeRemoteProvider } from "./fakes.js";
 
 async function makeContext(): Promise<{
@@ -28,10 +24,10 @@ async function makeContext(): Promise<{
   return { ctx, fs, provider, manifest };
 }
 
-function localNode(path: string, content: string): TreeNode {
+async function localNode(path: string, content: string): Promise<TreeNode> {
   return {
     path,
-    contentHash: sha256Hex(Buffer.from(content, "utf8")),
+    contentHash: await sha256Hex(new Uint8Array(Buffer.from(content, "utf8"))),
     modifiedTime: "2026-01-01T00:00:00.000Z",
   };
 }
@@ -44,7 +40,7 @@ describe("applyOperations", () => {
       {
         path: "papers/a/paper.pdf",
         class: "local-new",
-        local: localNode("papers/a/paper.pdf", "PDF"),
+        local: await localNode("papers/a/paper.pdf", "PDF"),
       },
     ]);
     expect(result.uploaded).toBe(1);
@@ -102,7 +98,7 @@ describe("applyOperations", () => {
       {
         path: "gone.md",
         class: "remote-deleted",
-        local: localNode("gone.md", "bye"),
+        local: await localNode("gone.md", "bye"),
       },
     ]);
     expect(result.deletedLocal).toBe(1);
@@ -118,7 +114,7 @@ describe("applyOperations", () => {
       {
         path: "papers/a/paper.pdf",
         class: "conflict",
-        local: localNode("papers/a/paper.pdf", "LOCAL"),
+        local: await localNode("papers/a/paper.pdf", "LOCAL"),
         remote: {
           path: "papers/a/paper.pdf",
           modifiedTime: remote.modifiedTime,

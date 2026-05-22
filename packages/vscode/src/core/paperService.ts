@@ -1,25 +1,30 @@
 /**
  * Orchestrates paper import, metadata persistence, status updates, and deletion.
  *
- * @depends core/types, core/eventBus, db/database, storage/fileSystemService, storage/paths/libraryPaths, pdf/index, bibtex/bibtexService
+ * @depends @labshelf/core, storage/fileSystemService, storage/paths/libraryPaths
  * @dependents commands/registerCommands.ts, extension.ts, pdf-viewer/PdfViewerPanel.ts, ui/list/listWebviewPanel.ts
  */
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { EVENTS } from "../constants/events.js";
-import type { PaperRecord, BatchImportResult } from "./types.js";
-import { ExtensionEventBus } from "./eventBus.js";
-import type { ResearchDatabase } from "../db/database.js";
+import {
+  EVENTS,
+  ExtensionEventBus,
+  PdfImportParser,
+  BibTeXService,
+} from "@labshelf/core";
+import type {
+  PaperRecord,
+  BatchImportResult,
+  IResearchDatabase,
+} from "@labshelf/core";
 import { FileSystemService } from "../storage/fileSystemService.js";
 import type { ILibraryPaths } from "../storage/paths/libraryPaths.js";
-import { PdfImportParser } from "../pdf/index.js";
-import { BibTeXService } from "../bibtex/bibtexService.js";
 
 export class PaperService {
   constructor(
     private readonly fsService: FileSystemService,
-    private readonly database: ResearchDatabase,
+    private readonly database: IResearchDatabase,
     private readonly eventBus: ExtensionEventBus,
     private readonly paths: ILibraryPaths,
     private readonly pdfImportParser: PdfImportParser,
@@ -32,15 +37,16 @@ export class PaperService {
    * @returns the newly created PaperRecord
    */
   async addPaperFromUri(sourceUri: vscode.Uri, targetParentDir?: vscode.Uri): Promise<PaperRecord> {
-    const parsed = await this.pdfImportParser.parse(sourceUri);
-    const paperId = parsed.citeKey || path.basename(sourceUri.fsPath, path.extname(sourceUri.fsPath)) || crypto.randomUUID();
+    const pdfBytes = await vscode.workspace.fs.readFile(sourceUri);
+    const fileStem = path.basename(sourceUri.fsPath, path.extname(sourceUri.fsPath));
+    const parsed = await this.pdfImportParser.parse(pdfBytes, fileStem);
+    const paperId = parsed.citeKey || fileStem || crypto.randomUUID();
     const parentDir = targetParentDir ?? this.paths.papersRoot();
     const targetFolder = vscode.Uri.joinPath(parentDir, paperId);
     await this.fsService.ensureDirectory(targetFolder);
 
     const targetPdf = vscode.Uri.joinPath(targetFolder, "paper.pdf");
-    const content = await vscode.workspace.fs.readFile(sourceUri);
-    await vscode.workspace.fs.writeFile(targetPdf, content);
+    await vscode.workspace.fs.writeFile(targetPdf, pdfBytes);
 
     const paper: PaperRecord = {
       id: paperId,
@@ -63,7 +69,7 @@ export class PaperService {
     };
 
     await this.database.upsertPaper(paper);
-    await this.bibTeXService.writePaperArtifacts(targetFolder, paper, sourceUri.fsPath);
+    await this.bibTeXService.writePaperArtifacts(targetFolder.fsPath, paper, sourceUri.fsPath);
     this.eventBus.emit(EVENTS.PAPER_ADDED, paper);
     return paper;
   }
@@ -226,8 +232,7 @@ export class PaperService {
   async regenerateBibTeX(): Promise<number> {
     const papers = await this.database.listPapers();
     for (const paper of papers) {
-      const paperFolder = vscode.Uri.file(paper.path);
-      await this.bibTeXService.writePaperArtifacts(paperFolder, paper, `${paper.path}/paper.pdf`);
+      await this.bibTeXService.writePaperArtifacts(paper.path, paper, `${paper.path}/paper.pdf`);
     }
 
     return papers.length;
