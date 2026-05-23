@@ -25,7 +25,7 @@ packages/
   vscode/     @labshelf/vscode  — VS Code extension: UI, commands, SQLite adapter, filesystem + Drive auth adapters, NodePdfOpener
   ai/         @labshelf/ai      — AI provider abstraction and paper summariser (planned)
   latex/      @labshelf/latex   — LaTeX cite-key formatter and bib-sync service (planned)
-  browser/    @labshelf/browser — Chrome + Firefox MV3 WebExtension (in progress) — shell + cross-browser API + structured logger landed; sync, capture, and library UI arrive in later phases
+  browser/    @labshelf/browser — Chrome + Firefox MV3 WebExtension — standalone library, Drive sync, capture flow, options + auto-sync (see packages/browser/README.md)
 ```
 
 `@labshelf/core` has no dependency on `vscode`, `node:sqlite`, `node:http`, `node:fs`, `node:crypto`, or any browser API. Every platform-specific concern is implemented as an adapter in the consuming package and injected via constructor (`IFileSystem`, `IResearchDatabase`, `ILogger`, `LocalFileSystem`, `PdfDocumentOpener`, `IAuthProvider`).
@@ -52,7 +52,7 @@ packages/
 | Drag-and-drop import in the new tree/tab UI | Planned |
 | AI-assisted paper summarisation | Planned (`@labshelf/ai`) |
 | LaTeX cite-key insertion and bib sync | Planned (`@labshelf/latex`) |
-| Browser extension companion | Planned (`@labshelf/browser`) |
+| Browser extension companion (Chrome + Firefox) | Done (`@labshelf/browser`) |
 
 ---
 
