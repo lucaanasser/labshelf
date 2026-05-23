@@ -1,13 +1,13 @@
 /**
  * Background entry. In MV3 Chrome this runs as a service worker; in Firefox
  * it runs as a non-persistent background script. Wires Drive auth, sync
- * controller, capture, and the Phase 7 schedulers (alarm + idle + debouncer)
- * into the runtime message channel so popup, options and library-page surfaces
- * can drive every flow.
+ * controller, capture, the Phase 7 schedulers (alarm + idle + debouncer) and
+ * the toolbar badge updater into the runtime message channel so popup, options
+ * and library-page surfaces can drive every flow.
  * @depends platform/browserApi, platform/logger, platform/runtimeMessages,
  *          sync/auth/browserDriveAuth, sync/browserSyncController, capture/index,
  *          background/autoSyncScheduler, background/syncOnIdle,
- *          background/eventDebouncer.
+ *          background/eventDebouncer, background/badgeUpdater.
  * @dependents none (entry point).
  */
 import { bx } from "../platform/browserApi";
@@ -20,6 +20,7 @@ import { installAutoSyncScheduler } from "./autoSyncScheduler";
 import type { SyncTrigger } from "./autoSyncScheduler";
 import { installIdleSyncTrigger } from "./syncOnIdle";
 import { SyncDebouncer } from "./eventDebouncer";
+import { installBadgeUpdater } from "./badgeUpdater";
 
 const log = new BrowserLogger("background");
 const auth = new BrowserDriveAuth();
@@ -36,6 +37,7 @@ const debouncer = new SyncDebouncer(triggerSync);
 
 void installAutoSyncScheduler({ trigger: triggerSync, logger: log });
 installIdleSyncTrigger({ trigger: triggerSync, logger: log });
+installBadgeUpdater(() => sync.status());
 
 bx.runtime.onInstalled.addListener((details) => {
   void log.info("extension installed", { reason: details.reason });

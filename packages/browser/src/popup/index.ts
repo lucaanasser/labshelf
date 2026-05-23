@@ -2,11 +2,14 @@
  * Popup bootstrap. Hooks the toolbar buttons to the background auth, sync, and
  * capture services. Renders in the terminal/brutalist aesthetic — uppercase
  * statuses, bracketed labels, and a footer status bar showing the last sync
- * time on the left and the last capture's PDF source on the right.
- * @depends platform/browserApi, platform/runtimeMessages
+ * time on the left and the last capture's PDF source on the right. A second
+ * meta footer line reflects the current auto-sync interval and links to the
+ * options page so the user always knows whether scheduled sync is on.
+ * @depends platform/browserApi, platform/runtimeMessages, platform/settings
  * @dependents popup/index.html
  */
 import { bx } from "../platform/browserApi";
+import { getSettings } from "../platform/settings";
 import type {
   RuntimeMessage,
   RuntimeResponse,
@@ -30,13 +33,15 @@ interface View {
   status: HTMLElement;
   syncStatus: HTMLElement;
   captureSource: HTMLElement;
+  autoSyncMeta: HTMLElement;
   connectBtn: HTMLButtonElement;
   syncBtn: HTMLButtonElement;
   captureBtn: HTMLButtonElement;
   libraryBtn: HTMLButtonElement;
+  optionsLink: HTMLAnchorElement;
 }
 
-function setStatus(view: View, state: "idle" | "connected" | "error", text: string): void {
+function setStatus(view: View, state: "idle" | "connected" | "syncing" | "error", text: string): void {
   view.status.dataset["state"] = state;
   view.status.textContent = text.toUpperCase();
 }
@@ -56,6 +61,7 @@ function setConnected(view: View, connected: boolean): void {
 function renderSyncStatus(view: View, s: SyncStatusData): void {
   if (s.syncing) {
     view.syncStatus.textContent = "SYNCING…";
+    setStatus(view, "syncing", "SYNCING");
   } else if (s.lastError) {
     view.syncStatus.textContent = `SYNC ERR: ${s.lastError}`;
   } else if (s.lastSyncTime) {
@@ -67,12 +73,16 @@ function renderSyncStatus(view: View, s: SyncStatusData): void {
 }
 
 async function refresh(view: View): Promise<void> {
-  const [auth, syncSt] = await Promise.all([
+  const [auth, syncSt, settings] = await Promise.all([
     send<{ connected: boolean }>({ type: "auth.status" }),
     send<SyncStatusData>({ type: "sync.status" }),
+    getSettings(),
   ]);
   setConnected(view, auth.connected);
   renderSyncStatus(view, syncSt);
+  view.autoSyncMeta.textContent = settings.autoSyncMinutes > 0
+    ? `AUTO-SYNC · ${settings.autoSyncMinutes} MIN`
+    : "AUTO-SYNC · OFF";
 }
 
 async function toggleConnection(view: View): Promise<void> {
@@ -123,10 +133,12 @@ async function init(): Promise<void> {
     status: $("status"),
     syncStatus: $("sync-status"),
     captureSource: $("capture-source"),
+    autoSyncMeta: $("auto-sync-meta"),
     connectBtn: $("connect") as HTMLButtonElement,
     syncBtn: $("sync-now") as HTMLButtonElement,
     captureBtn: $("capture") as HTMLButtonElement,
     libraryBtn: $("open-library") as HTMLButtonElement,
+    optionsLink: $("open-options") as HTMLAnchorElement,
   };
 
   view.connectBtn.addEventListener("click", () => { void toggleConnection(view); });
@@ -135,6 +147,10 @@ async function init(): Promise<void> {
   view.libraryBtn.addEventListener("click", async () => {
     const url = bx.runtime.getURL("library-page/index.html");
     await bx.tabs.create({ url });
+  });
+  view.optionsLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    void bx.runtime.openOptionsPage();
   });
 
   try {

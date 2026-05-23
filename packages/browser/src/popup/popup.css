@@ -54,6 +54,7 @@ body {
 .popup__status { color: var(--muted); }
 .popup__status::before { content: "• "; }
 .popup__status[data-state="connected"] { color: var(--ok); }
+.popup__status[data-state="syncing"] { color: var(--accent); }
 .popup__status[data-state="error"] { color: var(--warn); }
 
 .popup__body {
@@ -106,3 +107,15 @@ body {
 }
 
 .popup__footer small { color: inherit; }
+
+.popup__footer--meta {
+  border-top: 1px dashed var(--border-dim);
+  font-size: 9px;
+}
+
+.popup__footer--meta a {
+  color: var(--accent-dim);
+  text-decoration: none;
+}
+
+.popup__footer--meta a:hover { color: var(--fg); }
