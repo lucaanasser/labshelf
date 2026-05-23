@@ -1,0 +1,140 @@
+feature:
+  name: Browser Library Page
+  module: "@labshelf/browser"
+  description: >
+    Standalone library UI served from chrome-extension://<id>/library-page/index.html.
+    Reproduces a Paperpile-style three-column layout (collections tree | paper list |
+    detail pane) on top of the IndexedDB-backed local store, so the user can browse
+    and manage the entire library without the VSCode extension open. Folder CRUD and
+    paper actions mutate IndexedDB directly; the next sync cycle propagates the
+    deltas to Google Drive. The page reuses the terminal/brutalist aesthetic from
+    the popup — monospace, sharp corners, bracketed labels, status pills, sticky
+    header + footer.
+
+structure:
+  root: packages/browser/src/library-page
+  files:
+    - index.html
+    - index.ts                         # bootstrap: builds shell, mounts views, wires controllers
+    - app.ts                           # builds the three-column shell + header actions
+    - state/libraryStore.ts            # pub/sub store with shallow-equality slice subscriptions
+    - views/collectionsTreeView.ts     # sidebar tree, expand/collapse + inline new/rename/delete
+    - views/paperListView.ts           # main pane table with live search filtering
+    - views/paperDetailView.ts         # right pane: metadata + action buttons
+    - views/toolbarView.ts             # breadcrumb (header) + status bar (footer)
+    - views/emptyStateView.ts          # shared empty-state and HTML-escape helpers
+    - controllers/dataController.ts    # initial load, polling sync.status, folder-change refresh
+    - controllers/folderController.ts  # new/rename/delete folder via IDB + FolderService
+    - controllers/paperController.ts   # open PDF / copy cite / change status / delete paper
+    - styles/{tokens,layout,tree,list,detail}.css
+
+architecture:
+  inputs:
+    - IndexedDB "files" store (folder paths + paper.pdf bytes for blob URLs)
+    - IndexedDB "metadata" store (PaperRecord cache, fed by sync + capture)
+    - background runtime messages: sync.status, sync.now, capture.activeTab
+    - DOM CustomEvents emitted by views — labshelf:new-folder, :rename-folder,
+      :delete-folder, :paper-action
+  outputs:
+    - IDB mutations: new folder sentinels, file moves under rename, file deletes
+    - IDB metadata updates: status changes, paper deletions
+    - chrome.tabs.create for PDF blob URLs
+    - clipboard writes for cite keys
+    - LibraryStore updates that drive view re-renders
+
+  modules:
+    - "state/libraryStore: in-memory LibraryState + shallow-equality subscriptions"
+    - "app: header + body + footer DOM scaffold; exposes mount points"
+    - "views/*: pure render functions subscribed to store slices"
+    - "controllers/dataController: IDB ↔ store sync, sync.status poller"
+    - "controllers/folderController: folder CRUD via IndexedDbFileSystem + FolderService"
+    - "controllers/paperController: paper actions via paperRecordStore + BibTeXService"
+    - "styles/*.css: tokens, layout, tree, list, detail (split by concern, <120 lines each)"
+
+  dependencies:
+    - "@labshelf/core: PaperRecord, FolderService, BibTeXService, IFileSystem, IPaperRecordIndex"
+    - "@labshelf/browser storage: IndexedDbFileSystem, paperRecordStore, folderTreeStore"
+    - "platform: bx (webextension-polyfill), BrowserLogger, RuntimeMessage envelope"
+
+database:
+  tables_used:
+    - files (read for folder tree, written by folder CRUD + paper delete)
+    - metadata (read for paper list, written on status change + paper delete)
+    - manifest (read indirectly via sync.status only)
+  migrations: []
+
+events:
+  emits:
+    - DOM CustomEvent "labshelf:new-folder" — detail { parent }
+    - DOM CustomEvent "labshelf:rename-folder" — detail { path }
+    - DOM CustomEvent "labshelf:delete-folder" — detail { path }
+    - DOM CustomEvent "labshelf:paper-action" — detail { id, action }
+  listens:
+    - runtime sync.status (poll while syncing)
+    - runtime sync.now / capture.activeTab (triggered by header buttons)
+
+errors:
+  expected_failures:
+    - Empty library (no IDB rows) — every pane shows its empty-state copy
+    - Invalid folder name (contains "/" or "\\") — store.error set, no IDB mutation
+    - Rename target collision — handled implicitly because moveDir overwrites destination
+      keys; consumers must avoid prompting users into self-collision (next iteration)
+    - Clipboard permission denied — store.error set, paper still selected
+    - PDF blob URL revocation — currently never revoked; relies on tab lifecycle to GC
+    - Background not running — runtime.sendMessage throws; store.error displays the message
+  handling_strategy: >
+    Controllers wrap their work in try/catch and push the message into
+    LibraryStore.error, which the footer renders as a warn pill. Views never throw
+    — they read defensively from the store and render empty-state copy when their
+    slice is empty.
+
+ui:
+  layout:
+    grid:
+      header: "240px | 1fr | auto   (title | breadcrumb | search + buttons)"
+      body:   "240px | 1fr | 320px  (sidebar tree | paper list | detail)"
+      footer: "left status pills | right paper count"
+  aesthetic_tokens:
+    background: var(--bg) = #0e0e10
+    foreground: var(--fg) = #f1ecdf
+    accent:     var(--accent) = #d39157
+    ok:         var(--ok) = #6ba56b
+    warn:       var(--warn) = #d05750
+    font:       var(--mono) — JetBrains/IBM Plex/Berkeley Mono fallback chain
+    rule:       no border-radius; thin 1px solid or dashed borders; uppercase headers;
+                action labels bracketed via ::before/::after content "[ " / " ]"
+
+  components:
+    - sidebar tree row: "▾/▸ <FOLDER NAME> [hover: + ✎ ×]"
+    - paper list row: "TITLE / authors · CITE KEY · YEAR · FOLDER · [STATUS PILL]"
+    - detail card: title + cite + status pills + metadata grid (key/value) + actions stack
+    - breadcrumb crumbs: "LIBRARY › FOO › BAR" (each crumb selects that folder)
+    - footer status pill: "• DRIVE · SYNCED HH:MM:SS" or "▶ SYNCING" or "SYNC ERR · <msg>"
+
+tests:
+  unit:
+    - "LibraryStore.set notifies only listeners whose selected slice changed"
+    - "LibraryStore.select fires once immediately with the current slice"
+    - "shallowEqual returns true for identical arrays / objects, false for different keys"
+    - "FolderService.relocatePapersUnder rewrites paths under the given prefix only"
+    - "FolderService.removePapersUnder removes only records under the prefix"
+    - "IndexedDbFileSystem.moveDir rewrites keys under oldDir and removes originals"
+  integration:
+    - "Initial load: with seeded IDB data, sidebar shows the folder tree and main pane
+       shows the papers list filtered by 'papers' root"
+    - "Selecting a folder updates breadcrumb, list and (when a paper is picked) detail"
+    - "Search filter narrows the list by title + cite + authors, case-insensitive"
+    - "New folder writes '<parent>/<name>/.keep' and the tree re-renders with it"
+    - "Rename folder moves all file rows and rewrites PaperRecord.path; tree + list refresh"
+    - "Delete folder removes file rows and PaperRecords; selection falls back to root"
+    - "Mark as Done rewrites metadata.yaml and the next sync uploads the change"
+    - "Open PDF creates a Blob URL and opens it in a new tab via bx.tabs.create"
+
+ai_notes:
+  embeddings: false
+  semantic_search: false
+  notes: >
+    The store is intentionally framework-free vanilla TS for two reasons: every
+    library-page file stays under the 200-line cap, and the runtime cost is
+    negligible. If interactions grow richer (multi-select, drag-drop reorder),
+    swap LibraryStore for a real state lib in one place and keep views unchanged.
