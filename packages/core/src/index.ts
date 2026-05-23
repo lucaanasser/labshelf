@@ -11,3 +11,4 @@ export * from "./events/index.js";
 export * from "./db/index.js";
 export * from "./io/index.js";
 export * from "./sync/index.js";
+export * from "./library/index.js";

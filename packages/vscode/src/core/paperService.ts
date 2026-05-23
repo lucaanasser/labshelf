@@ -12,6 +12,7 @@ import {
   ExtensionEventBus,
   PdfImportParser,
   BibTeXService,
+  FolderService,
 } from "@labshelf/core";
 import type {
   PaperRecord,
@@ -194,16 +195,9 @@ export class PaperService {
    * @returns void
    */
   async relocatePapersUnder(oldDir: string, newDir: string): Promise<void> {
-    const papers = await this.database.listPapers();
-    const prefix = oldDir + path.sep;
-    for (const paper of papers) {
-      if (paper.path !== oldDir && !paper.path.startsWith(prefix)) {
-        continue;
-      }
-      const relative = path.relative(oldDir, paper.path);
-      const next: PaperRecord = { ...paper, path: path.join(newDir, relative) };
-      await this.database.upsertPaper(next);
-      this.eventBus.emit(EVENTS.PAPER_UPDATED, next);
+    const { updated } = await this._folderService().relocatePapersUnder(oldDir, newDir);
+    for (const paper of updated) {
+      this.eventBus.emit(EVENTS.PAPER_UPDATED, paper);
     }
   }
 
@@ -213,15 +207,16 @@ export class PaperService {
    * @returns void
    */
   async removePapersUnder(dirPath: string): Promise<void> {
-    const papers = await this.database.listPapers();
-    const prefix = dirPath + path.sep;
-    for (const paper of papers) {
-      if (paper.path !== dirPath && !paper.path.startsWith(prefix)) {
-        continue;
-      }
-      await this.database.deletePaper(paper.id);
-      this.eventBus.emit(EVENTS.PAPER_DELETED, { id: paper.id });
+    const { removedIds } = await this._folderService().removePapersUnder(dirPath);
+    for (const id of removedIds) {
+      this.eventBus.emit(EVENTS.PAPER_DELETED, { id });
     }
+  }
+
+  // FolderService is platform-agnostic; we instantiate per call so it always
+  // sees the same database instance even if listPapers caches change.
+  private _folderService(): FolderService {
+    return new FolderService(this.database, path.sep);
   }
 
   /**
