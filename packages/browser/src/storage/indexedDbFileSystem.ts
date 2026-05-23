@@ -87,4 +87,31 @@ export class IndexedDbFileSystem implements LocalFileSystem {
     }
     await tx.done;
   }
+
+  /**
+   * Re-keys every file row under `oldDir` so its path lives under `newDir`.
+   * The hash and bytes are preserved, so the next sync only sees a rename
+   * (delete-at-old + write-at-new) and the merge logic stays simple.
+   */
+  async moveDir(oldDir: string, newDir: string): Promise<void> {
+    const db = await getDb();
+    const prefix = `${oldDir}/`;
+    const range = IDBKeyRange.bound(prefix, `${prefix}￿`, false, true);
+    const tx = db.transaction("files", "readwrite");
+    const rewrites: Array<{ path: string; bytes: Uint8Array; mtime: number; hash: string }> = [];
+    let cursor = await tx.store.openCursor(range);
+    while (cursor) {
+      const row = cursor.value;
+      rewrites.push({
+        path: `${newDir}/${row.path.slice(prefix.length)}`,
+        bytes: row.bytes,
+        mtime: row.mtime,
+        hash: row.hash,
+      });
+      await cursor.delete();
+      cursor = await cursor.continue();
+    }
+    for (const r of rewrites) await tx.store.put(r);
+    await tx.done;
+  }
 }
