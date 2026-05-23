@@ -1,0 +1,49 @@
+/*
+ * Paper list table. Columns: TITLE / CITE KEY / YEAR / ADDED / STATUS.
+ * One row per PaperRecord. Selecting a row populates the detail pane.
+ */
+.list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.list thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: normal;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.list tbody td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-dim);
+  vertical-align: top;
+  color: var(--fg-dim);
+}
+
+.list tbody tr {
+  cursor: pointer;
+}
+
+.list tbody tr:hover { background: var(--bg-row-hover); }
+.list tbody tr[aria-selected="true"] {
+  background: var(--bg-row-selected);
+  color: var(--accent);
+}
+
+.list__title { color: var(--fg); }
+.list tbody tr[aria-selected="true"] .list__title { color: var(--accent); }
+.list__authors { color: var(--muted); font-size: 11px; }
+.list__cite { color: var(--fg-dim); }
+.list__year { color: var(--muted); }
+.list__added { color: var(--muted); }
+
+.list__col-status { white-space: nowrap; }

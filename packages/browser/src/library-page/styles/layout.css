@@ -1,0 +1,97 @@
+/*
+ * Three-column Paperpile-style frame: sidebar (tree) | main (paper list) | aside (detail).
+ * Sticky header on top with breadcrumb + global actions; sticky footer status bar at the bottom.
+ */
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+}
+
+.app__header {
+  display: grid;
+  grid-template-columns: 240px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.app__title { color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+.app__title::before { content: "▮ "; }
+
+.app__breadcrumb {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app__breadcrumb__sep { color: var(--muted); margin: 0 6px; }
+.app__breadcrumb__crumb { cursor: pointer; }
+.app__breadcrumb__crumb:hover { color: var(--fg); }
+.app__breadcrumb__current { color: var(--fg); }
+
+.app__actions { display: flex; gap: 6px; align-items: center; }
+.app__actions input[type="search"] { width: 200px; }
+
+.app__body {
+  display: grid;
+  grid-template-columns: 240px 1fr 320px;
+  min-height: 0;
+}
+
+.app__sidebar {
+  border-right: 1px solid var(--border);
+  overflow: auto;
+  background: var(--bg);
+}
+.app__main {
+  overflow: auto;
+  background: var(--bg);
+}
+.app__aside {
+  border-left: 1px solid var(--border);
+  overflow: auto;
+  background: var(--bg);
+}
+
+.app__footer {
+  border-top: 1px solid var(--border);
+  padding: 6px 12px;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.app__footer__left, .app__footer__right { display: flex; gap: 12px; }
+.app__footer__sep { color: var(--border-dashed); }
+
+/* Section headers inside each pane */
+.pane__header {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.empty {
+  padding: 24px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}

@@ -1,0 +1,63 @@
+/*
+ * Detail pane on the right. Title + status pills + bibliographic block +
+ * action stack. No drawer animations — pane is always visible; empty state
+ * shown when no paper is selected.
+ */
+.detail {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail__title {
+  font-size: 13px;
+  color: var(--fg);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.detail__cite {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detail__pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.detail__section {
+  border-top: 1px dashed var(--border-dashed);
+  padding-top: 10px;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  row-gap: 4px;
+  column-gap: 8px;
+  font-size: 11px;
+}
+
+.detail__key {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detail__val {
+  color: var(--fg-dim);
+  word-break: break-word;
+}
+
+.detail__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.detail__actions button {
+  text-align: left;
+}
