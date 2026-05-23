@@ -4,27 +4,48 @@ feature:
   description: >
     Wires the @labshelf/core SyncEngine to the browser extension's local store
     (IndexedDbFileSystem) and Drive provider (BrowserDriveAuth + GoogleDriveProvider).
-    The controller runs in the MV3 service worker, exposing sync.now and sync.status
-    messages to the popup. The sync manifest (merge-base state) is persisted in
-    the IDB "manifest" store via IdbManifestFileSystem so it survives
-    service-worker restarts. After each successful sync the paperRecordStore is
-    rebuilt from updated metadata.yaml files so the library page always reflects
-    the latest state.
+    The controller runs in the MV3 service worker, exposing sync.now,
+    sync.status and sync.scheduleSoon messages to UI surfaces. The sync manifest
+    (merge-base state) is persisted in the IDB "manifest" store via
+    IdbManifestFileSystem so it survives service-worker restarts. After each
+    successful sync the paperRecordStore is rebuilt from updated metadata.yaml
+    files so the library page always reflects the latest state.
+
+    Phase 7 adds three trigger sources around the controller:
+    - autoSyncScheduler: bx.alarms drives a periodic sync at the user-configured
+      interval (autoSyncMinutes in settings); 0 disables it.
+    - syncOnIdle: bx.idle.onStateChanged → "idle" with a 5-minute threshold
+      schedules one sync per quiet period.
+    - eventDebouncer: every local mutation (capture, folder rename, paper
+      status, paper delete) calls schedule(), which coalesces bursts into a
+      single trailing sync via a 30 s bx.alarms delay.
+
+    A toolbar badge mirrors live sync state: idle/connected = dim dot, syncing
+    = animated spinner in blue, error = "!" in red, disconnected = no badge.
 
 architecture:
   inputs:
     - popup sends { type: "sync.now" } to trigger a manual sync
     - popup sends { type: "sync.status" } to poll current state
-    - Phase 7 auto-sync scheduler calls sync.now via alarms
+    - library-page sends { type: "sync.scheduleSoon", reason } after any local
+      mutation (paper added/updated/deleted, folder rename/delete)
+    - autoSyncScheduler fires via bx.alarms at autoSyncMinutes cadence
+    - syncOnIdle fires via bx.idle transition to "idle" (≥5 min)
+    - eventDebouncer fires via bx.alarms after 30 s of quiet
   outputs:
     - SyncResult returned to background; sync.status data returned to popup
     - Files written to IndexedDB "files" store (downloaded from Drive)
     - Files uploaded from IndexedDB "files" store to Drive
     - IDB "manifest" store updated with the new merge-base after each run
     - IDB "metadata" store rebuilt from metadata.yaml files after each run
+    - Toolbar badge text/colour/title updated by badgeUpdater (1 Hz poll)
 
   modules:
     - "sync/browserSyncController: BrowserSyncController — orchestrates engine + manifest + cache rebuild"
+    - "background/autoSyncScheduler: installAutoSyncScheduler — periodic alarm + storage listener"
+    - "background/syncOnIdle: installIdleSyncTrigger — bx.idle subscription"
+    - "background/eventDebouncer: SyncDebouncer — alarm-backed trailing trigger"
+    - "background/badgeUpdater: installBadgeUpdater — polled badge state machine"
     - "storage/idbManifestFileSystem: LocalFileSystem shim over the IDB manifest store"
     - "sync/auth/browserDriveAuth: IAuthProvider (Phase 2)"
     - "storage/indexedDbFileSystem: LocalFileSystem over IDB files store (Phase 3)"
@@ -35,10 +56,17 @@ architecture:
     - "@labshelf/core SyncEngine, SyncManifest, createGoogleDriveProvider, IAuthProvider"
     - storage layer (Phase 3)
     - auth layer (Phase 2)
+    - bx.alarms (manifest "alarms" permission)
+    - bx.idle (manifest "idle" permission)
+    - bx.action (toolbar badge — implicit with action entry)
 
   local_roots:
     library: "papers"    # relative path in the IDB file store
     appdata: "appdata"   # same; mirrors the Drive appDataFolder namespace
+
+  alarm_names:
+    - "labshelf.autoSync"        # periodic, periodInMinutes = autoSyncMinutes
+    - "labshelf.debouncedSync"   # one-shot, delayInMinutes = 0.5 (30 s)
 
 database:
   tables_used:
@@ -50,29 +78,45 @@ database:
 events:
   emits: []
   listens:
-    - runtime onMessage: sync.now, sync.status
+    - runtime onMessage: sync.now, sync.status, sync.scheduleSoon
+    - alarms onAlarm: labshelf.autoSync, labshelf.debouncedSync
+    - idle onStateChanged: "idle" → schedule sync
+    - storage onChanged: labshelf.settings → re-apply alarm interval
 
 errors:
   expected_failures:
-    - Not authenticated — sync() throws "Not connected to Google Drive"
-    - Concurrent sync — second sync() throws "Sync already in progress"
+    - Not authenticated — sync() throws "Not connected to Google Drive";
+      trigger sources log the error and skip; badge shows "!" in red
+    - Concurrent sync — second sync() throws "Sync already in progress";
+      callers fire-and-forget so the rejection is logged but does not
+      surface to the user
     - Drive API failure (network error, quota, 401) — error stored in lastError,
-      re-thrown so background can log it; popup shows the error string on next status poll
-    - IDB quota exceeded during file write — propagates as sync failure; lastError set
+      re-thrown so background can log it; popup shows the error string on next
+      status poll, badge flips to error state
+    - IDB quota exceeded during file write — propagates as sync failure;
+      lastError set
     - Corrupt manifest in IDB — SyncManifest.load falls back to empty manifest;
       next sync does a full rebuild (all remote files treated as remote-new)
+    - bx.alarms.create rejection on FF when periodInMinutes < 1 — clamped to 1
+      in autoSyncScheduler
   handling_strategy: >
     All errors are caught in BrowserSyncController.sync(), stored in lastError,
-    re-thrown so the background logger records them, and surfaced to the popup via
-    the sync.status response. The sync.now background handler fires-and-forgets
-    to keep the popup responsive; the popup polls once after 5 seconds to pick up
-    the completion state.
+    re-thrown so the background logger records them, and surfaced via the
+    sync.status response and the badge. Trigger sources (alarm, idle,
+    debouncer) never propagate failures back to the originating event; they
+    log and move on. The next successful sync clears lastError implicitly.
 
 ui:
   components:
     - popup "Sync now" button (disabled when not connected)
     - popup sync-status footer line showing last sync time or error
-    - Phase 7 will add toolbar badge updates driven by SyncStatus
+    - popup auto-sync meta line ("AUTO-SYNC · N MIN" or "AUTO-SYNC · OFF")
+    - popup status indicator with states idle | connected | syncing | error
+    - toolbar action badge: empty (disconnected), dim dot (connected idle),
+      cycling spinner (syncing, blue), "!" (error, red)
+    - toolbar action title text shows last sync timestamp or error message
+    - options page "DRIVE CONNECTION" section with disconnect button
+    - options page "SYNC" section with auto-sync interval input (0 disables)
 
 tests:
   unit: []
@@ -81,6 +125,11 @@ tests:
     - "Add a paper locally then sync — paper appears in Drive LabShelf Library folder"
     - "Reload extension while connected — sync.status returns lastSyncTime from IDB manifest"
     - "Drive returns 401 — sync.status.lastError is set; subsequent auth.connect clears it"
+    - "Set autoSyncMinutes=2 in options — alarm fires within ~2 min and the badge shows syncing"
+    - "Set autoSyncMinutes=0 in options — labshelf.autoSync alarm cleared, no periodic fires"
+    - "Capture a paper — debounced sync fires ~30 s later (single sync even if multiple captures)"
+    - "Lock the screen for >5 min then unlock — sync.status shows a sync ran during idle"
+    - "Click Disconnect in options — auth.status returns false and the badge clears"
 
 ai_notes:
   embeddings: false
