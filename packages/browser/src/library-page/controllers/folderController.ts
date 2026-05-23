@@ -21,7 +21,7 @@ import {
   upsertRecord,
 } from "../../storage";
 import type { LibraryStore } from "../state/libraryStore";
-import { refreshFolders, refreshPapersSlice } from "./dataController";
+import { refreshFolders, refreshPapersSlice, scheduleSyncSoon } from "./dataController";
 
 const fs = new IndexedDbFileSystem();
 
@@ -65,6 +65,7 @@ async function handleNew(store: LibraryStore, parent: string): Promise<void> {
   await fs.writeFile(`${target}/.keep`, new Uint8Array());
   await refreshFolders(store);
   store.set({ selectedFolder: target });
+  scheduleSyncSoon("folder.new");
 }
 
 async function handleRename(store: LibraryStore, oldPath: string): Promise<void> {
@@ -84,6 +85,7 @@ async function handleRename(store: LibraryStore, oldPath: string): Promise<void>
   if (store.get().selectedFolder.startsWith(oldPath)) {
     store.set({ selectedFolder: newPath });
   }
+  scheduleSyncSoon("folder.rename");
 }
 
 async function handleDelete(store: LibraryStore, path: string): Promise<void> {
@@ -95,4 +97,5 @@ async function handleDelete(store: LibraryStore, path: string): Promise<void> {
   if (store.get().selectedFolder === path) {
     store.set({ selectedFolder: "papers", selectedPaperId: null });
   }
+  scheduleSyncSoon("folder.delete");
 }

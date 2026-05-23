@@ -13,6 +13,7 @@ export type RuntimeMessage =
   | { type: "auth.disconnect" }
   | { type: "sync.now" }
   | { type: "sync.status" }
+  | { type: "sync.scheduleSoon"; reason: string }
   | { type: "capture.activeTab" };
 
 export type RuntimeResponse =

@@ -54,6 +54,15 @@ export async function refreshFolders(store: LibraryStore): Promise<void> {
 }
 
 /**
+ * Asks the background to coalesce a sync after a local mutation. Fire-and-
+ * forget: errors are logged by the background side, the UI keeps going.
+ * @usedBy controllers/folderController, controllers/paperController
+ */
+export function scheduleSyncSoon(reason: string): void {
+  void send({ type: "sync.scheduleSoon", reason }).catch(() => undefined);
+}
+
+/**
  * Subscribes to store changes that require background work:
  * - whenever selectedFolder changes, reload the papers slice;
  * - whenever sync is in flight, poll sync.status until it settles, then refresh.

@@ -20,7 +20,7 @@ import {
   upsertRecord,
 } from "../../storage";
 import type { LibraryStore } from "../state/libraryStore";
-import { refreshPapersSlice } from "./dataController";
+import { refreshPapersSlice, scheduleSyncSoon } from "./dataController";
 
 const fs = new IndexedDbFileSystem();
 
@@ -95,6 +95,7 @@ async function setStatus(
   // Rewriting metadata.yaml + .bib ensures the sync engine uploads the change.
   await bib.writePaperArtifacts(next.path, next, "paper.pdf");
   await refreshPapersSlice(store);
+  scheduleSyncSoon("paper.status");
 }
 
 async function deletePaper(store: LibraryStore, paper: PaperRecord): Promise<void> {
@@ -103,4 +104,5 @@ async function deletePaper(store: LibraryStore, paper: PaperRecord): Promise<voi
   await fs.deleteDir(paper.path);
   store.set({ selectedPaperId: null });
   await refreshPapersSlice(store);
+  scheduleSyncSoon("paper.delete");
 }
