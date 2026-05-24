@@ -42,6 +42,15 @@ export class FileSystemService {
   }
 
   /**
+   * Reads a file and returns its contents as a Uint8Array.
+   * @usedBy ai/pdf/pdfTextExtractor.ts, ai/pdf/contentHash.ts
+   * @returns Raw file bytes.
+   */
+  async readBinary(uri: vscode.Uri): Promise<Uint8Array> {
+    return vscode.workspace.fs.readFile(uri);
+  }
+
+  /**
    * Returns true if the path exists (file or directory), false otherwise.
    * @usedBy storage/data/paperDataStore.ts
    * @returns boolean
