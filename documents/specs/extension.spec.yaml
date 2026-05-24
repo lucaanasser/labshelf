@@ -40,20 +40,29 @@ architecture:
     - ui/library/libraryTreeDataProvider
     - ui/list/listWebviewPanel
     - commands/registerCommands
+    - commands/registerAiCommands
+    - ai/service/aiService
+    - ai/service/aiServiceFactory
 
 database:
   tables_used:
     - papers
     - logs
     - annotations (cache rebuilt by LibraryIndexer)
-  migrations: []
+    - chunk_embeddings (AI subsystem)
+    - figure_embeddings (AI subsystem)
+    - paper_metadata_ai (AI subsystem)
+    - reading_events (AI subsystem)
+    - s2_cache (AI subsystem)
+  migrations:
+    - 0002_ai_embeddings (additive via ensureAiSchema)
 
 events:
   emits: []
   listens:
-    - paper:added (log and trigger sync debounce)
-    - paper:updated (log and trigger sync debounce)
-    - paper:deleted (trigger sync debounce)
+    - paper:added (log and trigger sync debounce; AI indexer ingests)
+    - paper:updated (log and trigger sync debounce; AI indexer re-ingests if contentHash changed)
+    - paper:deleted (trigger sync debounce; AI service deletes vectors and metadata)
 
 errors:
   expected_failures:
@@ -90,5 +99,6 @@ tests:
     - sync.connect command triggers OAuth flow and starts periodic sync
 
 ai_notes:
-  embeddings: false
-  semantic_search: false
+  embeddings: true
+  semantic_search: true
+  details: See ai/foundation.spec.yaml for the full AI subsystem contract.

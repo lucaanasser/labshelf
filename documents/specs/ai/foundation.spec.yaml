@@ -1,0 +1,112 @@
+feature:
+  name: AI Subsystem Foundation
+  module: ai
+  description: >
+    Establish the cross-package primitives that power Phase 1 AI features:
+    embeddings, vector search, PDF text extraction, ingestion pipeline,
+    heuristic NLP, and Semantic Scholar enrichment. The pure logic lives in
+    @labshelf/ai; runtimes (ONNX, sqlite-vec, vscode.lm) live in consumer
+    packages. The VSCode side wires a SqliteVectorStore backed by SQLite BLOB
+    storage and an OnnxEmbeddingProvider that lazy-loads
+    @xenova/transformers; when the optional ONNX runtime is unavailable the
+    extension keeps working with a deterministic HashEmbeddingProvider.
+
+architecture:
+  inputs:
+    - paper records (id, citeKey, path) emitted via paper:added and paper:updated
+    - PDF byte stream from the configured library
+    - external Semantic Scholar Graph API (optional, rate-limited)
+    - VSCode configuration (labshelf.ai.enabled, indexOnImport, textEmbeddingModelId)
+  outputs:
+    - chunk_embeddings rows with Float32 BLOB vectors
+    - paper_metadata_ai rows (methods, datasets, code repos, reproducibility,
+      compute disclosure, limitations, difficulty profile)
+    - reading_events rows for the intellectual heatmap
+    - s2_cache rows for Semantic Scholar lookups
+    - ai:indexed, ai:index:started, ai:index:failed, ai:model:ready,
+      ai:model:failed event emissions
+    - labshelf.ai.* command surface
+  dependencies:
+    - "@labshelf/ai (workspace)"
+    - "@labshelf/core (event bus, IResearchDatabase, PdfDocumentOpener)"
+    - vscode (workspace, window, fs, configuration, commands)
+    - node:sqlite (existing SqliteResearchDatabase connection)
+    - "@xenova/transformers (optional, lazy-loaded)"
+
+database:
+  tables_used:
+    - chunk_embeddings
+    - figure_embeddings
+    - paper_metadata_ai
+    - reading_events
+    - s2_cache
+  migrations:
+    - 0002_ai_embeddings (additive via ensureAiSchema; idempotent)
+  notes: >
+    Embeddings are stored as raw Float32Array BLOBs alongside a dim column so
+    the layout remains compatible with a future sqlite-vec acceleration path
+    without changing the contract. The vector store performs cosine top-k in
+    process; adequate up to roughly 10k chunks.
+
+events:
+  emits:
+    - ai:index:started (paperId)
+    - ai:indexed (paperId, chunkCount, embeddedChunks)
+    - ai:index:failed (paperId)
+    - ai:model:ready (modelId, cached)
+    - ai:model:failed (modelId, reason)
+    - reading:event (paperId, kind, page?, durationMs?, topicCluster?)
+  listens:
+    - paper:added (schedule ingestion)
+    - paper:updated (re-ingest if contentHash changed)
+    - paper:deleted (remove vectors + metadata rows)
+
+errors:
+  expected_failures:
+    - "@xenova/transformers not installed (fall back to HashEmbeddingProvider)"
+    - model download fails (degraded mode, hash provider, manifest stays absent)
+    - PDF cannot be opened (logged, paper skipped, ai:index:failed emitted)
+    - SQLite write fails for AI tables (logged, paper skipped)
+    - Semantic Scholar API returns non-200 (cache miss, no enrichment)
+  handling_strategy: >
+    Each failure mode keeps the rest of the extension running. The AI service
+    exposes a `degradedMode` flag through status() so the settings UI can show
+    a clear indicator. Indexer jobs are run through a FIFO queue with
+    per-job try/catch so a single bad paper never blocks the queue.
+
+ui:
+  components:
+    - command palette entries (labshelf.ai.rebuildIndex, searchByClaim,
+      searchByText, openSettings)
+    - progress notification while models download
+    - configuration properties under labshelf.ai.*
+
+tests:
+  unit:
+    - chunking: sectionDetector, sectionChunker, slidingChunker, tokenEstimator
+    - heuristics: methodDetector, datasetExtractor, codeRepoExtractor,
+      reproScorer, computeExtractor, citationExtractor, claimDetector,
+      difficultyScorer, termNovelty, titleDedup
+    - rag: cosine, retrieveTopK, stanceDetector, mmrRerank
+    - analysis: heatmapAggregator, citationGapDetector, bibAudit
+    - runtime: HashEmbeddingProvider determinism, modelPaths resolution,
+      IndexerQueue FIFO and error isolation
+    - persistence (when node:sqlite available):
+      SqliteVectorStore upsert/search/filter/delete, AiMetadataStore round-trip,
+      ReadingEventsStore append/listSince/prune, embeddingCodec
+  integration:
+    - paper:added triggers ingestion, populates chunk_embeddings and
+      paper_metadata_ai, emits ai:indexed
+    - rebuildAll re-ingests every paper while skipping unchanged contentHash
+    - degraded mode (HashEmbeddingProvider) supports searchByText and
+      searchByClaim without ONNX runtime
+
+ai_notes:
+  embeddings: true
+  semantic_search: true
+  default_text_model: Xenova/bge-small-en-v1.5
+  default_text_dimensions: 384
+  default_vision_model: Xenova/clip-vit-base-patch32
+  default_vision_dimensions: 512
+  vector_store: in-process cosine over Float32 BLOB; sqlite-vec acceleration deferred to Phase 0.7
+  llm_provider: none (Phase 1 local tier); vscode.lm wrapper deferred to Phase 2

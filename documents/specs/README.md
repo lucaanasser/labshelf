@@ -12,6 +12,7 @@ This directory is organized by concern so the architecture can be read from the 
 - `pdf-viewer/` - PDF webview viewer, themes, annotations, and HTML renderer
 - `sync/` - multi-device sync subsystem and its provider-agnostic core engine
 - `commands/` - command registration and command palette actions
+- `ai/` - AI subsystem (foundation today; per-feature specs land with Phase 1 work)
 - `extension.spec.yaml` - bootstrap and wiring for the whole extension
 
 ## Reading order
@@ -32,6 +33,7 @@ This directory is organized by concern so the architecture can be read from the 
 14. `sync/sync.spec.yaml`
 15. `sync/sync-engine.spec.yaml`
 16. `commands/commands.spec.yaml`
+17. `ai/foundation.spec.yaml`
 
 ## Notes
 
