@@ -18,6 +18,7 @@ import type {
   IResearchDatabase,
 } from "@labshelf/core";
 import { FileSystemService } from "../storage/fileSystemService.js";
+import { ensureAiSchema } from "./ai/aiSchema.js";
 
 type AnnotationRow = {
   id: string;
@@ -123,6 +124,22 @@ export class SqliteResearchDatabase implements IResearchDatabase {
     this.ensureColumns();
     this.ensureAnnotationsTable();
     this.ensureThemePreferencesTable();
+    ensureAiSchema(this.connection);
+  }
+
+  /**
+   * Exposes the underlying DatabaseSync handle to AI-side stores.
+   *
+   * The AI subsystem reads and writes its own tables (chunk_embeddings,
+   * paper_metadata_ai, reading_events, s2_cache) declared by ensureAiSchema.
+   * Sharing the connection avoids opening a second file handle on the same
+   * SQLite database.
+   *
+   * @usedBy ai/aiService factory
+   * @returns The active DatabaseSync handle.
+   */
+  rawConnection(): DatabaseSync {
+    return this.requireConnection();
   }
 
   async upsertPaper(paper: PaperRecord): Promise<void> {

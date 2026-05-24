@@ -27,8 +27,13 @@
     "onCommand:labshelf.sync.connect",
     "onCommand:labshelf.sync.now",
     "onCommand:labshelf.sync.disconnect",
+    "onCommand:labshelf.openSettings",
     "onView:labshelf.library",
-    "onView:labshelf.activity"
+    "onView:labshelf.writing",
+    "onView:labshelf.reading",
+    "onView:labshelf.insights",
+    "onView:labshelf.assist",
+    "onView:labshelf.agents"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -136,6 +141,18 @@
         "command": "labshelf.sync.disconnect",
         "title": "Sync: Desconectar do Google Drive",
         "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.openSettings",
+        "title": "Open Settings",
+        "category": "LabShelf",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "labshelf.collapseAllSections",
+        "title": "Collapse All Sections",
+        "category": "LabShelf",
+        "icon": "$(collapse-all)"
       }
     ],
     "viewsContainers": {
@@ -151,12 +168,37 @@
       "labshelfContainer": [
         {
           "id": "labshelf.library",
-          "name": "My LabShelf",
+          "name": "Library",
           "type": "tree"
         },
         {
-          "id": "labshelf.activity",
-          "name": "Google Drive",
+          "id": "labshelf.writing",
+          "name": "Writing",
+          "type": "tree"
+        },
+        {
+          "id": "labshelf.reading",
+          "name": "Reading",
+          "type": "tree"
+        },
+        {
+          "id": "labshelf.insights",
+          "name": "Insights",
+          "type": "tree"
+        },
+        {
+          "id": "labshelf.assist",
+          "name": "Assist",
+          "type": "tree"
+        },
+        {
+          "id": "labshelf.agents",
+          "name": "Agents",
+          "type": "tree"
+        },
+        {
+          "id": "labshelf.settings",
+          "name": "Settings",
           "type": "tree"
         }
       ]
@@ -167,8 +209,8 @@
         "contents": "Nenhuma pasta ainda.\n[Nova pasta](command:labshelf.newFolder)\nVocê também pode arrastar PDFs para cá."
       },
       {
-        "view": "labshelf.activity",
-        "contents": "Configure a biblioteca primeiro para usar o Google Drive.\n[Configurar Biblioteca](command:labshelf.configureLibrary)"
+        "view": "labshelf.settings",
+        "contents": "Drive, sync, LaTeX bridge.\n[Open settings](command:labshelf.openSettings)"
       }
     ],
     "menus": {
@@ -241,6 +283,7 @@
     "test:commands": "jest __tests__/commands"
   },
   "dependencies": {
+    "@labshelf/ai": "workspace:*",
     "@labshelf/core": "workspace:*",
     "@thednp/dommatrix": "^3.0.4",
     "pdfjs-dist": "^5.7.284",
