@@ -82,10 +82,19 @@ function splitOnParagraphs(
     const next = buffer ? buffer + "\n\n" + para : para;
     if (next.length > budget && buffer) {
       chunks.push(buildChunk(paperId, section, bufferStart, cursor, buffer));
-      buffer = para;
+      buffer = "";
       bufferStart = cursor;
+    }
+    if (para.length > budget) {
+      for (const piece of hardSplit(para, budget)) {
+        chunks.push(
+          buildChunk(paperId, section, bufferStart, bufferStart + piece.length, piece),
+        );
+        bufferStart += piece.length;
+      }
+      buffer = "";
     } else {
-      buffer = next;
+      buffer = buffer ? buffer + "\n\n" + para : para;
     }
     cursor += para.length + 2;
   }
@@ -93,6 +102,13 @@ function splitOnParagraphs(
     chunks.push(buildChunk(paperId, section, bufferStart, cursor, buffer));
   }
   return chunks;
+}
+
+function hardSplit(text: string, budget: number): string[] {
+  if (text.length <= budget) return [text];
+  const out: string[] = [];
+  for (let i = 0; i < text.length; i += budget) out.push(text.slice(i, i + budget));
+  return out;
 }
 
 function buildChunk(

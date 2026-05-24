@@ -6,12 +6,15 @@
   "scripts": {
     "build": "tsc -p ./",
     "typecheck": "tsc --noEmit -p ./",
-    "test": "echo \"No tests yet\""
+    "test": "jest"
   },
   "dependencies": {
     "@labshelf/core": "workspace:*"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.9",
     "typescript": "*"
   }
 }
