@@ -5,7 +5,7 @@ import type { PaperService } from "../core/paperService.js";
 import type { WorkspaceLogger } from "../core/logger.js";
 import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
 import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
-import type { PaperRecord, PaperStatus, BatchImportResult } from "@labshelf/core";
+import type { IResearchDatabase, PaperRecord, PaperStatus, BatchImportResult } from "@labshelf/core";
 
 const LOG_MODULE = "commands/registerCommands";
 
@@ -14,6 +14,7 @@ export type ActiveServices = {
   logger: WorkspaceLogger;
   themeManager: ThemeManager;
   annotationManager: AnnotationManager;
+  database: IResearchDatabase;
 };
 
 export type RequireServices = () => Promise<ActiveServices | null>;

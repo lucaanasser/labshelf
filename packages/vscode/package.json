@@ -28,6 +28,10 @@
     "onCommand:labshelf.sync.now",
     "onCommand:labshelf.sync.disconnect",
     "onCommand:labshelf.openSettings",
+    "onCommand:labshelf.ai.rebuildIndex",
+    "onCommand:labshelf.ai.searchByClaim",
+    "onCommand:labshelf.ai.searchByText",
+    "onCommand:labshelf.ai.openSettings",
     "onView:labshelf.library",
     "onView:labshelf.writing",
     "onView:labshelf.reading",
@@ -153,6 +157,26 @@
         "title": "Collapse All Sections",
         "category": "LabShelf",
         "icon": "$(collapse-all)"
+      },
+      {
+        "command": "labshelf.ai.rebuildIndex",
+        "title": "AI: Rebuild Semantic Index",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.ai.searchByClaim",
+        "title": "AI: Search by Claim",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.ai.searchByText",
+        "title": "AI: Semantic Search",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.ai.openSettings",
+        "title": "AI: Open Settings",
+        "category": "LabShelf"
       }
     ],
     "viewsContainers": {
@@ -262,6 +286,21 @@
           "default": 15,
           "minimum": 1,
           "description": "Intervalo de sincronizacao automatica com o Google Drive (em minutos)."
+        },
+        "labshelf.ai.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the AI subsystem (semantic search, metadata extraction, paraphrase guard)."
+        },
+        "labshelf.ai.indexOnImport": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run AI ingestion automatically when a paper is added or updated."
+        },
+        "labshelf.ai.textEmbeddingModelId": {
+          "type": "string",
+          "default": "Xenova/bge-small-en-v1.5",
+          "description": "HuggingFace ONNX text embedding model used for semantic search."
         }
       }
     }

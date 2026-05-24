@@ -21,11 +21,21 @@ import {
 } from "./storage/paths/libraryLocation.js";
 import { LibraryTreeDataProvider, LibraryDragAndDropController } from "./ui/library/index.js";
 import type { LibraryNode } from "./ui/library/index.js";
-import { SyncTreeDataProvider } from "./ui/sync/index.js";
+import {
+  WritingTreeDataProvider,
+  ReadingTreeDataProvider,
+  InsightsTreeDataProvider,
+  AssistTreeDataProvider,
+  AgentsTreeDataProvider,
+} from "./ui/sidebar/index.js";
 import { ListWebviewPanel } from "./ui/list/index.js";
+import { SettingsWebviewPanel } from "./ui/settings/index.js";
 import { PdfViewerPanel } from "./pdf-viewer/PdfViewerPanel.js";
 import { registerCommands } from "./commands/registerCommands.js";
+import { registerAiCommands } from "./commands/registerAiCommands.js";
 import type { ActiveServices } from "./commands/registerCommands.js";
+import { createAiService, AiService } from "./ai/service/index.js";
+import { SqliteResearchDatabase } from "./db/sqliteResearchDatabase.js";
 import { NodePdfOpener } from "./pdf/nodePdfOpener.js";
 import { ThemeManager } from "./pdf-viewer/ThemeManager.js";
 import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
@@ -41,6 +51,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   let activeServices: ActiveServices | null = null;
   let syncController: SyncController | null = null;
+  let aiService: AiService | null = null;
   let libraryRoot: vscode.Uri | undefined = await resolveLibraryRoot(context);
 
   const papersRootUri = (): vscode.Uri | null =>
@@ -48,6 +59,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   if (libraryRoot) {
     activeServices = await buildServices(context, libraryRoot, fileSystemService, eventBus);
+    aiService = await maybeStartAi(context, fileSystemService, eventBus, activeServices, libraryRoot);
     syncController = new SyncController(
       context,
       new LibraryPaths(libraryRoot),
@@ -129,14 +141,76 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  // Google Drive sync panel shows status and action items in the activity view.
-  if (syncController) {
-    const syncTree = new SyncTreeDataProvider(syncController);
-    context.subscriptions.push(
-      vscode.window.registerTreeDataProvider("labshelf.activity", syncTree),
-      syncTree,
-    );
-  }
+  // Mocked sidebar sections — visual scaffolding only, mirrors design/16-vscode-sidebar.html.
+  // Drive lives in the settings webpanel now, not in its own tree.
+  // showCollapseAll gives each view the standard VS Code "Collapse Folders" title button.
+  context.subscriptions.push(
+    vscode.window.createTreeView("labshelf.writing", { treeDataProvider: new WritingTreeDataProvider(), showCollapseAll: true }),
+    vscode.window.createTreeView("labshelf.reading", { treeDataProvider: new ReadingTreeDataProvider(), showCollapseAll: true }),
+    vscode.window.createTreeView("labshelf.insights", { treeDataProvider: new InsightsTreeDataProvider(), showCollapseAll: true }),
+    vscode.window.createTreeView("labshelf.assist", { treeDataProvider: new AssistTreeDataProvider(), showCollapseAll: true }),
+    vscode.window.createTreeView("labshelf.agents", { treeDataProvider: new AgentsTreeDataProvider(), showCollapseAll: true }),
+  );
+
+  // Collapses tree items inside every LabShelf view at once — same effect as
+  // clicking each view's individual "collapse all" button. VS Code has no API to
+  // close the section panels themselves, so this is the closest equivalent.
+  context.subscriptions.push(
+    vscode.commands.registerCommand("labshelf.collapseAllSections", async () => {
+      const viewIds = [
+        "labshelf.library",
+        "labshelf.writing",
+        "labshelf.reading",
+        "labshelf.insights",
+        "labshelf.assist",
+        "labshelf.agents",
+      ];
+      for (const id of viewIds) {
+        await vscode.commands.executeCommand(`workbench.actions.treeView.${id}.collapseAll`);
+      }
+    }),
+  );
+
+  // SETTINGS sidebar view — empty tree provider so viewsWelcome (defined in
+  // package.json) renders its "Open settings" link as the section content.
+  const emptyProvider: vscode.TreeDataProvider<never> = {
+    getTreeItem: (e: never) => e,
+    getChildren: () => [],
+  };
+  context.subscriptions.push(
+    vscode.window.createTreeView("labshelf.settings", { treeDataProvider: emptyProvider }),
+  );
+
+  // Settings webpanel — currently the only place to manage Drive, sync interval, etc.
+  context.subscriptions.push(
+    vscode.commands.registerCommand("labshelf.openSettings", () => {
+      SettingsWebviewPanel.createOrShow(context.extensionUri, {
+        getLibraryRoot: () => libraryRoot ?? null,
+        getSyncController: () => syncController,
+        reconfigureLibrary: async () => {
+          const root = await runLibrarySetupWizard(context, fileSystemService);
+          if (!root) { return undefined; }
+          libraryRoot = root;
+          activeServices = await buildServices(context, root, fileSystemService, eventBus);
+          libraryProvider.setPapersRoot(new LibraryPaths(root).papersRoot());
+          if (!syncController) {
+            syncController = new SyncController(
+              context,
+              new LibraryPaths(root),
+              eventBus,
+              async () => {
+                const papers = await activeServices!.paperService.listPapers();
+                return new Map(papers.map(p => [p.id, p.title]));
+              },
+            );
+            await syncController.initialize();
+            context.subscriptions.push(syncController);
+          }
+          return root;
+        },
+      });
+    }),
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.openListTab", (node?: LibraryNode) => {
@@ -289,6 +363,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   registerCommands(context, requireServices);
+  registerAiCommands(context, () => aiService);
 
   if (activeServices) {
     const services = activeServices;
@@ -303,6 +378,39 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 /** Called by VS Code on extension deactivation — cleanup is handled via disposables. @usedBy vscode runtime. @returns void */
 export function deactivate(): void { return; }
+
+// Spins up the AI service when a library is configured. Resolution failures
+// degrade the AI subsystem instead of breaking activation; the rest of the
+// extension keeps working.
+async function maybeStartAi(
+  context: vscode.ExtensionContext,
+  fileSystemService: FileSystemService,
+  eventBus: ExtensionEventBus,
+  services: ActiveServices,
+  root: vscode.Uri,
+): Promise<AiService | null> {
+  try {
+    if (!(services.database instanceof SqliteResearchDatabase)) return null;
+    const paths = new LibraryPaths(root);
+    const result = await createAiService({
+      context,
+      database: services.database,
+      fileSystem: fileSystemService,
+      eventBus,
+      logger: services.logger,
+      pdfOpener: new NodePdfOpener(),
+      resolvePdfUri: (paperId) => vscode.Uri.file(`${paths.papersRoot().fsPath}/${paperId}/paper.pdf`),
+    });
+    if (!result) return null;
+    context.subscriptions.push({ dispose: result.dispose });
+    return result.service;
+  } catch (error) {
+    void services.logger.log("WARN", "extension", "AI service failed to start", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
 
 // Returns true when the folder name is non-empty and contains no path separators.
 function isValidFolderName(value: string): boolean {
@@ -332,7 +440,7 @@ async function buildServices(
   await indexer.rebuild();
   const themeManager = new ThemeManager(paperDataStore);
   const annotationManager = new AnnotationManager(paperDataStore, eventBus);
-  return { paperService, logger, themeManager, annotationManager };
+  return { paperService, logger, themeManager, annotationManager, database };
 }
 
 // Tries to create the SQLite database; falls back to the in-memory implementation on failure.

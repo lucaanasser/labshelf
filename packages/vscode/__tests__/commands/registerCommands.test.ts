@@ -9,7 +9,8 @@ function makeRequireServices(paperService?: Partial<PaperService>, logger?: Part
   const lg = logger ?? { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
   const tm = { getThemeForPaper: jest.fn(async () => 'auto'), setThemeForPaper: jest.fn(async () => {}), isValidTheme: jest.fn(() => true), getEffectiveTheme: jest.fn(() => 'dark'), generateThemeCss: jest.fn(() => ''), mapVsCodeTheme: jest.fn(() => 'dark'), onVsCodeThemeChange: jest.fn(() => ({ dispose: jest.fn() })), dispose: jest.fn() } as any;
   const am = { createHighlight: jest.fn(), createNote: jest.fn(), getAnnotationsByPaper: jest.fn(async () => []), deleteAnnotation: jest.fn(), updateAnnotation: jest.fn(), validatePosition: jest.fn() } as any;
-  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as WorkspaceLogger, themeManager: tm, annotationManager: am }));
+  const db = { listPapers: jest.fn(async () => []), upsertPaper: jest.fn(), deletePaper: jest.fn(), appendLog: jest.fn() } as any;
+  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as WorkspaceLogger, themeManager: tm, annotationManager: am, database: db }));
 }
 
 function makeNullRequireServices(): RequireServices {
