@@ -2,11 +2,13 @@ feature:
   name: Extension Bootstrap
   module: extension
   description: >
-    Wire the LabShelf services together when the extension activates. Resolve
-    or create the library root, build the storage/database/service graph (including
-    PaperDataStore, LibraryIndexer, SyncController), run sidecar migration and index
-    rebuild, register commands, create the collections tree, and open the list panel
-    on demand.
+    Wire the LabShelf services together when the extension activates.
+    Resolve or create the library root, build the
+    storage/database/service graph (including PaperDataStore,
+    LibraryIndexer, SyncController), run sidecar migration and index
+    rebuild, register commands, create the collections tree, open the
+    list panel on demand, and load labshelf.reader.* preferences into
+    the PDF reader webview at open time and on configuration change.
 
 architecture:
   inputs:
@@ -14,11 +16,16 @@ architecture:
     - extension context and globalState
     - configured library root path
     - command invocations
+    - labshelf.reader.* configuration values
   outputs:
     - initialized service graph
     - TreeView registration for labshelf.library
-    - command registrations for the labshelf.* namespace (including sync commands)
+    - command registrations for the labshelf.* namespace (including sync
+      and reader commands)
     - list panel creation through labshelf.openListTab
+    - PDF reader creation through labshelf.openPaperPdf,
+      labshelf.openPaper, labshelf.searchLibrary, and
+      labshelf.openPdfViewer
     - library setup wizard when no root is configured
     - sync status bar item
   dependencies:
@@ -39,7 +46,9 @@ architecture:
     - sync/adapter/syncController
     - ui/library/libraryTreeDataProvider
     - ui/list/listWebviewPanel
-    - commands/registerCommands
+    - pdf-viewer/PdfViewerPanel
+    - pdf-viewer/readerPrefs
+    - commands/registerCommands (exports registerCommands and resolvePaper)
     - commands/registerAiCommands
     - ai/service/aiService
     - ai/service/aiServiceFactory
@@ -81,22 +90,142 @@ errors:
 ui:
   components:
     - configuration information message on first activation
-    - configure library command entry point
+    - configure library command entry point (labshelf.configureLibrary, declared in
+      contributes.commands so it is reachable from the command palette)
     - library tree in the activity bar
     - list panel editor tab
+    - PDF reader editor tab (labshelfPdf), created by labshelf.openPaperPdf and friends
     - sync status bar item (connected/disconnected state, last sync time)
+  reader_commands:
+    - >
+      labshelf.openPaperPdf (paperId?: string) — in registerCommands.ts,
+      resolves the paper via resolvePaper (id lookup, then paper picker)
+      and delegates to labshelf.openPdfViewer by executing that command
+      with paper.id.
+    - >
+      labshelf.openPaper — asks pickPaper for a paper and delegates to
+      labshelf.openPdfViewer.
+    - >
+      labshelf.searchLibrary — asks pickPaper (matchOnDescription is on
+      so the user can search by cite key) and delegates to
+      labshelf.openPdfViewer.
+    - >
+      labshelf.openPdfViewer (paperId?: string, page?: number) —
+      registered in extension.ts. resolves the paper through
+      resolvePaper (id lookup, else quick pick) and calls
+      PdfViewerPanel.createOrShow with the full PdfViewerDeps
+      ({extensionUri, eventBus, themeManager, annotationManager,
+      readingStore: paperDataStore, logger, onReadingEvent:
+      aiService?.recordReadingEvent}) plus { page } when a page is
+      provided.
+    - >
+      labshelf.openPaperPdfExternal (paperId?: string) — escape hatch
+      that opens paper.pdf with vscode.open (default OS handler); does
+      NOT go through the reader.
+    - >
+      labshelf.exportAnnotations (paperId?: string) — resolves the
+      paper through resolvePaper, then shows a quick pick with two
+      choices ("Copy to clipboard" / "Save as file..."), then calls
+      PdfViewerPanel.exportAnnotations. The command runs without a
+      reader panel being open.
+    - >
+      labshelf.reader.zoomIn / zoomOut / zoomReset / find / historyBack /
+      historyForward / toggleSidebar — declared unconditionally in
+      extension.ts via a spread over READER_COMMANDS. Each handler
+      calls PdfViewerPanel.postToActive(id), which posts
+      { type: "command", id } to the currently focused reader.
+  reader_keybindings:
+    scope: >-
+      unconditional contributions in package.json scoped by
+      `when: activeWebviewPanelId == 'labshelfPdf'`; cross-source
+      dedupe (webview/logic/actionDedupe.ts) drops only the SAME
+      action arriving through the OTHER source within
+      CROSS_SOURCE_WINDOW_MS (250 ms), so a chord delivered both by
+      VS Code and by the webview's own keydown fires exactly once,
+      while same-source repeats (held keys, repeated palette
+      commands) always run.
+    bindings:
+      - labshelf.reader.zoomIn — ctrl+= (mac cmd+=)
+      - labshelf.reader.zoomIn — ctrl+shift+= (mac cmd+shift+=)
+      - labshelf.reader.zoomOut — ctrl+- (mac cmd+-)
+      - labshelf.reader.zoomReset — ctrl+0 (mac cmd+0)
+      - labshelf.reader.find — ctrl+f (mac cmd+f)
+      - labshelf.reader.historyBack — alt+left
+      - labshelf.reader.historyForward — alt+right
+      - labshelf.reader.toggleSidebar — f4
+      - labshelf.reader.historyBack — alt+left, mac cmd+[
+      - labshelf.reader.historyForward — alt+right, mac cmd+]
+    palette_visibility: >
+      Every labshelf.reader.<id> command has a menus.commandPalette
+      entry scoped by `activeWebviewPanelId == 'labshelfPdf'` so they
+      are hidden from the palette unless a reader panel is focused.
+  reader_settings:
+    section: labshelf.reader.*
+    properties:
+      - labshelf.reader.vimKeys (boolean, default false)
+      - labshelf.reader.defaultZoom (string enum
+        page-width|page-fit|page-actual|auto, default page-width)
+      - labshelf.reader.toolbarAutoHide (boolean, default true)
+      - labshelf.reader.restorePosition (boolean, default true)
+      - labshelf.reader.hoverPreviews (boolean, default true)
+      - labshelf.reader.hoverDelayMs (number, default 250, minimum 0,
+        maximum 2000 — clamped by getReaderPrefs to that range)
+      - labshelf.reader.citationStyle (string enum
+        pandoc|latex|author-year|citekey, default pandoc)
+      - labshelf.reader.openBeside (boolean, default true; NOT part
+        of ReaderPrefs — read separately by getReaderViewColumn to
+        pick ViewColumn.Two or Active)
+    loader: pdf-viewer/readerPrefs.ts (READER_CONFIG_SECTION =
+      "labshelf.reader")
+    change_propagation: >
+      PdfViewerPanel installs a workspace.onDidChangeConfiguration
+      listener at construction. Any change that affects
+      READER_CONFIG_SECTION posts a prefsChanged message to that
+      panel with the freshly loaded getReaderPrefs().
 
 tests:
   unit:
     - activate initializes nothing when no library is configured
     - activate initializes services when a library root exists
-    - activate runs migrateSidecarsFromDb and indexer.rebuild() on startup
-    - configureLibrary builds the storage structure and refreshes the tree
-    - initializeDatabase falls back to in-memory storage on SQLite failure
+    - activate runs migrateSidecarsFromDb and indexer.rebuild() on
+      startup
+    - configureLibrary builds the storage structure and refreshes the
+      tree
+    - initializeDatabase falls back to in-memory storage on SQLite
+      failure
+    - "__tests__/commands/registerCommands.test.ts: getReaderPrefs
+      returns defaults when no labshelf.reader.* value is set, and
+      hoverDelayMs is clamped into [0, 2000]"
+    - "__tests__/commands/registerCommands.test.ts:
+      labshelf.openPaperPdf / labshelf.openPaper /
+      labshelf.searchLibrary all delegate to labshelf.openPdfViewer,
+      never to vscode.open"
+    - "__tests__/commands/registerCommands.test.ts:
+      labshelf.openPaperPdfExternal opens paper.pdf with vscode.open"
+    - "__tests__/commands/registerCommands.test.ts: resolvePaper
+      returns the record for a known id, falls back to the quick pick
+      otherwise, and returns undefined when the library is empty"
+    - "__tests__/pdf-viewer/PdfViewerPanel.test.ts:
+      onDidChangeConfiguration for READER_CONFIG_SECTION posts a
+      prefsChanged message to the panel"
+    - "__tests__/pdf-viewer/PdfViewerPanel.test.ts: postToActive
+      routes to the panel currently marked active by
+      onDidChangeViewState"
   integration:
-    - extension activation wires commands, tree view, list panel, and sync controller
-    - first-time configuration persists the library root and enables import flows
-    - sync.connect command triggers OAuth flow and starts periodic sync
+    - extension activation wires commands, tree view, list panel,
+      reader panel, and sync controller
+    - first-time configuration persists the library root and enables
+      import flows
+    - sync.connect command triggers OAuth flow and starts periodic
+      sync
+    - labshelf.openPdfViewer with no argument shows the quick pick
+      via resolvePaper and opens the chosen paper in the reader
+    - labshelf.openPdfViewer with (paperId, page) reveals an
+      existing panel and posts scrollToPage; a fresh panel receives
+      the page via OpenOptions and applies it on the reader's first
+      ready reply
+    - labshelf.exportAnnotations offers Copy to clipboard / Save as
+      file... and calls PdfViewerPanel.exportAnnotations
 
 ai_notes:
   embeddings: true

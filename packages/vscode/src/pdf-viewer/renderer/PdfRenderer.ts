@@ -1,16 +1,21 @@
 /**
- * Generates the complete HTML document for the PDF viewer webview, resolving PDF.js asset URIs and injecting theme CSS and the viewer script.
+ * Generates the HTML shell of the PDF reader webview: CSP, pdf.js asset preloads, structural containers, the inert JSON boot block and the bundled runtime (dist/reader).
+ * All behaviour lives in the bundle built from pdf-viewer/webview/ by build/reader.mjs.
  *
- * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/config.ts, pdf-viewer/renderer/template.css.ts, pdf-viewer/renderer/template.js.ts, @labshelf/core
+ * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/shared/protocol.ts, @labshelf/core
  * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/PdfRenderer.ts (re-export shim), pdf-viewer/renderer/index.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
+import * as fs from "node:fs";
 import * as path from "node:path";
+import type { PdfTheme } from "@labshelf/core";
 import { ThemeManager } from "../ThemeManager.js";
-import { PDF_VIEWER_CONFIG } from "../config.js";
-import type { Annotation } from "@labshelf/core";
-import { buildCss } from "./template.css.js";
-import { buildJs } from "./template.js.js";
+import {
+  PROTOCOL_VERSION,
+  type EffectiveTheme,
+  type ReaderBootParams,
+  type ReaderPrefs,
+} from "../shared/protocol.js";
 
 export interface RenderParams {
   webview: vscode.Webview;
@@ -19,10 +24,8 @@ export interface RenderParams {
   paperId: string;
   paperTitle: string;
   themeManager: ThemeManager;
-  themePreference: string;
-  initialPage: number;
-  initialZoom: number;
-  annotations: Annotation[];
+  themePreference: PdfTheme;
+  prefs: ReaderPrefs;
 }
 
 export interface ResolvedUris {
@@ -111,72 +114,81 @@ function nonce(): string {
   ).join("");
 }
 
+export interface ReaderBundleUris {
+  scriptUri: vscode.Uri;
+  styleUri: vscode.Uri;
+}
+
+/**
+ * Directory holding the esbuild output of the reader webview, for use in localResourceRoots.
+ * @usedBy pdf-viewer/PdfViewerPanel.ts
+ * @returns <extension>/dist/reader
+ */
+export function getReaderBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
+  return vscode.Uri.joinPath(extensionUri, "dist", "reader");
+}
+
+/**
+ * Resolves the bundled reader runtime to webview URIs.
+ * @usedBy pdf-viewer/renderer/PdfRenderer.ts (generateHtml)
+ * @returns the script and stylesheet URIs, or null when the bundle has not been built (dev checkout before `pnpm build`).
+ */
+export function resolveReaderBundleUris(
+  webview: vscode.Webview,
+  extensionUri: vscode.Uri,
+): ReaderBundleUris | null {
+  const dir = getReaderBundleDirectory(extensionUri);
+  const script = vscode.Uri.joinPath(dir, "reader.js");
+  if (!fs.existsSync(script.fsPath)) { return null; }
+  return {
+    scriptUri: webview.asWebviewUri(script),
+    styleUri: webview.asWebviewUri(vscode.Uri.joinPath(dir, "reader.css")),
+  };
+}
+
 export class PdfRenderer {
   /**
-   * Generates the full HTML document for the PDF viewer webview, including CSP header, theme CSS, and the PDF.js module script.
+   * Generates the reader's HTML shell. The document carries no behaviour of its own: the bundle reads the JSON boot block and builds the UI.
    * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns An HTML string ready to assign to webview.html.
    */
   generateHtml(params: RenderParams): string {
-    const {
-      webview,
-      pdfUri,
-      paperTitle,
-      themeManager,
-      themePreference,
-      initialPage,
-      initialZoom,
-      annotations,
-    } = params;
+    const { webview, extensionUri, pdfUri, paperId, paperTitle, themeManager, themePreference, prefs } = params;
+
+    const bundle = resolveReaderBundleUris(webview, extensionUri);
+    if (!bundle) { return bundleMissingHtml(paperTitle); }
 
     const n = nonce();
     const cspSource = webview.cspSource;
-
     const resolved = resolvePdfjsUris(webview);
     const pdfjsUrl     = resolved?.pdfjsWebviewUri.toString()     ?? "";
     const workerUrl    = resolved?.workerWebviewUri.toString()    ?? "";
     const viewerUrl    = resolved?.viewerWebviewUri.toString()    ?? "";
     const viewerCssUrl = resolved?.viewerCssWebviewUri.toString() ?? "";
-    const cMapUrl      = resolved?.cMapWebviewUrl        ?? "";
-    const stdFontUrl   = resolved?.standardFontWebviewUrl ?? "";
-    const wasmUrl      = resolved?.wasmWebviewUrl        ?? "";
-    const iccUrl       = resolved?.iccWebviewUrl         ?? "";
     const pdfUrl       = webview.asWebviewUri(pdfUri).toString();
+    const scriptUrl    = bundle.scriptUri.toString();
+    const styleUrl     = bundle.styleUri.toString();
 
-    const effectiveTheme  = themeManager.getEffectiveTheme(themePreference);
-    const annotationsJson = JSON.stringify(annotations);
-    const zoomLevelsJson  = JSON.stringify([...PDF_VIEWER_CONFIG.ZOOM_LEVELS]);
-
-    // Initial PDF canvas colors for the selected theme (injected into HTML so
-    // pickers show correct values immediately, before the async try-block runs).
-    const INIT_PRESETS: Record<string, { bg: string; text: string }> = {
-      light:           { bg: '#ffffff', text: '#000000' },
-      dark:            { bg: '#1e1e1e', text: '#e8e8e8' },
-      sepia:           { bg: '#faf6ee', text: '#3a2a1a' },
-      'high-contrast': { bg: '#000000', text: '#ffffff' },
-    };
-    const initBg   = INIT_PRESETS[effectiveTheme]?.bg   ?? '#ffffff';
-    const initText = INIT_PRESETS[effectiveTheme]?.text ?? '#000000';
-
-    const css = buildCss();
-    const js  = buildJs({
-      nonce: n,
-      pdfjsUrl,
-      viewerUrl,
-      workerUrl,
-      pdfUrl,
-      cMapUrl,
-      stdFontUrl,
-      wasmUrl,
-      iccUrl,
-      zoomLevelsJson,
+    const effectiveTheme = themeManager.getEffectiveTheme(themePreference) as EffectiveTheme;
+    const boot: ReaderBootParams = {
+      protocolVersion: PROTOCOL_VERSION,
+      assets: {
+        pdfjsUrl,
+        viewerUrl,
+        workerUrl,
+        pdfUrl,
+        cMapUrl:    resolved?.cMapWebviewUrl         ?? "",
+        stdFontUrl: resolved?.standardFontWebviewUrl ?? "",
+        wasmUrl:    resolved?.wasmWebviewUrl         ?? "",
+        iccUrl:     resolved?.iccWebviewUrl          ?? "",
+      },
+      paperId,
+      paperTitle,
       themePreference,
       effectiveTheme,
-      initialPage,
-      initialZoom,
-      annotationsJson,
-      defaultZoom: PDF_VIEWER_CONFIG.DEFAULT_ZOOM,
-    });
+      prefs,
+      isMac: process.platform === "darwin",
+    };
 
     return `<!doctype html>
 <html id="root" lang="en" data-pdf-theme="${escapeHtml(effectiveTheme)}">
@@ -187,54 +199,30 @@ export class PdfRenderer {
 <title>${escapeHtml(paperTitle)}</title>
 ${pdfjsUrl  ? `<link rel="modulepreload" href="${pdfjsUrl}"/>` : ""}
 ${viewerUrl ? `<link rel="modulepreload" href="${viewerUrl}"/>` : ""}
+<link rel="modulepreload" href="${scriptUrl}"/>
 ${workerUrl ? `<link rel="preload" href="${workerUrl}" as="fetch" crossorigin="anonymous"/>` : ""}
+<link rel="preload" href="${pdfUrl}" as="fetch" crossorigin="anonymous"/>
 ${viewerCssUrl ? `<link rel="stylesheet" href="${viewerCssUrl}"/>` : ""}
-<style>
-${css}
-</style>
+<link rel="stylesheet" href="${styleUrl}"/>
 </head>
 <body>
-<div id="toolbar">
-  <button class="tb-btn" id="firstBtn" title="First page">&#171;</button>
-  <button class="tb-btn" id="prevBtn"  title="Previous page">&#8249;</button>
-  <input id="pageInput" type="number" min="1" value="${initialPage}" title="Current page"/>
-  <span>/ <span id="totalPages">-</span></span>
-  <button class="tb-btn" id="nextBtn" title="Next page">&#8250;</button>
-  <button class="tb-btn" id="lastBtn" title="Last page">&#187;</button>
-  <div class="toolbar-sep"></div>
-  <button class="tb-btn" id="zoomOutBtn" title="Zoom out">-</button>
-  <select id="zoomSelect" title="Zoom level">${buildZoomOptions(initialZoom)}</select>
-  <button class="tb-btn" id="zoomInBtn" title="Zoom in">+</button>
-  <div class="toolbar-sep"></div>
-  <span>Theme</span>
-  <select id="themeSelect" title="PDF theme">${buildThemeOptions(themePreference)}</select>
-  <div class="toolbar-sep"></div>
-  <label class="tb-label" title="PDF page background colour"><span>BG</span><input type="color" id="bgColorPicker" value="${initBg}"/></label>
-  <label class="tb-label" title="PDF text colour"><span>Text</span><input type="color" id="textColorPicker" value="${initText}"/></label>
-  <button class="tb-btn" id="annotationsToggle" title="Toggle annotations sidebar">Notes</button>
-</div>
-
-<div id="main">
-  <div id="pdf-shell">
-    <div id="viewerContainer"><div id="viewer" class="pdfViewer"></div></div>
+<div id="app">
+  <aside id="sidebar" aria-label="Sidebar" hidden></aside>
+  <div id="sidebar-resizer" hidden></div>
+  <main id="pdf-shell">
+    <div id="toolbar" role="toolbar" aria-label="Reader"></div>
+    <div id="find-bar" role="search"></div>
+    <div id="viewerContainer" tabindex="0"><div id="viewer" class="pdfViewer"></div></div>
+    <div id="status-pill"></div>
     <div id="loading-msg">Loading PDF...</div>
-    <div id="error-msg"></div>
-  </div>
-  <div id="sidebar" class="hidden">
-    <div id="sidebar-header">${escapeHtml(paperTitle)} - Annotations</div>
-    <div id="annotation-list"></div>
-  </div>
+    <div id="error-msg" role="alert" hidden></div>
+  </main>
 </div>
-
-<div id="selection-toolbar">
-  <button class="color-btn yellow" data-color="yellow" title="Highlight yellow"></button>
-  <button class="color-btn green"  data-color="green"  title="Highlight green"></button>
-  <button class="color-btn blue"   data-color="blue"   title="Highlight blue"></button>
-  <button class="color-btn red"    data-color="red"    title="Highlight red"></button>
-  <button class="color-btn pink"   data-color="pink"   title="Highlight pink"></button>
-</div>
-
-${js}
+<div id="selection-toolbar" role="toolbar" aria-label="Selection"></div>
+<div id="hover-popup" role="tooltip"></div>
+<div id="cheatsheet"></div>
+<script id="labshelf-boot" type="application/json">${serializeBoot(boot)}</script>
+<script nonce="${n}" type="module" src="${scriptUrl}"></script>
 </body>
 </html>`;
   }
@@ -242,32 +230,32 @@ ${js}
 
 /* ── Helpers ────────────────────────────────────────────────────── */
 
-function buildZoomOptions(currentZoom: number): string {
-  return [...PDF_VIEWER_CONFIG.ZOOM_LEVELS]
-    .map(
-      (z) =>
-        `<option value="${z}"${z === currentZoom ? " selected" : ""}>${z}%</option>`
-    )
-    .join("");
+/**
+ * JSON for an inert <script type="application/json"> block. `<` is escaped so a paper title containing "</script>" cannot terminate the block, and U+2028/2029 because they are line terminators in older parsers.
+ * @usedBy generateHtml
+ * @returns the JSON-encoded boot payload, safe to embed inside a script tag.
+ */
+export function serializeBoot(boot: ReaderBootParams): string {
+  return JSON.stringify(boot)
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
 }
 
-function buildThemeOptions(currentTheme: string): string {
-  return (
-    [
-      { value: "auto",          label: "Auto" },
-      { value: "light",         label: "Light" },
-      { value: "dark",          label: "Dark" },
-      { value: "sepia",         label: "Sepia" },
-      { value: "high-contrast", label: "High Contrast" },
-    ] as const
-  )
-    .map(
-      (o) =>
-        `<option value="${o.value}"${
-          o.value === currentTheme ? " selected" : ""
-        }>${o.label}</option>`
-    )
-    .join("");
+// A dev checkout compiled with `tsc` alone has no dist/reader; say so instead of showing a blank panel.
+function bundleMissingHtml(paperTitle: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';"/>
+<title>${escapeHtml(paperTitle)}</title>
+</head>
+<body style="font-family:var(--vscode-font-family,sans-serif);padding:24px;color:var(--vscode-editor-foreground)">
+<h3>Reader bundle not built</h3>
+<p>dist/reader/reader.js is missing. Run <code>pnpm --filter @labshelf/vscode build</code> and reopen the PDF.</p>
+</body>
+</html>`;
 }
 
 function escapeHtml(text: string): string {

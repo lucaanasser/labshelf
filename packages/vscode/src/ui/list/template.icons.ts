@@ -2,7 +2,7 @@
  * SVG icon helpers for the list webview panel template.
  *
  * @depends none
- * @dependents ui/list/template.ts
+ * @dependents ui/list/template.ts, ui/list/template.script.ts, ui/list/template.detail.script.ts
  */
 
 /** Returns an inline SVG string for the given icon name. */
@@ -32,6 +32,20 @@ export function secIcon(name: string): string {
       return `<svg ${c}><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>`;
     case 'panel-right':
       return `<svg ${c}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>`;
+    case 'folder':
+      return `<svg ${c}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+    case 'folder-plus':
+      return `<svg ${c}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>`;
+    case 'search':
+      return `<svg ${c}><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+    case 'x':
+      return `<svg ${c}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    case 'arrow-up':
+      return `<svg ${c}><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
+    case 'layers':
+      return `<svg ${c}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`;
+    case 'library':
+      return `<svg ${c}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/></svg>`;
     default:
       return `<svg ${c}><circle cx="12" cy="12" r="8"/></svg>`;
   }

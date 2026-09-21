@@ -62,11 +62,33 @@ const workspaceFs = {
   readDirectory: jest.fn(async (_uri) => []),
   createDirectory: jest.fn(async () => {}),
   delete: jest.fn(async () => {}),
+  rename: jest.fn(async () => {}),
 };
+
+// Settings returned by getConfiguration(section).get(key); tests assign `workspace._config['labshelf.reader'] = {...}`.
+const _config = {};
+const _configListeners = [];
 
 const workspace = {
   fs: workspaceFs,
   workspaceFolders: undefined,
+  _config,
+  getConfiguration: jest.fn((section) => ({
+    get: (key, fallback) => {
+      const value = (_config[section] || {})[key];
+      return value === undefined ? fallback : value;
+    },
+  })),
+  onDidChangeConfiguration: jest.fn((handler) => {
+    _configListeners.push(handler);
+    return { dispose: () => {
+      const idx = _configListeners.indexOf(handler);
+      if (idx >= 0) _configListeners.splice(idx, 1);
+    }};
+  }),
+  _fireConfigChange: (section) => _configListeners.forEach(l => l({
+    affectsConfiguration: (s) => s === section || section.startsWith(`${s}.`),
+  })),
 };
 
 // ─── ColorThemeKind ───────────────────────────────────────────────────────────
@@ -83,6 +105,7 @@ const ColorThemeKind = {
 function makeWebviewPanel(viewType, title, column, options) {
   const messageListeners = [];
   const disposeListeners = [];
+  const viewStateListeners = [];
   const webview = {
     html: '',
     cspSource: 'vscode-resource:',
@@ -111,8 +134,15 @@ function makeWebviewPanel(viewType, title, column, options) {
       disposeListeners.push(handler);
       return { dispose: () => {} };
     }),
-    onDidChangeViewState: jest.fn(() => ({ dispose: () => {} })),
+    onDidChangeViewState: jest.fn((handler) => {
+      viewStateListeners.push(handler);
+      return { dispose: () => {} };
+    }),
     _disposeListeners: disposeListeners,
+  };
+  panel._fireViewState = (state) => {
+    Object.assign(panel, state);
+    viewStateListeners.forEach(l => l({ webviewPanel: panel }));
   };
   return panel;
 }
@@ -134,6 +164,8 @@ const window = {
   createTreeView: jest.fn(() => ({ dispose: () => {}, onDidChangeSelection: jest.fn() })),
   showInputBox: jest.fn(async () => undefined),
   showQuickPick: jest.fn(async () => undefined),
+  showSaveDialog: jest.fn(async () => undefined),
+  showTextDocument: jest.fn(async () => undefined),
   createWebviewPanel: jest.fn((viewType, title, column, options) => makeWebviewPanel(viewType, title, column, options)),
   activeColorTheme: { kind: ColorThemeKind.Dark },
   onDidChangeActiveColorTheme: jest.fn((handler) => {
@@ -157,6 +189,7 @@ const commands = {
 
 const env = {
   clipboard: { writeText: jest.fn(async () => {}), readText: jest.fn(async () => '') },
+  openExternal: jest.fn(async () => true),
 };
 
 // ─── ProgressLocation ─────────────────────────────────────────────────────────
@@ -232,7 +265,7 @@ module.exports = {
   DataTransferItem,
   CancellationToken,
   ColorThemeKind,
-  ViewColumn: { One: 1, Two: 2, Active: -1 },
+  ViewColumn: { One: 1, Two: 2, Active: -1, Beside: -2 },
   WebviewPanel: class {},
   makeWebviewPanel,
   _themeChangeListeners,

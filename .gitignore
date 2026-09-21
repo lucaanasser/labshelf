@@ -17,3 +17,6 @@ coverage/
 packages/vscode/src/sync/auth/googleDriveCredentials.ts
 packages/browser/src/sync/auth/oauthConfig.ts
 
+
+# Tesseract OCR language data (downloaded on demand at runtime)
+*.traineddata

@@ -25,6 +25,7 @@ function makeService(overrides: {
   parsedPdf?: any;
   fsStatResult?: (uri: vscode.Uri) => { type: number };
   fsReadDir?: (uri: vscode.Uri) => [string, number][];
+  textLayerBuilder?: { build: jest.Mock };
 } = {}): PaperService {
   const mockDb: Partial<IResearchDatabase> = {
     upsertPaper: jest.fn(async () => {}),
@@ -74,6 +75,7 @@ function makeService(overrides: {
     mockPaths as ILibraryPaths,
     mockParser as PdfImportParser,
     mockBibTeX as BibTeXService,
+    overrides.textLayerBuilder,
   );
 }
 
@@ -111,6 +113,22 @@ describe('PaperService.addPapersFromUris — PDF files', () => {
     expect(result.success).toHaveLength(2);
     expect(result.failed).toHaveLength(0);
     expect(result.skipped).toHaveLength(0);
+  });
+
+  it('reports each PDF, in order, just before importing it', async () => {
+    const svc = makeService();
+    const steps: Array<{ index: number; total: number; fileName: string }> = [];
+    await svc.addPapersFromUris(
+      [makeUri('/docs/a.pdf'), makeUri('/docs/readme.txt'), makeUri('/docs/b.pdf')],
+      undefined,
+      (step) => steps.push(step),
+    );
+
+    // Skipped files are not steps: the total counts only what will be imported.
+    expect(steps).toEqual([
+      { index: 1, total: 2, fileName: 'a.pdf' },
+      { index: 2, total: 2, fileName: 'b.pdf' },
+    ]);
   });
 
   it('skips non-PDF files and records them in skipped', async () => {
@@ -208,5 +226,129 @@ describe('PaperService.addPapersFromUris — folder expansion', () => {
     const result = await svc.addPapersFromUris([folderUri]);
     expect(result.success).toHaveLength(0);
     expect(result.failed).toHaveLength(0);
+  });
+});
+
+// ─── organizing: movePapers / moveFolder ──────────────────────────────────────
+
+describe('PaperService.movePapers', () => {
+  const stored = [
+    { id: 'p1', title: 'One', path: '/workspace/papers/A/p1' },
+    { id: 'p2', title: 'Two', path: '/workspace/papers/B/p2' },
+  ];
+
+  beforeEach(() => {
+    (vscode.workspace.fs.rename as jest.Mock).mockReset().mockResolvedValue(undefined);
+  });
+
+  it('renames the paper folder into the target and re-points the record', async () => {
+    const service = makeService({ dbPapers: stored });
+    const result = await service.movePapers(['p1'], '/workspace/papers/B');
+
+    expect(result).toEqual({ moved: ['p1'], failed: [] });
+    const [from, to, options] = (vscode.workspace.fs.rename as jest.Mock).mock.calls[0];
+    expect(from.fsPath).toBe('/workspace/papers/A/p1');
+    expect(to.fsPath).toBe('/workspace/papers/B/p1');
+    expect(options).toEqual({ overwrite: false });
+  });
+
+  it('skips papers already in the target folder', async () => {
+    const service = makeService({ dbPapers: stored });
+    const result = await service.movePapers(['p2'], '/workspace/papers/B');
+
+    expect(result).toEqual({ moved: [], failed: [] });
+    expect(vscode.workspace.fs.rename).not.toHaveBeenCalled();
+  });
+
+  it('reports unknown ids and filesystem collisions without aborting the batch', async () => {
+    (vscode.workspace.fs.rename as jest.Mock).mockRejectedValueOnce(new Error('EEXIST'));
+    const service = makeService({ dbPapers: stored });
+    const result = await service.movePapers(['p1', 'ghost', 'p2'], '/workspace/papers/C');
+
+    expect(result.moved).toEqual(['p2']);
+    expect(result.failed).toEqual([
+      { id: 'p1', error: 'EEXIST' },
+      { id: 'ghost', error: 'Paper not found' },
+    ]);
+  });
+});
+
+describe('PaperService.moveFolder', () => {
+  beforeEach(() => {
+    (vscode.workspace.fs.rename as jest.Mock).mockReset().mockResolvedValue(undefined);
+  });
+
+  it('moves the folder under the new parent and returns its new path', async () => {
+    const service = makeService({ dbPapers: [{ id: 'p1', title: 'One', path: '/workspace/papers/A/p1' }] });
+    const moved = await service.moveFolder('/workspace/papers/A', '/workspace/papers/B');
+
+    expect(moved).toBe('/workspace/papers/B/A');
+    const [from, to] = (vscode.workspace.fs.rename as jest.Mock).mock.calls[0];
+    expect([from.fsPath, to.fsPath]).toEqual(['/workspace/papers/A', '/workspace/papers/B/A']);
+  });
+
+  it('refuses to move a folder into itself or its own subtree', async () => {
+    const service = makeService();
+    await expect(service.moveFolder('/workspace/papers/A', '/workspace/papers/A/B')).rejects.toThrow('into itself');
+    await expect(service.moveFolder('/workspace/papers/A', '/workspace/papers/A')).rejects.toThrow('into itself');
+    expect(vscode.workspace.fs.rename).not.toHaveBeenCalled();
+  });
+
+  it('refuses a no-op move to the current parent', async () => {
+    const service = makeService();
+    await expect(service.moveFolder('/workspace/papers/A', '/workspace/papers')).rejects.toThrow('already there');
+  });
+});
+
+describe('PaperService.resolvePdfUri', () => {
+  it('follows the stored path, so papers inside collection folders resolve', async () => {
+    const service = makeService({ dbPapers: [{ id: 'p1', title: 'One', path: '/workspace/papers/Project/Refs/p1' }] });
+    expect((await service.resolvePdfUri('p1'))?.fsPath).toBe('/workspace/papers/Project/Refs/p1/paper.pdf');
+  });
+
+  it('returns null for an unknown id', async () => {
+    expect(await makeService().resolvePdfUri('ghost')).toBeNull();
+  });
+});
+
+describe('PaperService.makeSearchable', () => {
+  const stored = { id: 'scan1986', title: 'A Scan', path: '/workspace/papers/scan1986', citeKey: 'scan1986', status: 'unread' };
+
+  beforeEach(() => {
+    (vscode.workspace.fs.readFile as jest.Mock).mockImplementation(async () => new Uint8Array([1, 2, 3]));
+  });
+
+  it('replaces paper.pdf through a temporary file and announces the update', async () => {
+    const bytes = new Uint8Array([9, 9]);
+    const builder = { build: jest.fn(async () => ({ status: 'added', bytes, pagesAdded: 17, pagesFailed: 0 })) };
+    const svc = makeService({ dbPapers: [stored], textLayerBuilder: builder });
+
+    const result = await svc.makeSearchable('scan1986');
+
+    expect(result).toMatchObject({ status: 'added', pagesAdded: 17 });
+    const [pending, written] = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls[0];
+    expect(pending.fsPath).toBe('/workspace/papers/scan1986/paper.searchable.tmp');
+    expect(written).toBe(bytes);
+    const [from, to, options] = (vscode.workspace.fs.rename as jest.Mock).mock.calls[0];
+    expect([from.fsPath, to.fsPath, options]).toEqual([pending.fsPath, '/workspace/papers/scan1986/paper.pdf', { overwrite: true }]);
+    expect((svc as any).eventBus.emit).toHaveBeenCalledWith('paper:updated', stored);
+  });
+
+  it.each(['not-needed', 'cancelled'])('leaves the file alone when the outcome is %s', async (status) => {
+    const svc = makeService({ dbPapers: [stored], textLayerBuilder: { build: jest.fn(async () => ({ status })) } });
+
+    expect(await svc.makeSearchable('scan1986')).toEqual({ status });
+    expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+    expect((svc as any).eventBus.emit).not.toHaveBeenCalled();
+  });
+
+  it('reports why nothing happened when OCR is off, the paper is unknown, or the builder throws', async () => {
+    expect(await makeService({ dbPapers: [stored] }).makeSearchable('scan1986')).toMatchObject({ status: 'unavailable' });
+
+    const builder = { build: jest.fn(async () => { throw new Error('boom'); }) };
+    const svc = makeService({ dbPapers: [stored], textLayerBuilder: builder });
+    expect(await svc.makeSearchable('missing')).toEqual({ status: 'unavailable', reason: 'paper not found' });
+    expect(await svc.makeSearchable('scan1986')).toEqual({ status: 'unavailable', reason: 'boom' });
+    expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
   });
 });

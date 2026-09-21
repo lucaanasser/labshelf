@@ -25,4 +25,6 @@ export interface PaperRecord {
   url?: string;
   issn?: string;
   language?: string;
+  // Author or publisher supplied subject terms, when the PDF or a registry states them.
+  keywords?: string[];
 }

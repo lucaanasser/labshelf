@@ -48,6 +48,11 @@ database:
     without changing the contract. The vector store performs cosine top-k in
     process; adequate up to roughly 10k chunks.
 
+    chunk_embeddings.text is nullable: VectorRecord.text is optional and chunks
+    may be stored without it. Databases created while the column was NOT NULL
+    are rebuilt once by ensureAiSchema (rename, recreate, copy, drop inside a
+    transaction), preserving row ids, rows and both indexes.
+
 events:
   emits:
     - ai:index:started (paperId)
@@ -66,13 +71,18 @@ errors:
     - "@xenova/transformers not installed (fall back to HashEmbeddingProvider)"
     - model download fails (degraded mode, hash provider, manifest stays absent)
     - PDF cannot be opened (logged, paper skipped, ai:index:failed emitted)
+    - paper id unknown to the index when resolving its PDF (paper skipped silently, no index events)
     - SQLite write fails for AI tables (logged, paper skipped)
     - Semantic Scholar API returns non-200 (cache miss, no enrichment)
   handling_strategy: >
     Each failure mode keeps the rest of the extension running. The AI service
     exposes a `degradedMode` flag through status() so the settings UI can show
     a clear indicator. Indexer jobs are run through a FIFO queue with
-    per-job try/catch so a single bad paper never blocks the queue.
+    per-job try/catch so a single bad paper never blocks the queue. The indexer
+    locates each PDF through the async resolvePdfUri dependency, wired to
+    PaperService.resolvePdfUri, which reads the stored record path. It must
+    never be derived from the paper id: papers live in any collection folder
+    under papers/ and move between them.
 
 ui:
   components:
@@ -85,15 +95,18 @@ tests:
   unit:
     - chunking: sectionDetector, sectionChunker, slidingChunker, tokenEstimator
     - heuristics: methodDetector, datasetExtractor, codeRepoExtractor,
-      reproScorer, computeExtractor, citationExtractor, claimDetector,
-      difficultyScorer, termNovelty, titleDedup
+        reproScorer, computeExtractor, citationExtractor, claimDetector,
+        difficultyScorer, termNovelty, titleDedup
     - rag: cosine, retrieveTopK, stanceDetector, mmrRerank
     - analysis: heatmapAggregator, citationGapDetector, bibAudit
     - runtime: HashEmbeddingProvider determinism, modelPaths resolution,
-      IndexerQueue FIFO and error isolation
+        IndexerQueue FIFO and error isolation, AiIndexer reads the PDF from the
+        resolved (possibly nested) location and skips unresolvable papers
     - persistence (when node:sqlite available):
-      SqliteVectorStore upsert/search/filter/delete, AiMetadataStore round-trip,
-      ReadingEventsStore append/listSince/prune, embeddingCodec
+        SqliteVectorStore upsert/search/filter/delete, AiMetadataStore round-trip,
+        ReadingEventsStore append/listSince/prune, embeddingCodec,
+        ensureAiSchema accepts chunks without text, relaxes a legacy NOT NULL
+        text column while keeping rows and indexes, and is idempotent
   integration:
     - paper:added triggers ingestion, populates chunk_embeddings and
       paper_metadata_ai, emits ai:indexed

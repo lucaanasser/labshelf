@@ -19,7 +19,7 @@ const SCHEMA = `
     page INTEGER,
     start_offset INTEGER,
     end_offset INTEGER,
-    text TEXT NOT NULL,
+    text TEXT,
     embedding BLOB NOT NULL,
     dim INTEGER NOT NULL,
     model_id TEXT NOT NULL,
@@ -84,4 +84,36 @@ const SCHEMA = `
  */
 export function ensureAiSchema(db: DatabaseSync): void {
   db.exec(SCHEMA);
+  relaxChunkTextConstraint(db);
+}
+
+// Early databases declared chunk_embeddings.text NOT NULL, while VectorRecord
+// has always allowed chunks without text. SQLite cannot drop a constraint in
+// place, so the table is rebuilt once; rows and ids are preserved.
+function relaxChunkTextConstraint(db: DatabaseSync): void {
+  const columns = db.prepare(`PRAGMA table_info(chunk_embeddings)`).all() as { name: string; notnull: number }[];
+  if (!columns.some((column) => column.name === "text" && column.notnull === 1)) {
+    return;
+  }
+
+  db.exec("BEGIN");
+  try {
+    db.exec(`
+      ALTER TABLE chunk_embeddings RENAME TO chunk_embeddings_strict;
+      DROP INDEX IF EXISTS idx_chunk_embeddings_paper;
+      DROP INDEX IF EXISTS idx_chunk_embeddings_kind;
+    `);
+    db.exec(SCHEMA);
+    db.exec(`
+      INSERT INTO chunk_embeddings
+        (id, paper_id, kind, section, page, start_offset, end_offset, text, embedding, dim, model_id, created_at)
+      SELECT id, paper_id, kind, section, page, start_offset, end_offset, text, embedding, dim, model_id, created_at
+        FROM chunk_embeddings_strict;
+      DROP TABLE chunk_embeddings_strict;
+    `);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }

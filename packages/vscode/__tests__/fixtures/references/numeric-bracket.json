@@ -1,0 +1,9 @@
+[
+  { "text": "12", "x": 280, "xEnd": 300, "y": 820, "height": 10, "column": 0 },
+  { "text": "[1] Smith, J., & Doe, A. (2019). A great paper on", "x": 50, "xEnd": 380, "y": 770, "height": 12, "column": 0 },
+  { "text": "testing methodologies. Journal of Software, 12(3), 45-67.", "x": 70, "xEnd": 400, "y": 756, "height": 12, "column": 0 },
+  { "text": "[2] Lee, K. (2020). Another important contribution to the", "x": 50, "xEnd": 390, "y": 730, "height": 12, "column": 0 },
+  { "text": "field of inter-", "x": 70, "xEnd": 150, "y": 716, "height": 12, "column": 0 },
+  { "text": "national research. Proceedings of XYZ, 5(1), 10-20.", "x": 70, "xEnd": 400, "y": 702, "height": 12, "column": 0 },
+  { "text": "[3] Nguyen, T. (2021). Short paper. Tiny Journal, 1(1), 1-2.", "x": 50, "xEnd": 420, "y": 676, "height": 12, "column": 0 }
+]

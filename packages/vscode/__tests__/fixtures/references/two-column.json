@@ -1,0 +1,8 @@
+[
+  { "text": "[1] Anderson, P. (2017). Left column first entry.", "x": 50, "xEnd": 300, "y": 800, "height": 12, "column": 0 },
+  { "text": "[2] Brown, Q. (2018). Left column second entry.", "x": 50, "xEnd": 300, "y": 770, "height": 12, "column": 0 },
+  { "text": "[3] Chen, R. (2019). Left column third entry.", "x": 50, "xEnd": 300, "y": 740, "height": 12, "column": 0 },
+  { "text": "[4] Davis, S. (2020). Right column first entry.", "x": 360, "xEnd": 600, "y": 736, "height": 12, "column": 1 },
+  { "text": "[5] Evans, T. (2021). Right column second entry.", "x": 360, "xEnd": 600, "y": 706, "height": 12, "column": 1 },
+  { "text": "[6] Foster, U. (2022). Right column third entry.", "x": 360, "xEnd": 600, "y": 676, "height": 12, "column": 1 }
+]

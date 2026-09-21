@@ -5,7 +5,11 @@ import type { PaperService } from "../core/paperService.js";
 import type { WorkspaceLogger } from "../core/logger.js";
 import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
 import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
+import type { PaperDataStore } from "../storage/data/paperDataStore.js";
 import type { IResearchDatabase, PaperRecord, PaperStatus, BatchImportResult } from "@labshelf/core";
+import { fetchMetadataForPaper, offerMetadataFetch, resolveMissingMetadata } from "./fetchMetadata.js";
+import { announceImport, importWithProgress } from "./importProgress.js";
+import { queueTextLayers } from "./textLayerQueue.js";
 
 const LOG_MODULE = "commands/registerCommands";
 
@@ -15,6 +19,7 @@ export type ActiveServices = {
   themeManager: ThemeManager;
   annotationManager: AnnotationManager;
   database: IResearchDatabase;
+  paperDataStore: PaperDataStore;
 };
 
 export type RequireServices = () => Promise<ActiveServices | null>;
@@ -42,6 +47,26 @@ export function registerCommands(
         }
 
         await runBatchImport(services.paperService, services.logger, selected);
+      });
+    }),
+    vscode.commands.registerCommand("labshelf.makeSearchable", async () => {
+      const services = await requireServices();
+      if (!services) { return; }
+      await executeSafely(services.logger, "labshelf.makeSearchable", async () => {
+        const paper = await pickPaper(services.paperService, "Make a scanned paper searchable (OCR)");
+        if (paper) {
+          await queueTextLayers(services.paperService, [paper], { logger: services.logger, announceAll: true });
+        }
+      });
+    }),
+    vscode.commands.registerCommand("labshelf.makeLibrarySearchable", async () => {
+      const services = await requireServices();
+      if (!services) { return; }
+      await executeSafely(services.logger, "labshelf.makeLibrarySearchable", async () => {
+        // Papers that already have text are skipped in a fraction of a second each.
+        const papers = await services.paperService.listPapers();
+        await queueTextLayers(services.paperService, papers, { logger: services.logger });
+        void vscode.window.showInformationMessage("LabShelf: finished checking the library for scanned papers.");
       });
     }),
     vscode.commands.registerCommand("labshelf.openPaper", async () => {
@@ -82,6 +107,16 @@ export function registerCommands(
     vscode.commands.registerCommand("labshelf.openSidebar", async () => {
       await vscode.commands.executeCommand("workbench.view.extension.labshelfContainer");
     }),
+    vscode.commands.registerCommand("labshelf.openPaperPdfExternal", async (paperId?: string) => {
+      const services = await requireServices();
+      if (!services) { return; }
+      await executeSafely(services.logger, "labshelf.openPaperPdfExternal", async () => {
+        const paper = await resolvePaper(services.paperService, paperId, "Open paper PDF in default viewer");
+        if (paper) {
+          await openPaperPdfExternal(paper);
+        }
+      });
+    }),
     vscode.commands.registerCommand("labshelf.openPaperPdf", async (paperId?: string) => {
       const services = await requireServices();
       if (!services) { return; }
@@ -114,6 +149,24 @@ export function registerCommands(
         vscode.window.setStatusBarMessage(`LabShelf: copied @${paper.citeKey}`, 2000);
       });
     }),
+    vscode.commands.registerCommand("labshelf.fetchMetadata", async (paperId?: string) => {
+      const services = await requireServices();
+      if (!services) { return; }
+      await executeSafely(services.logger, "labshelf.fetchMetadata", async () => {
+        const paper = paperId
+          ? (await services.paperService.listPapers()).find((entry) => entry.id === paperId)
+          : await pickPaper(services.paperService, "Select the paper to look up");
+        if (!paper) { return; }
+        await fetchMetadataForPaper(services.paperService, paper);
+      });
+    }),
+    vscode.commands.registerCommand("labshelf.resolveMissingMetadata", async () => {
+      const services = await requireServices();
+      if (!services) { return; }
+      await executeSafely(services.logger, "labshelf.resolveMissingMetadata", async () => {
+        await resolveMissingMetadata(services.paperService);
+      });
+    }),
     vscode.commands.registerCommand("labshelf.deletePaper", async (paperId?: string) => {
       const services = await requireServices();
       if (!services) { return; }
@@ -138,8 +191,8 @@ export function registerCommands(
   );
 }
 
-// Returns the paper matching paperId if given, or presents a quick-pick for the user to choose from.
-async function resolvePaper(
+/** Returns the paper matching paperId if given, or presents a quick-pick for the user to choose from. @usedBy extension (labshelf.openPdfViewer, labshelf.exportAnnotations). @returns the paper, or undefined when cancelled or the library is empty */
+export async function resolvePaper(
   paperService: PaperService,
   paperId: string | undefined,
   placeholder: string,
@@ -187,8 +240,13 @@ function formatStatus(status: PaperStatus): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-// Opens the paper.pdf file inside the paper folder using the default VS Code handler.
+// Opens the paper in the LabShelf reader.
 async function openPaperPdf(paper: PaperRecord): Promise<void> {
+  await vscode.commands.executeCommand("labshelf.openPdfViewer", paper.id);
+}
+
+// Escape hatch: hands paper.pdf to VS Code's default handler (or the OS viewer) instead of the LabShelf reader.
+async function openPaperPdfExternal(paper: PaperRecord): Promise<void> {
   const pdf = vscode.Uri.joinPath(vscode.Uri.file(paper.path), "paper.pdf");
   await vscode.commands.executeCommand("vscode.open", pdf);
 }
@@ -199,19 +257,18 @@ async function runBatchImport(
   logger: WorkspaceLogger,
   uris: vscode.Uri[],
 ): Promise<void> {
-  const result = await vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: "LabShelf: Importing…", cancellable: false },
-    () => paperService.addPapersFromUris(uris),
-  );
+  const result = await importWithProgress(paperService, uris, undefined, logger);
 
   if (result.failed.length > 0) {
     await logger.log("WARN", LOG_MODULE, "Batch import had failures", {
       failed: result.failed,
     });
     vscode.window.showWarningMessage(`LabShelf: ${buildResultMessage(result)}`);
-  } else if (result.success.length > 0) {
-    vscode.window.setStatusBarMessage(`LabShelf: ${buildResultMessage(result)}`, 3000);
+  } else {
+    announceImport(result);
   }
+
+  await offerMetadataFetch(paperService, result.needsReview ?? []);
 }
 
 // Builds a human-readable summary string from a BatchImportResult (e.g. "3 papers imported, 1 failed").
@@ -239,3 +296,4 @@ async function executeSafely(logger: WorkspaceLogger, commandName: string, actio
     await vscode.window.showErrorMessage(`LabShelf command failed: ${message}`);
   }
 }
+

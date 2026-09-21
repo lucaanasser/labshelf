@@ -17,10 +17,78 @@ structure:
       and reads embedded document metadata and first-page text.
     pdf/extractor.ts: >
       Extracts structured metadata from raw PDF text — title, authors, DOI and
-      arXiv identifiers — and generates the cite key.
+      arXiv identifiers — and generates the cite key. The cite key is built
+      from the first available of: the identifier, the extracted title (accents
+      folded, capped at 48 characters), the source file stem. The file stem is
+      the last resort because it names the user's download, not the paper. The
+      paper's displayed title is never the file stem unless every other source
+      failed, in which case the record is reported as needing review.
+    pdf/localSignals.ts: >
+      Offline signals read from the page text: abstract, keywords, running-head
+      journal, publisher Info keys, and titleFromPlainText — a title guess for
+      OCR text, which has no font sizes. A run of up to four title-shaped lines
+      is accepted only when a byline follows it directly; lines shorter than
+      four characters are treated as OCR specks, and a run ends at a full stop.
+      No qualifying run yields no title rather than a doubtful one.
     pdf/resolver.ts: >
       Resolves online metadata for detected DOI/arXiv identifiers via CrossRef
-      and arXiv, with graceful fallback to locally extracted metadata.
+      and arXiv, with graceful fallback to locally extracted metadata. A text
+      search accepts a record only when (a) at least 75% of its title words
+      occur in the query and (b) the title is located in the query. When the
+      query is longer than three times the title (a page of front matter), a
+      title of fewer than four significant words is rejected outright, and a
+      longer one must have 75% of its words inside one window of title length
+      plus max(2, half the title length) words; titles whose words are only
+      scattered over the page are rejected. Among accepted records the earliest
+      position wins, since the title precedes the abstract; ties go to the
+      record whose title occurs verbatim in the query, then to the most
+      complete. Word overlap alone matched "Depth First Search" to a paper whose
+      abstract mentions it, and cannot tell "Attention Is All You Need" from
+      "Is Attention All You Need?".
+    pdf/parser.ts (OCR policy): >
+      OCR runs before anything else when the text layer is unreadable (broken
+      character maps) or sparse: isSparseText is true when no single front
+      matter page holds 40 words. It is judged per page because a download stamp
+      or print header repeats on every page and, joined, passes any word floor.
+      Browser "print to PDF" output is the common case: glyphs are drawn as
+      vector paths and Info.Title holds the viewer's window title. OCR also runs
+      as a last resort when no identifier resolved and no usable title exists.
+      Whenever OCR text is combined with a text layer, the OCR text comes first,
+      so the registry search — which reads the first 400 characters — sees the
+      masthead rather than the stamp. usableTitle rejects viewer and browser
+      window titles ("PDF.js viewer", "Adobe Acrobat ...") alongside filenames
+      and print-job placeholders.
+    vscode pdf/pdfjsNodeEnvironment.ts: >
+      getDocument options that make pdfjs act as a Node library in the extension
+      host: a BinaryDataFactory reading CMaps, standard fonts and wasm decoders
+      from disk with useWorkerFetch off (nodeDataOptions), plus a CanvasFactory
+      over @napi-rs/canvas, a no-op FilterFactory, disableFontFace on, and
+      OffscreenCanvas, ImageDecoder and system fonts off (nodeRenderOptions).
+      loadPdfCanvas loads the @napi-rs/canvas copy that pdfjs-dist depends on,
+      falling back to the extension's own.
+    vscode pdf/tesseractOcrEngine.ts: >
+      PdfOcrEngine that rasterizes front-matter pages with pdfjs at 300 DPI
+      (capped at 40 megapixels) and reads them with tesseract.js.
+    vscode pdf/searchablePdfBuilder.ts: >
+      SearchablePdfBuilder.build(pdfBytes, hooks) gives a scanned PDF a text
+      layer so it can be searched and its text selected. A page is text-less
+      when isSparseText holds for it alone (fewer than 40 words, so a download
+      stamp does not count as text). The document qualifies only when at least
+      half of its pages are text-less; otherwise the outcome is not-needed,
+      which keeps figure-only pages of born-digital papers from receiving a
+      duplicate caption. Documents with more text-less pages than
+      labshelf.ocr.maxPages (default 150) are refused. Each text-less page is
+      rendered at 300 DPI and read with Tesseract's text-only PDF output
+      (pdfTextOnly): a page holding only invisible, positioned glyphs. That page
+      is embedded with pdf-lib as a form XObject and drawn over the original
+      page's crop box. Original page content is never re-encoded. Pages with a
+      non-zero /Rotate are skipped and counted as failed; pages where OCR finds
+      no text are skipped silently. Before returning, the result is re-opened
+      and must have the same page count and real text on at least one page that
+      was read; otherwise nothing is written. Outcomes: added (bytes,
+      pagesAdded, pagesFailed), not-needed, cancelled, unavailable (reason).
+      Measured on a 17-page scan: 43 s, file size +3%, glyph placement within
+      0.5 pt of independently detected word positions.
     pdf/pdfImportParser.ts: >
       Public entry point used by PaperService; composes parser, extractor, and
       resolver into a single parse call.
@@ -42,6 +110,25 @@ architecture:
     pdf.worker.mjs on the main thread and exposes it as globalThis.pdfjsWorker,
     making pdfjs run the parser in-process without a worker URL.
 
+    pdfjs-dist 6 removed PDFDocumentProxy.destroy(); teardown belongs to the
+    loading task. Core still closes documents through PdfDocumentLike.destroy(),
+    so NodePdfOpener restores destroy() by delegating to loadingTask.destroy()
+    when the document lacks it, and openPdfForOcr closes through its loading
+    task directly.
+
+    The extension host is an Electron utility process (process.type is
+    "utility"), which pdfjs' import-time isNodeJS test rejects. Left to its
+    defaults pdfjs then renders through document.createElement, loads fonts
+    through document.fonts and fetch()es CMap paths, so OCR rendering throws and
+    scanned PDFs import under their filename with every field empty. All
+    environment-dependent getDocument options are therefore passed explicitly
+    (pdfjsNodeEnvironment.ts) by both NodePdfOpener and TesseractOcrEngine.
+
+    Exactly one @napi-rs/canvas build may be live in the process. pdfjs-dist
+    loads its own copy at import; loading a second version and handing its
+    Path2D/DOMMatrix objects to the first ends the host with a segmentation
+    fault, not an exception.
+
 database:
   tables_used: []
   migrations: []
@@ -56,6 +143,9 @@ errors:
     - unreadable or corrupt PDF bytes
     - online lookup failure for DOI or arXiv metadata
     - pdfjs worker module fails to load on the main thread
+    - scanned PDF that pdf-lib cannot rewrite (encrypted or malformed): outcome unavailable, paper.pdf untouched
+    - no native canvas build installed (OCR reports itself unavailable through onDiagnostic and returns no text)
+    - OCR text matches no registry and no byline confirms a title (title falls back to the file stem, confidence low, record listed in needsReview)
   handling_strategy: >
     Invalid input fails fast with a thrown error. Network lookup failures
     degrade gracefully by falling back to local metadata. The pdfjs worker is
@@ -70,7 +160,18 @@ tests:
     - header validation rejects non-PDF input
     - embedded metadata extraction
     - DOI and arXiv identifier detection
-    - citeKey generation from metadata and file stem
+    - citeKey generation prefers identifier, then title, then file stem; folds accents; caps title keys
+    - titleFromPlainText joins title lines above a byline, skips a leading notice and OCR specks, and returns undefined without a byline
+    - usableTitle rejects viewer window titles such as "PDF.js viewer"
+    - isSparseText treats a stamp repeated on every page as sparse and one real page as not
+    - searchOnlineByText rejects a short title merely contained in the page, prefers the earliest-printed title, and prefers the verbatim title on a tie
+    - SearchablePdfBuilder adds a layer to every page of a scan and reports progress per page
+    - SearchablePdfBuilder returns not-needed for a born-digital paper with one figure-only page
+    - SearchablePdfBuilder treats a stamp repeated on every page as no text layer
+    - SearchablePdfBuilder refuses documents above maxPages, skips rotated pages, honours cancellation
+    - SearchablePdfBuilder writes nothing when OCR finds no text, verification fails, no canvas exists, or the PDF cannot be parsed
+    - nodeDataOptions resolves existing CMap and font directories and reads them from disk
+    - nodeRenderOptions draws on the native canvas and disables browser-only rendering paths
     - main-thread pdfjs worker is registered on globalThis before parsing
   integration:
     - enriched PDF import parsing from a real sample file

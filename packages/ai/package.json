@@ -15,6 +15,7 @@
     "@types/jest": "^29.5.14",
     "jest": "^29.7.0",
     "ts-jest": "^29.4.9",
-    "typescript": "*"
+    "typescript": "^7.0.2",
+    "typescript-js": "npm:typescript@^6.0.3"
   }
 }

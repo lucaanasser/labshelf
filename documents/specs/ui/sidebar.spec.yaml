@@ -1,42 +1,51 @@
 feature:
-  name: Sidebar Collections Tree
+  name: Sidebar Library Tree
   module: ui
   description: >
     Render the LabShelf library navigation as a VS Code TreeView in the
-    activity bar. The tree exposes built-in collections and user-created custom
-    folders, and accepts OS file drops anywhere in the tree.
+    activity bar. The tree mirrors the real directory structure under papers/:
+    an "All Papers" entry followed by the user's collection folders. Every row
+    opens in the list panel, shows a recursive paper count, accepts OS file
+    drops, and folders can be dragged to reorganize them.
 
 structure:
   description: >
     The ui module is split by view. This feature lives in ui/library/.
   layout:
     ui/library/libraryTreeDataProvider.ts: >
-      TreeDataProvider and TreeDragAndDropController for the library tree;
-      hosts the CollectionsTreeDataProvider and CollectionsDragAndDropController
-      logic. Other ui views live in ui/list/ (list panel) and ui/sync/ (sync
-      status tree).
+      LibraryTreeDataProvider and LibraryDragAndDropController.
+    ui/library/folderNavigation.ts: >
+      LibraryNode type and pure helpers shared with the list panel.
+    ui/library/collectionFolders.ts: >
+      readCollectionFolders / listAllCollectionFolders. A directory holding
+      metadata.yaml or paper.pdf is a paper folder and is never shown as a node.
   notes: >
-    Legacy ui/sidebarHtml.ts, ui/sidebarWebviewProvider.ts, and
-    ui/sidebarStateMapper.ts were removed; the sidebar is now a native TreeView,
-    not a webview.
+    Folders are real directories; nothing is persisted in workspaceState.
+    papers/ itself is hidden as a path segment and represented by the
+    "All Papers" entry, which is a sibling of the top-level folders (not their
+    parent) so the tree gains no extra indentation level.
 
 architecture:
   inputs:
-    - PaperService.listPapers for counts
+    - papers/ root URI (setPapersRoot)
+    - stored paper paths for counts (setPaperPathSource)
     - paper:added, paper:updated, and paper:deleted events
-    - workspaceState key labshelf.customCollections
     - text/uri-list drops from the OS
+    - application/vnd.code.tree.labshelf.library drags from the tree itself
   outputs:
-    - labshelf.openListTab for the selected collection
-    - labshelf.addPaper from the toolbar
-    - persisted custom collections
+    - labshelf.openListTab with the clicked node, for every node
     - batch import through PaperService.addPapersFromUris
+    - folder moves through PaperService.moveFolder
+  panel_sync: >
+    extension.ts passes onDidNavigate to the list panel and calls
+    TreeView.reveal(select, no focus, expand) for the folder it shows. reveal
+    is skipped while the tree is hidden, because it would force the sidebar
+    open; the selection is synced when the view becomes visible instead.
   dependencies:
     - vscode TreeDataProvider and createTreeView API
     - vscode TreeDragAndDropController API
     - core/paperService
     - core/eventBus
-    - vscode ExtensionContext.workspaceState
 
 database:
   tables_used:
@@ -49,54 +58,76 @@ events:
     - paper:added
     - paper:updated
     - paper:deleted
+  notes: >
+    Event refreshes are debounced (60 ms) because one folder move emits a
+    paper:updated per paper.
 
 errors:
   expected_failures:
-    - PaperService.listPapers failure while refreshing counts
-    - workspaceState unavailable or empty
-    - unreadable dropped folder
+    - paper path source failure while computing counts
+    - unreadable directory
     - non-PDF dropped file
+    - folder dropped into itself, its own subtree, or its current parent
+    - name collision in the target folder
   handling_strategy: >
-    Refresh errors should not block rendering. Collection mutations are no-ops
-    on cancel. Drop import failures are logged by the activation layer and
-    summarized to the user when at least one item fails.
+    Count failures render the tree without counts. Unreadable directories
+    yield no children. Drop import failures are logged by the activation layer
+    and summarized to the user. A rejected folder move is logged and shown as
+    an error message; other folders in the same drag still move.
 
 ui:
   view_type: tree
-  view_id: labshelf.collections
+  view_id: labshelf.library
   registration: vscode.window.createTreeView
   components:
-    - CollectionsTreeDataProvider
-    - CollectionsDragAndDropController
-  built_in_collections:
-    - My Library
-    - Recently Read
-    - Unfiled Items
-  custom_collections:
-    - user-created, persisted in workspaceState
+    - LibraryTreeDataProvider
+    - LibraryDragAndDropController
+  nodes:
+    all_papers:
+      contextValue: labshelfRoot
+      behavior: opens the whole library in the list panel; never collapsible, draggable, renamable, or deletable
+    folder:
+      contextValue: labshelfFolder
+      behavior: click opens it in the list panel whether or not it has subfolders; folders with subfolders also expand
+    description: recursive paper count, omitted when zero
   toolbar:
-    - Add Paper
-    - New Collection
+    - Add Paper (labshelf.addPaper)
+    - New Folder at Library Root (labshelf.newFolderAtRoot)
     - Refresh
+  toolbar_note: >
+    The title bar uses labshelf.newFolderAtRoot, not labshelf.newFolder. VS Code
+    passes the focused tree item to title actions, so sharing one command id
+    with the context menu nested every new folder inside the selected row.
+  context_menu:
+    labshelfFolder: [Add Paper Here (inline), New Folder, Rename Folder, Delete Folder]
+    labshelfRoot: [Add Paper Here (inline), New Folder]
   drag_and_drop:
     drop_mime_types:
       - text/uri-list
+      - application/vnd.code.tree.labshelf.library
+    drag_mime_types:
+      - application/vnd.code.tree.labshelf.library
+    rules: >
+      Dropping on "All Papers" or on the empty area targets papers/. Tree drags
+      take precedence over uri-list when both are present.
 
 tests:
   unit:
-    - root tree structure includes built-in collections
-    - tree items use the correct icon and contextValue per collection type
-    - counts update after paper:added and paper:updated events
-    - newCollection persists to workspaceState
-    - renameCollection updates the stored collection label
-    - deleteCollection removes the collection from workspaceState
-    - drag-and-drop controller parses text/uri-list payloads
-    - drag-and-drop controller ignores comments and invalid URIs
-    - drag-and-drop controller filters non-file URIs
+    - top level is All Papers followed by sorted collection folders, skipping paper and hidden folders
+    - no children while no library is configured
+    - every folder node carries the labshelf.openListTab command, including non-leaf folders
+    - recursive counts appear as description and are omitted at zero
+    - a failing count source does not block rendering
+    - getParent resolves ancestors and returns null at the top level and for All Papers
+    - a burst of paper events produces one refresh
+    - tree drags route to the folder-move callback with the drop target
+    - All Papers is never put on the drag transfer
+    - uri-list drops ignore comments and non-file URIs
   integration:
-    - tree registered under labshelf.collections
-    - clicking a tree item opens labshelf.openListTab with the item
-    - drag-and-drop routes to PaperService.addPapersFromUris
+    - PaperService.moveFolder renames on disk, re-points records, and rejects self/subtree/no-op moves
+  manual:
+    - Create two folders from the title bar with the first one selected; both land at the library root.
+    - Drag a folder onto another, then onto All Papers; papers inside stay openable.
 
 ai_notes:
   embeddings: false

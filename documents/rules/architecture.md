@@ -4,8 +4,8 @@ These are the rules that keep LabShelf easy to change.
 
 ## Layering
 
-- `packages/core` must not import `vscode`, `better-sqlite3`, or browser APIs.
-- `packages/vscode/src/db/` is the only place `better-sqlite3` is allowed.
+- `packages/core` must not import `vscode`, `node:sqlite`, or browser APIs.
+- `packages/vscode/src/db/` is the only place `node:sqlite` is allowed.
 - Do not let UI code reach into the database directly when a service already exists.
 - Do not put file access, database access, and UI rendering in the same flow unless there is no suitable abstraction.
 
@@ -14,7 +14,7 @@ These are the rules that keep LabShelf easy to change.
 - `PaperService` owns import, update, delete, and BibTeX regeneration for papers.
 - `PdfImportParser` owns metadata extraction from source PDFs. It accepts `IFileSystem`, not `vscode.workspace.fs`.
 - `WorkspacePaths` owns workspace-local path resolution.
-- `VsCodeFileSystem` owns filesystem mutations in the VS Code package. It implements `IFileSystem`.
+- `VscodeFileSystem` owns filesystem mutations in the VS Code package. It implements `IFileSystem`.
 - `ExtensionEventBus` owns propagation of domain events.
 - UI providers own presentation, not persistence.
 

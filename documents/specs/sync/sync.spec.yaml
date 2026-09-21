@@ -2,155 +2,162 @@ feature:
   name: Sync
   module: sync
   description: >
-    Sincronização bidirecional multi-dispositivo da biblioteca local com
-    armazenamento remoto via camada de providers extensível. O provider inicial
-    é o Google Drive; a interface RemoteProvider permite adicionar providers
-    futuros como GitHub e Dropbox sem alterar o SyncEngine.
+    Bidirectional multi-device synchronisation of the local library with remote
+    storage through an extensible provider layer. The initial provider is Google
+    Drive; the RemoteProvider interface allows future providers such as GitHub
+    and Dropbox to be added without changing the SyncEngine.
 
 structure:
   description: >
-    O módulo sync é dividido em 6 subdiretórios por responsabilidade. core/
-    contém o motor puro e provider-agnóstico; provider/ define a interface
-    remota e a resolução de paths; adapter/ liga o motor ao ambiente VSCode;
-    drive/ implementa o provider do Google Drive; auth/ trata o OAuth; util/
-    reúne funções puras compartilhadas.
+    The sync stack is split by responsibility. The provider-agnostic engine,
+    the remote provider interface, the Drive implementation and the shared pure
+    helpers live in @labshelf/core so the browser extension can reuse them. Only
+    the VSCode adapter and the OAuth flow live in @labshelf/vscode.
   layout:
-    sync/core/syncTypes.ts: >
-      Tipos compartilhados — ManifestEntry, ManifestData, DiffClass,
-      SyncOperation, TreeNode, LocalFileSystem, NamespaceResult, SyncResult.
-    sync/core/syncManifest.ts: >
-      Persiste e consulta o manifest por provider (base do merge de três vias);
-      manifest ausente ou corrompido devolve estado vazio e dispara sync completo.
-    sync/core/treeScan.ts: >
-      Enumera as árvores local e remota de um namespace em mapas keyed por path
-      relativo; hasheia cada arquivo local para comparação.
-    sync/core/syncDiff.ts: >
-      Diff puro de três vias — classifica cada path comparando árvore local,
-      árvore remota e base do manifest.
-    sync/core/syncApply.ts: >
-      Executa as operações classificadas contra RemoteProvider e
-      LocalFileSystem, incluindo resolução keep-both de conflito.
-    sync/core/syncEngine.ts: >
-      Orquestração de um sync run, provider-agnóstica e sem vscode — escaneia,
-      diffa, aplica e persiste o manifest.
-    sync/provider/remoteProvider.ts: >
-      Interface RemoteProvider e tipo RemoteNamespace que abstraem listagem,
-      upload, download e delete de arquivos remotos.
-    sync/provider/remotePathResolver.ts: >
-      Traduz paths relativos entre representação local e remota (RemotePathResolver, splitPath).
-    sync/adapter/vscodeLocalFileSystem.ts: >
-      Implementação de LocalFileSystem sobre vscode.workspace.fs.
-    sync/adapter/syncController.ts: >
-      Orquestrador VSCode — inicializa auth, expõe comandos, gerencia o
-      intervalo de auto-sync e atualiza o status bar.
-    sync/drive/googleDriveClient.ts: >
-      Cliente de baixo nível da Drive REST API v3 (list, upload multipart, delete).
-    sync/drive/googleDriveProvider.ts: >
-      Implementação de RemoteProvider usando o googleDriveClient.
-    sync/auth/googleDriveAuth.ts: >
-      Fluxo OAuth 2.0 PKCE com servidor loopback local para capturar o código
-      de autorização.
-    sync/util/contentHash.ts: >
-      Função pura sha256Hex usada para hashear conteúdo de arquivos.
-    sync/util/conflictName.ts: >
-      Gera nomes de arquivo com sufixo de conflito (conflictPath).
+    core sync/core/syncTypes.ts: >
+      Shared types — ManifestEntry, ManifestData, DiffClass, SyncOperation,
+      TreeNode, LocalFileSystem, NamespaceResult, SyncResult.
+    core sync/core/syncManifest.ts: >
+      Persists and queries the per-provider manifest (the base of the three-way
+      merge); a missing or corrupt manifest yields empty state and triggers a
+      full sync.
+    core sync/core/treeScan.ts: >
+      Enumerates the local and remote trees of a namespace into maps keyed by
+      relative path; hashes every local file for comparison.
+    core sync/core/syncDiff.ts: >
+      Pure three-way diff — classifies each path by comparing the local tree,
+      the remote tree and the manifest base.
+    core sync/core/syncApply.ts: >
+      Executes the classified operations against RemoteProvider and
+      LocalFileSystem, including keep-both conflict resolution.
+    core sync/core/syncEngine.ts: >
+      Orchestrates one sync run, provider-agnostic and free of vscode — scans,
+      diffs, applies and persists the manifest.
+    core sync/provider/remoteProvider.ts: >
+      The RemoteProvider interface and RemoteNamespace type abstracting remote
+      listing, upload, download and delete.
+    core sync/provider/remotePathResolver.ts: >
+      Translates relative paths between local and remote representation
+      (RemotePathResolver, splitPath).
+    core sync/drive/googleDriveClient.ts: >
+      Low-level Drive REST API v3 client (list, multipart upload, delete),
+      exported as DriveClient.
+    core sync/drive/googleDriveProvider.ts: >
+      RemoteProvider implementation over the Drive client, created through
+      createGoogleDriveProvider.
+    core sync/util/contentHash.ts: >
+      Pure sha256Hex function used to hash file contents, built on Web Crypto.
+    core sync/util/conflictName.ts: >
+      Generates conflict-suffixed file names (conflictPath).
+    vscode sync/adapter/vscodeLocalFileSystem.ts: >
+      LocalFileSystem implementation over vscode.workspace.fs.
+    vscode sync/adapter/syncController.ts: >
+      VSCode orchestrator — initialises auth, exposes commands, manages the
+      auto-sync interval and updates the status bar.
+    vscode sync/auth/googleDriveAuth.ts: >
+      OAuth 2.0 PKCE flow with a local loopback server to capture the
+      authorization code.
 
 architecture:
   inputs:
-    - biblioteca local (papers/ com subpastas e .research/papers/<id>/data.json)
-    - credenciais OAuth armazenadas via vscode.ExtensionContext.secrets
-    - manifest local em .research/sync/<providerId>.state.json
+    - local library (papers/ with subfolders and .research/papers/<id>/data.json)
+    - OAuth credentials stored through vscode.ExtensionContext.secrets
+    - local manifest at .research/sync/<providerId>.state.json
   outputs:
-    - arquivos de papers no namespace library do Drive (pasta visível ao usuário)
-    - manifest e dados de anotações no namespace appdata do Drive (pasta oculta via appDataFolder)
+    - paper files in the Drive library namespace (folder visible to the user)
+    - manifest and annotation data in the Drive appdata namespace (hidden via appDataFolder)
   modules:
-    - RemoteProvider (sync/provider/remoteProvider): interface que abstrai operações de listagem, upload, download e delete de arquivos remotos
-    - SyncEngine (sync/core/syncEngine): executa o diff de três vias entre estado anterior (manifest), estado local atual e estado remoto atual, produzindo uma lista de ações a aplicar
-    - SyncManifest (sync/core/syncManifest): lê e grava o arquivo de estado que serve de base do merge; quando ausente ou corrompido, aciona sync completo
-    - GoogleDriveProvider (sync/drive/googleDriveProvider): implementação de RemoteProvider usando Drive REST API v3
-    - GoogleDriveAuth (sync/auth/googleDriveAuth): fluxo OAuth 2.0 PKCE com servidor loopback local para capturar o código de autorização
-    - SyncController (sync/adapter/syncController): orquestrador que inicializa auth, expõe comandos VSCode, gerencia o intervalo de auto-sync e atualiza o status bar
+    - "RemoteProvider (core sync/provider/remoteProvider): interface abstracting remote list, upload, download and delete operations"
+    - "SyncEngine (core sync/core/syncEngine): runs the three-way diff between the previous state (manifest), the current local state and the current remote state, producing a list of operations to apply"
+    - "SyncManifest (core sync/core/syncManifest): reads and writes the state file that serves as the merge base; when missing or corrupt it triggers a full sync"
+    - "createGoogleDriveProvider (core sync/drive/googleDriveProvider): RemoteProvider implementation over Drive REST API v3"
+    - "GoogleDriveAuth (vscode sync/auth/googleDriveAuth): OAuth 2.0 PKCE flow with a local loopback server to capture the authorization code"
+    - "SyncController (vscode sync/adapter/syncController): orchestrator that initialises auth, exposes VSCode commands, manages the auto-sync interval and updates the status bar"
   dependencies:
-    - vscode.ExtensionContext (armazenamento seguro de tokens via secrets)
-    - vscode.workspace.fs (via sync/adapter/vscodeLocalFileSystem)
+    - vscode.ExtensionContext (secure token storage through secrets)
+    - vscode.workspace.fs (through sync/adapter/vscodeLocalFileSystem)
     - Drive REST API v3
-    - core/eventBus
+    - "@labshelf/core event bus"
   notes: >
-    O detalhamento dos arquivos de sync/core/ está na spec sync-engine.spec.yaml.
+    The file-by-file breakdown of core sync/core/ lives in sync-engine.spec.yaml.
 
 database:
   tables_used: []
   migrations: []
   notes: >
-    O SQLite é cache local reconstruível via LibraryIndexer e não sincroniza
-    para o Drive. Anotações e temas vivem em
-    .research/papers/<id>/data.json (PaperDataStore) e são sincronizados como
-    arquivo comum. O estado de sync fica em
-    .research/sync/<providerId>.state.json e não sobe para o Drive.
+    SQLite is a rebuildable local cache (through LibraryIndexer) and is not
+    synced to Drive. Annotations and themes live in
+    .research/papers/<id>/data.json (PaperDataStore) and sync as ordinary files.
+    Sync state lives in .research/sync/<providerId>.state.json and is never
+    uploaded.
 
 events:
   emits: []
   listens:
-    - paper:added — aciona debounce de sync (30 s)
-    - paper:deleted — aciona debounce de sync (30 s)
-    - paper:updated — aciona debounce de sync (30 s)
-    - annotation:created — aciona debounce de sync (30 s)
-    - annotation:updated — aciona debounce de sync (30 s)
-    - annotation:deleted — aciona debounce de sync (30 s)
+    - paper:added — schedules a debounced sync (30 s)
+    - paper:deleted — schedules a debounced sync (30 s)
+    - paper:updated — schedules a debounced sync (30 s)
+    - annotation:created — schedules a debounced sync (30 s)
+    - annotation:updated — schedules a debounced sync (30 s)
+    - annotation:deleted — schedules a debounced sync (30 s)
   notes: >
-    O módulo de sync não emite eventos próprios. Feedback de progresso e
-    resultado é exibido diretamente no status bar item.
+    The sync module emits no events of its own. Progress and result feedback is
+    shown directly in the status bar item.
 
 errors:
   expected_failures:
-    - OAuth cancelado pelo usuário antes de concluir o loopback
-    - clientId não configurado em labshelf.googleDrive.clientId
-    - falha de rede durante upload, download ou listagem remota
-    - conflito bidirecional (mesmo arquivo modificado local e remotamente desde o último sync)
-    - manifest corrompido ou com JSON inválido
-    - Drive API retorna status 429 (rate limit)
+    - OAuth cancelled by the user before the loopback completes
+    - OAuth credentials missing because googleDriveCredentials.ts was never created
+    - network failure during upload, download or remote listing
+    - bidirectional conflict (same file changed locally and remotely since the last sync)
+    - corrupt manifest or invalid JSON
+    - Drive API returns status 429 (rate limit)
   handling_strategy: >
-    Conflito bidirecional é resolvido com keep-both: o arquivo remoto é
-    renomeado com sufixo "(conflito <data>)" antes de o arquivo local ser
-    enviado. Manifest corrompido dispara um sync completo sem manifest como
-    fallback seguro. Erro 429 interrompe o sync e exibe mensagem de erro ao
-    usuário via notificação VSCode. Erros de rede são logados com contexto
-    suficiente para diagnóstico e surfaceados ao usuário.
+    A bidirectional conflict is resolved keep-both: the remote file is renamed
+    with a "(conflict YYYY-MM-DD)" suffix before the local file is uploaded. A
+    corrupt manifest triggers a full sync without a manifest as a safe fallback.
+    A 429 stops the sync and shows an error message through a VSCode
+    notification. Network errors are logged with enough context to diagnose them
+    and surfaced to the user.
 
 ui:
   components:
-    - status bar item: mostra estado de conexão (conectado / desconectado / sincronizando) e timestamp da última sync bem-sucedida; clique executa labshelf.sync.now quando conectado ou labshelf.sync.connect quando desconectado
+    - "status bar item: shows connection state (connected / disconnected / syncing) and the timestamp of the last successful sync; clicking runs labshelf.sync.now when connected or labshelf.sync.connect when disconnected"
   commands:
-    - labshelf.sync.connect: inicia fluxo OAuth e registra credenciais
-    - labshelf.sync.now: dispara sync manual imediato
-    - labshelf.sync.disconnect: revoga tokens e limpa credenciais armazenadas
+    - "labshelf.sync.connect: starts the OAuth flow and registers credentials"
+    - "labshelf.sync.now: triggers an immediate manual sync"
+    - "labshelf.sync.disconnect: revokes tokens and clears stored credentials"
   settings:
-    - labshelf.googleDrive.clientId: Client ID do projeto OAuth no Google Cloud Console
-    - labshelf.sync.autoSyncIntervalMinutes: intervalo de polling periódico em minutos
+    - "labshelf.sync.autoSyncIntervalMinutes: periodic polling interval in minutes"
+  notes: >
+    The OAuth client id and secret are not VSCode settings. They are compiled in
+    from packages/vscode/src/sync/auth/googleDriveCredentials.ts, which is
+    gitignored and copied from the committed .example file. See
+    documents/reference/google-drive-setup.md.
 
 tests:
   unit:
-    - SyncEngine produz acao local-new quando arquivo existe local mas nao no manifest nem remoto
-    - SyncEngine produz acao remote-new quando arquivo existe remoto mas nao no manifest nem local
-    - SyncEngine produz acao local-modified quando hash local difere do manifest e remoto coincide com manifest
-    - SyncEngine produz acao remote-modified quando hash remoto difere do manifest e local coincide com manifest
-    - SyncEngine produz acao local-deleted quando arquivo esta no manifest mas nao mais local e remoto coincide com manifest
-    - SyncEngine produz acao remote-deleted quando arquivo esta no manifest mas nao mais remoto e local coincide com manifest
-    - SyncEngine produz acao conflict quando local e remoto divergem do manifest simultaneamente
-    - SyncEngine produz acao unchanged quando local e remoto coincidem com manifest
-    - SyncManifest retorna manifest vazio ao carregar arquivo ausente
-    - SyncManifest retorna manifest vazio e loga aviso ao carregar JSON corrompido
-    - SyncManifest persiste entradas e as recarrega corretamente apos save e reload
-    - DriveClient lista arquivos via fetch mockado
-    - DriveClient faz upload multipart via fetch mockado
-    - DriveClient deleta arquivo via fetch mockado
-    - PaperDataStore persiste e retorna anotacoes
-    - PaperDataStore persiste e retorna temas
-    - PaperDataStore retorna estrutura vazia ao carregar arquivo ausente
-    - LibraryIndexer reconstroi indice com mocks de readDirectory e metadata.yaml
+    - SyncEngine yields local-new when a file exists locally but in neither the manifest nor the remote
+    - SyncEngine yields remote-new when a file exists remotely but in neither the manifest nor the local tree
+    - SyncEngine yields local-modified when the local hash differs from the manifest and the remote matches it
+    - SyncEngine yields remote-modified when the remote hash differs from the manifest and the local matches it
+    - SyncEngine yields local-deleted when a file is in the manifest, gone locally, and the remote matches the manifest
+    - SyncEngine yields remote-deleted when a file is in the manifest, gone remotely, and the local matches the manifest
+    - SyncEngine yields conflict when local and remote both diverge from the manifest
+    - SyncEngine yields unchanged when local and remote both match the manifest
+    - SyncManifest returns an empty manifest when the file is absent
+    - SyncManifest returns an empty manifest and logs a warning on corrupt JSON
+    - SyncManifest persists entries and reloads them correctly after save and reload
+    - DriveClient lists files through a mocked fetch
+    - DriveClient performs a multipart upload through a mocked fetch
+    - DriveClient deletes a file through a mocked fetch
+    - PaperDataStore persists and returns annotations
+    - PaperDataStore persists and returns themes
+    - PaperDataStore returns an empty structure when the file is absent
+    - LibraryIndexer rebuilds the index with mocked readDirectory and metadata.yaml
   integration:
-    - sync completo com RemoteProvider mockado cobre as 8 acoes do diff de tres vias
-    - conflito bidirecional resulta em arquivo com sufixo de conflito no provider mockado
+    - a full sync against a mocked RemoteProvider covers all 8 three-way diff operations
+    - a bidirectional conflict produces a conflict-suffixed file in the mocked provider
 
 ai_notes:
   embeddings: false

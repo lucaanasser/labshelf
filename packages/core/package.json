@@ -9,10 +9,10 @@
     "test": "echo \"No tests yet\""
   },
   "dependencies": {
-    "pdfjs-dist": "*",
+    "pdfjs-dist": "^6.3.289",
     "yaml": "*"
   },
   "devDependencies": {
-    "typescript": "*"
+    "typescript": "^7.0.2"
   }
 }

@@ -1,2 +1,9 @@
 packages:
   - "packages/*"
+allowBuilds:
+  # esbuild needs its postinstall to fetch the platform binary used by @labshelf/browser.
+  esbuild: true
+  # spawn-sync is a legacy jest transitive; its postinstall is only needed on Node < 0.12.
+  spawn-sync: false
+  # tesseract.js' postinstall only prints a donation banner.
+  tesseract.js: false

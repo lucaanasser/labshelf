@@ -20,7 +20,7 @@ architecture:
     - persisted log entries
   dependencies:
     - core/types
-    - better-sqlite3 adapter implementation
+    - node:sqlite (DatabaseSync) adapter implementation
     - LibraryIndexer (rebuilds the cache on activation)
 
 database:

@@ -1,32 +1,41 @@
 feature:
-  name: PDF Viewer Themes - Sync and Customize (Phase 3)
+  name: PDF Viewer Themes - Sync and Customize
   module: pdf-viewer
   description: >
     Allow users to set PDF viewing theme independently from VS Code,
-    while maintaining automatic synchronization option. Support multiple themes:
-    auto (follows VS Code), light, dark, sepia, high-contrast. Store theme
-    preference per paper in the PaperDataStore sidecar (.research/papers/<id>/data.json).
-    Update PDF webview CSS dynamically when theme changes.
+    while maintaining automatic synchronization option. Support 5 presets:
+    auto (follows VS Code), light, dark, sepia, and high-contrast. Store
+    theme preference per paper in the PaperDataStore sidecar
+    (.research/papers/<id>/data.json). Update the reader webview
+    dynamically via a HostToWebview.applyTheme message when the
+    effective theme changes. The theme popover in the reader
+    (see ui/pdf-reader-navigation.spec.yaml) hosts the preset selector
+    and a "Custom" section with two colour pickers (background, text).
+    The pickers used to live inline in the top toolbar; they moved into
+    the popover when the toolbar became overlay/immersive.
 
 architecture:
   inputs:
     - VS Code active color theme (via vscode.window.activeColorTheme)
-    - User theme selection from dropdown in PDF toolbar
+    - User theme selection from the reader theme popover
+    - Custom colour picks (background, text) from the popover's Custom section
     - Theme preference from PaperDataStore sidecar (per paperId)
-    - Configuration changes listener
+    - Configuration changes listener (onDidChangeActiveColorTheme)
   outputs:
-    - PDF webview CSS with theme colors applied
-    - PAPER_THEME_CHANGED event
-    - VSCODE_THEME_CHANGED event
+    - HostToWebview.applyTheme messages carrying { theme, effectiveTheme }
     - Persisted theme preference in .research/papers/<id>/data.json
-    - Theme indicator in status bar
+    - data-pdf-theme attribute on <html> in the reader
+    - pdfViewer.pageColors updated in place (with a broadcast to
+      pdfViewer._pages[i].pageColors for already-constructed page views)
   dependencies:
     - PaperDataStore (source of truth for theme preferences — JSON sidecars)
-    - ResearchDatabase (local cache only — not queried for themes by ThemeManager)
-    - PdfViewerPanel from Phase 1
-    - EventBus for event emission
-    - Logger for theme changes
-    - CSS generation from theme configuration
+    - pdf-viewer/shared/themePresets.ts (single source of truth for
+      canvas background/foreground of each preset; consumed by
+      viewerSetup.ts (initial pageColors) and webview/ui/theme.ts
+      (applyPageColors))
+    - PdfViewerPanel (host-side lifecycle; see pdf-viewer-basic.spec.yaml)
+    - vscode.window.onDidChangeActiveColorTheme (via
+      ThemeManager.onVsCodeThemeChange)
 
 database:
   tables_used: []
@@ -37,69 +46,104 @@ database:
     table is not used.
 
 events:
-  emits:
-    - PAPER_THEME_CHANGED (paperId: string, theme: string, timestamp: Date)
-    - VSCODE_THEME_CHANGED (oldTheme: string, newTheme: string, timestamp: Date)
+  emits: []
   listens:
-    - vscode.window.onDidChangeActiveColorTheme (monitored, not via EventBus)
+    - vscode.window.onDidChangeActiveColorTheme (monitored via
+      ThemeManager.onVsCodeThemeChange; PdfViewerPanel forwards the
+      change to the reader as an applyTheme message only when the
+      paper's theme preference is 'auto')
+  notes: >
+    The EVENTS.PAPER_THEME_CHANGED and EVENTS.VSCODE_THEME_CHANGED
+    constants exist in @labshelf/core/events but no producer emits
+    them today. The reader persists preferences via PaperDataStore
+    and applies changes through applyTheme messages; there is no
+    EventBus signal.
 
 errors:
   expected_failures:
-    - Invalid theme value provided (not in allowed list)
-    - Database query fails for theme preference
-    - Theme CSS generation produces invalid CSS
-    - VS Code theme kind cannot be detected
-    - User switches theme while PDF loading
+    - Invalid theme value posted from the webview (rejected before
+      writing to the sidecar; see ThemeManager.isValidTheme)
+    - VS Code theme kind cannot be detected (activeColorTheme
+      missing on the API)
+    - pdf.js private surface changes (pdfViewer._pages missing) —
+      applyPageColors falls back to the public setter only
+    - User switches theme while the PDF is still loading
   handling_strategy: >
-    Invalid theme values are rejected before DB write with validation.
-    Database failures fall back to default theme ('light') and log error.
-    CSS generation errors are caught and logged; PDF renders with fallback theme.
-    VS Code theme detection missing defaults to 'light' gracefully.
-    Theme switches during load are queued and applied after render completes.
+    Invalid theme strings from selectTheme are dropped in
+    PdfViewerPanel before ThemeManager.setThemeForPaper is called.
+    Missing VS Code theme kind defaults to 'light'.
+    When pdfViewer._pages is not an array, the broadcast loop in
+    ThemeController.applyPageColors is skipped; the public
+    pdfViewer.pageColors setter still runs. A theme change during
+    load is applied on the next viewer.refresh cycle (a
+    REFRESH_DELAY_MS debounce), and the boot params already carry
+    the initial effective theme.
 
 ui:
   components:
-    - Theme dropdown in PDF toolbar: label "Theme" with options
-    - Theme option items: "Auto (VS Code)", "Light", "Dark", "Sepia", "High Contrast"
-    - Current theme indicator: shows selected theme in status bar
-    - Dynamic CSS application: background, text, highlight, border colors
-    - Webview root attribute `data-pdf-theme` drives live theme switching without rebuilding HTML
-    - Color palette for each theme:
-      - auto: inherit VS Code palette
-      - light: light gray background, dark text
-      - dark: dark gray/black background, light text
+    - 'Theme popover: opens from the reader toolbar; hosts the preset picker and Custom section'
+    - 'Preset buttons: Auto (VS Code), Light, Dark, Sepia, High Contrast — active preset is outlined'
+    - 'Custom section: two <input type="color"> pickers, labels Background and Text'
+    - 'data-pdf-theme attribute on <html> drives live theme switching without rebuilding HTML'
+    - Colour palette for each theme (defined in shared/themePresets.ts):
+      - auto: inherits VS Code palette (mapped by ThemeManager.mapVsCodeTheme)
+      - light: light background, dark text
+      - dark: dark background, light text
       - sepia: warm beige background, brown text
       - high-contrast: pure black/white, accessible borders
+  notes: >
+    The colour pickers are no longer inline in the top toolbar (which
+    itself is gone). They now live in the theme popover's Custom section
+    so the immersive toolbar stays minimal. See
+    ui/pdf-reader-navigation.spec.yaml for the popover layout.
 
 tests:
   unit:
-    - ThemeManager.mapVsCodeTheme() converts ColorThemeKind to theme string
-    - ThemeManager.generateCss() produces valid CSS for each theme
-    - Theme validation accepts valid values, rejects invalid
-    - CSS escape validates special characters
-    - ThemeManager reads and writes theme via PaperDataStore sidecar
+    - "__tests__/pdf-viewer/ThemeManager.test.ts: mapVsCodeTheme
+      converts every ColorThemeKind value (Light, Dark,
+      HighContrast, HighContrastLight); isValidTheme accepts the 5
+      preset values and rejects invalid; getThemeForPaper reads via
+      PaperDataStore.getTheme; setThemeForPaper writes via
+      PaperDataStore.setTheme"
+    - "themePresets: THEME_PRESETS exports light / dark / sepia /
+      high-contrast; presetFor falls back to light for unknown
+      values; toPageColors returns null for the identity
+      #ffffff/#000000 pair"
   integration:
-    - Opening PDF applies stored theme preference
-    - Changing theme in dropdown updates UI immediately through a postMessage applyTheme update
-    - Theme preference persists across close/reopen
-    - Changing VS Code theme updates PDF if paper theme is 'auto'
-    - Multiple papers can have different theme preferences
-    - Switching between papers retains their individual themes
-    - Theme change event triggers sidebar refresh if needed
-  fixtures:
-    - theme-configs.json (CSS definitions for each theme)
-    - mock-theme-preferences.json (sample stored preferences)
+    - Opening a paper resolves the stored theme (getThemeForPaper)
+      and posts init with theme + effectiveTheme; the webview
+      applies data-pdf-theme and pdfViewer.pageColors
+    - Selecting a preset in the theme popover posts selectTheme; the
+      host validates, persists via setThemeForPaper, and echoes
+      applyTheme
+    - The Custom colour pickers in the popover call
+      theme.applyPageColors directly (session-only; not persisted);
+      they update pdfViewer.pageColors and rebroadcast to the
+      existing PDFPageViews via the private _pages array
+    - Theme preference persists across close/reopen through the
+      sidecar
+    - onDidChangeActiveColorTheme pushes applyTheme when the paper
+      theme is 'auto'; other paper themes are unaffected
+    - Multiple papers can have different theme preferences (per
+      sidecar)
 
 ai_notes:
   embeddings: false
   semantic_search: false
+  removed_surfaces: >
+    ThemeManager.generateThemeCss and its private THEME_CSS constant
+    have been removed. The reader now ships its theme CSS in
+    dist/reader/reader.css and the canvas background/foreground values
+    come from pdf-viewer/shared/themePresets.ts. There are no more
+    duplicated preset tables between ThemeManager, PdfRenderer, and the
+    old webview template scripts.
   css_injection: >
-    Theme CSS is injected into webview via <style> tag in HTML.
-    Must ensure colors are accessible and readable in all themes.
-    Test with actual VS Code light/dark/high-contrast themes.
+    Theme CSS ships with the reader bundle (reader.css). Live changes
+    happen via data-pdf-theme on <html> and via applyTheme messages
+    that update pdfViewer.pageColors for the canvas.
   accessibility: >
-    High-contrast theme must meet WCAG AA standards (4.5:1 contrast ratio).
-    Sepia theme should not be the default for accessibility.
+    High-contrast theme must meet WCAG AA standards (4.5:1 contrast
+    ratio). Sepia should not be the default.
   performance: >
-    Theme application should not re-render entire PDF.
-    Use CSS variables or class switching for instant updates.
+    Theme application never re-renders the whole PDF. Data-attribute
+    swaps handle CSS; pdfViewer.pageColors handles the canvas.

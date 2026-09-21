@@ -3,10 +3,12 @@
  * polyfills (DOMMatrix, navigator), and registers the main-thread worker so
  * pdf.mjs can parse PDFs inside the extension host.
  *
- * @depends pdfjs-dist, @labshelf/core
+ * @depends pdfjs-dist, @labshelf/core, pdf/pdfjsNodeEnvironment.ts
  * @dependents extension.ts
  */
 import type { PdfDocumentLike, PdfDocumentOpener } from "@labshelf/core";
+
+import { nodeDataOptions } from "./pdfjsNodeEnvironment.js";
 
 const PLATFORM_BY_OS: Record<string, string> = {
   linux: "Linux x86_64",
@@ -25,8 +27,26 @@ export class NodePdfOpener implements PdfDocumentOpener {
     const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as Record<string, unknown>;
     this.patchPdfjsFeatureTest(pdfjs);
     await this.ensurePdfWorker(pdfjs);
-    const loadingTask = (pdfjs["getDocument"] as (opts: { data: Uint8Array }) => { promise: Promise<PdfDocumentLike> })({ data: pdfBytes });
-    return loadingTask.promise;
+    // pdfjs takes ownership of `data` and detaches the caller's buffer, which
+    // would silently leave importers with a zero-length array to write to disk.
+    // Hand it a private copy so the caller's bytes stay readable afterwards.
+    const ownedBytes = new Uint8Array(pdfBytes);
+    const getDocument = pdfjs["getDocument"] as (opts: Record<string, unknown>) => PdfLoadingTask;
+    const loadingTask = getDocument({
+      data: ownedBytes,
+      // Without these, text drawn with non-embedded standard fonts or CID
+      // encodings extracts as blanks, which starves the metadata heuristics.
+      // They are read from disk explicitly: pdfjs does not recognise the
+      // extension host as Node and would otherwise fetch() a filesystem path.
+      ...nodeDataOptions(),
+    });
+    const document = await loadingTask.promise;
+    // pdfjs 6 dropped PDFDocumentProxy.destroy(): teardown now belongs to the
+    // loading task. Core still closes documents through destroy(), so restore it.
+    if (typeof (document as Partial<PdfDocumentLike>).destroy !== "function") {
+      document.destroy = () => loadingTask.destroy();
+    }
+    return document;
   }
 
   // Caches FeatureTest.platform so pdf.mjs never reads an undefined navigator.
@@ -106,6 +126,11 @@ export class NodePdfOpener implements PdfDocumentOpener {
       globalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
     }
   }
+}
+
+interface PdfLoadingTask {
+  promise: Promise<PdfDocumentLike>;
+  destroy(): Promise<void>;
 }
 
 // Minimal DOMMatrix shim — pdfjs needs the constructor and 2D fields at module load time.

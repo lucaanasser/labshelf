@@ -1,18 +1,21 @@
 /**
- * Owns the per-paper sidecar JSON (.research/papers/<id>/data.json), the authoritative source for annotations and theme preferences.
+ * Owns the per-paper sidecar JSON (.research/papers/<id>/data.json), the authoritative source for annotations, theme preferences and the reading position.
  *
- * @depends @labshelf/core, storage/fileSystemService
- * @dependents extension.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, storage/data/index.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts, storage/index.ts
+ * @depends @labshelf/core, storage/fileSystemService, pdf-viewer/shared/readingState.ts
+ * @dependents extension.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, storage/data/index.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts, storage/index.ts, commands/registerCommands.ts (types only)
  */
 import * as vscode from "vscode";
 import { randomUUID } from "crypto";
 
 import type { Annotation, PdfTheme } from "@labshelf/core";
 import { FileSystemService } from "../fileSystemService.js";
+import { normalizeReadingState, type ReadingState } from "../../pdf-viewer/shared/readingState.js";
 
 export interface PaperData {
   annotations: Annotation[];
   theme: PdfTheme;
+  /** Last reading position; absent until the paper has been opened in the reader. */
+  reading?: ReadingState;
 }
 
 function emptyData(): PaperData {
@@ -21,13 +24,29 @@ function emptyData(): PaperData {
 
 /**
  * Read/write accessor for a paper's sidecar JSON, the single source of truth for its annotations and theme.
- * @usedBy extension.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts
+ * @usedBy extension.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts, commands/registerCommands.ts (types only)
  */
 export class PaperDataStore {
   constructor(
     private readonly researchRoot: vscode.Uri,
     private readonly fsService: FileSystemService,
   ) {}
+
+  // Every mutator is load-modify-save on one JSON file. The reader saves the reading position while
+  // scrolling, so without serialization a position write racing an annotation write drops one of them.
+  private readonly queues = new Map<string, Promise<unknown>>();
+
+  private enqueue<T>(paperId: string, task: () => Promise<T>): Promise<T> {
+    const previous = this.queues.get(paperId) ?? Promise.resolve();
+    // A failed write must not poison the writes queued behind it.
+    const next = previous.then(task, task);
+    const settled = next.catch(() => undefined);
+    this.queues.set(paperId, settled);
+    void settled.then(() => {
+      if (this.queues.get(paperId) === settled) { this.queues.delete(paperId); }
+    });
+    return next;
+  }
 
   // Folder owning one paper's sidecar: <researchRoot>/papers/<paperId>/
   private dataDir(paperId: string): vscode.Uri {
@@ -68,6 +87,7 @@ export class PaperDataStore {
       annotations: data.annotations,
       theme: data.theme,
     };
+    if (data.reading) { payload.reading = data.reading; }
     await this.fsService.writeText(this.dataPath(paperId), JSON.stringify(payload, null, 2));
   }
 
@@ -88,10 +108,12 @@ export class PaperDataStore {
       createdAt: now,
       updatedAt: now,
     };
-    const current = await this.load(paperId);
-    current.annotations.push(annotation);
-    await this.save(paperId, current);
-    return annotation;
+    return this.enqueue(paperId, async () => {
+      const current = await this.load(paperId);
+      current.annotations.push(annotation);
+      await this.save(paperId, current);
+      return annotation;
+    });
   }
 
   /**
@@ -100,19 +122,21 @@ export class PaperDataStore {
    * @returns the updated Annotation, or null
    */
   async updateAnnotation(paperId: string, id: string, content: string): Promise<Annotation | null> {
-    const current = await this.load(paperId);
-    const index = current.annotations.findIndex((a) => a.id === id);
-    if (index === -1) {
-      return null;
-    }
-    const updated: Annotation = {
-      ...current.annotations[index]!,
-      content,
-      updatedAt: new Date().toISOString(),
-    };
-    current.annotations[index] = updated;
-    await this.save(paperId, current);
-    return updated;
+    return this.enqueue(paperId, async () => {
+      const current = await this.load(paperId);
+      const index = current.annotations.findIndex((a) => a.id === id);
+      if (index === -1) {
+        return null;
+      }
+      const updated: Annotation = {
+        ...current.annotations[index]!,
+        content,
+        updatedAt: new Date().toISOString(),
+      };
+      current.annotations[index] = updated;
+      await this.save(paperId, current);
+      return updated;
+    });
   }
 
   /**
@@ -121,13 +145,15 @@ export class PaperDataStore {
    * @returns void
    */
   async deleteAnnotation(paperId: string, id: string): Promise<void> {
-    const current = await this.load(paperId);
-    const filtered = current.annotations.filter((a) => a.id !== id);
-    if (filtered.length === current.annotations.length) {
-      return;
-    }
-    current.annotations = filtered;
-    await this.save(paperId, current);
+    return this.enqueue(paperId, async () => {
+      const current = await this.load(paperId);
+      const filtered = current.annotations.filter((a) => a.id !== id);
+      if (filtered.length === current.annotations.length) {
+        return;
+      }
+      current.annotations = filtered;
+      await this.save(paperId, current);
+    });
   }
 
   /**
@@ -160,9 +186,11 @@ export class PaperDataStore {
    * @returns void
    */
   async setTheme(paperId: string, theme: PdfTheme): Promise<void> {
-    const current = await this.load(paperId);
-    current.theme = theme;
-    await this.save(paperId, current);
+    return this.enqueue(paperId, async () => {
+      const current = await this.load(paperId);
+      current.theme = theme;
+      await this.save(paperId, current);
+    });
   }
 
   /**
@@ -172,6 +200,28 @@ export class PaperDataStore {
    */
   async getTheme(paperId: string): Promise<PdfTheme> {
     return (await this.load(paperId)).theme;
+  }
+
+  /**
+   * Persists the reader's last position (page, zoom, offset, sidebar) for a paper.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns void
+   */
+  async setReadingState(paperId: string, reading: ReadingState): Promise<void> {
+    return this.enqueue(paperId, async () => {
+      const current = await this.load(paperId);
+      current.reading = reading;
+      await this.save(paperId, current);
+    });
+  }
+
+  /**
+   * Returns the stored reading position, or null when the paper was never opened or the stored value is unusable.
+   * @usedBy pdf-viewer/PdfViewerPanel.ts
+   * @returns ReadingState or null
+   */
+  async getReadingState(paperId: string): Promise<ReadingState | null> {
+    return (await this.load(paperId)).reading ?? null;
   }
 }
 
@@ -189,5 +239,8 @@ function normalize(parsed: unknown): PaperData {
       ) as Annotation[])
     : [];
   const theme = VALID_THEMES.includes(obj.theme as PdfTheme) ? (obj.theme as PdfTheme) : "auto";
-  return { annotations, theme };
+  const data: PaperData = { annotations, theme };
+  const reading = normalizeReadingState(obj.reading);
+  if (reading) { data.reading = reading; }
+  return data;
 }

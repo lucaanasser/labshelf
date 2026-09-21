@@ -1,5 +1,10 @@
 # Plan: Reintroduce Import, Drag and Drop, and Batch in the Zotero-style UI
 
+> **Historical document.** It records a plan written before import and drag-and-drop were reintroduced and is kept for context.
+> File paths and type names below refer to the layout at that time and have since moved.
+> For the current structure see [`reference/modules.md`](../reference/modules.md) and
+> [`reference/directories.md`](../reference/directories.md).
+
 TL;DR — Reintroduce the ability to add papers in the new layout without abandoning the Zotero-style visual pattern already adopted: the sidebar remains the collections tree and the list remains in a dedicated tab, but both re-expose a clear import entry point. The plan covers manual import of PDFs and folders, drag and drop anywhere in the sidebar, and batch processing with each PDF handled individually.
 
 ## Objectives

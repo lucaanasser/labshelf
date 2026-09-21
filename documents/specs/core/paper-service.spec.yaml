@@ -12,10 +12,14 @@ architecture:
     - paper ID and new status
     - batch of file and folder URIs
     - current paper list from the database
+    - paper IDs or a collection folder plus a destination directory (organizing)
   outputs:
     - paper records stored in the database
     - paper folder with paper.pdf, metadata.yaml, and bib.bib
     - BatchImportResult for batch imports
+    - PaperMoveResult (moved ids, per-paper failures) for movePapers
+    - new absolute path for moveFolder
+    - paper.pdf URI resolved from the stored record path (resolvePdfUri)
     - event notifications on paper changes
   dependencies:
     - storage/fileSystemService
@@ -44,6 +48,8 @@ errors:
     - file copy or directory creation fails during import
     - database lookup cannot find a paper for update or delete
     - batch expansion encounters unreadable folders or non-PDF inputs
+    - move target already contains a folder with the same name (rename uses overwrite false)
+    - folder moved into itself, its own subtree, or its current parent
   handling_strategy: >
     Batch import isolates each item failure and records it in the result.
     Single-item import, update, and delete operations fail fast so the caller
@@ -54,14 +60,69 @@ ui:
     - sidebar drop imports
     - list panel drop imports
     - command palette import and delete actions
+    - list panel paper moves (drag onto folder or breadcrumb, Move to…)
+    - sidebar tree folder drags
+  import_feedback: >
+    Importing one PDF can take ten seconds or more (OCR and registry lookups),
+    so every import path — the Add Paper command, a drop on the sidebar, and
+    "Add here" from the tree or the list panel — runs through
+    commands/importProgress.ts importWithProgress. It shows two indicators for
+    the whole import: the progress bar of the labshelf.library view, and a
+    non-cancellable notification titled "LabShelf" whose message names the file
+    in progress: `Importing 2 of 5: "file.pdf" — reading and identifying the
+    paper…` (the counter is omitted for a single file). addPapersFromUris takes
+    an optional onProgress callback, invoked with { index, total, fileName }
+    just before each PDF; total counts PDFs only, not skipped files. The
+    notification bar advances by 100/total from the second file on; no increment
+    is reported for the first file, so a single import shows a spinner instead
+    of a bar frozen at 0%. On completion without failures announceImport shows
+    an information message: `Added "<extracted title>"` for one paper, or
+    `<n> papers imported`, each followed by `(<k> could not be identified and
+    need(s) review)` when needsReview is not empty. Failures keep their existing
+    warning or error message.
+
+  searchable_pdfs: >
+    PaperService.makeSearchable(paperId, hooks) reads paper.pdf, hands it to the
+    injected PdfTextLayerBuilder (absent when labshelf.ocr.enabled or
+    labshelf.ocr.makeSearchable is false), and on outcome "added" writes the
+    bytes to paper.searchable.tmp in the paper folder and renames it over
+    paper.pdf, so an interrupted write never leaves a truncated paper. It then
+    emits paper:updated, which re-runs the AI indexer over the new text. Any
+    other outcome leaves the file untouched and emits nothing.
+    commands/textLayerQueue.ts runs these jobs strictly one at a time (one OCR
+    worker serves the extension). importWithProgress queues every successfully
+    imported paper after the import returns: the paper appears in the library
+    first and becomes searchable afterwards, because reading a scan takes about
+    2.5 s per page. A job shows nothing unless a page actually has to be read;
+    then a cancellable notification reports `Making "<title>" searchable —
+    reading page 3 of 17…`. Cancelling leaves the paper as it was. Completion is
+    announced with `"<title>" is now searchable (<n> pages read[, <k> could not
+    be]). Reopen it if it is already open.` Outcomes not-needed and unavailable
+    are announced only for the explicit commands labshelf.makeSearchable (pick
+    one paper) and are logged in every case under commands/textLayerQueue;
+    labshelf.makeLibrarySearchable queues the whole library.
 
 tests:
   unit:
+    - makeSearchable replaces paper.pdf through a temporary file and emits paper:updated
+    - makeSearchable leaves the file alone for not-needed and cancelled outcomes
+    - makeSearchable reports unavailable when OCR is off, the paper is unknown, or the builder throws
+    - the text layer queue shows no progress for papers that already have text
+    - the text layer queue opens a cancellable notification on the first page read, forwards cancellation, and confirms completion
+    - the text layer queue runs jobs sequentially and survives a job that throws
     - listPapers returns the database contents
     - updatePaperStatus persists the status and emits paper:updated
     - deletePaper removes the record and emits paper:deleted
     - regenerateBibTeX rewrites artifacts for all papers
     - addPapersFromUris expands folders recursively and filters non-PDF files
+    - addPapersFromUris reports each PDF in order through onProgress, excluding skipped files from the total
+    - importWithProgress opens the library view progress and a notification, and forwards the progress callback
+    - the first file reports no increment; later files advance the bar by 100/total
+    - describeResult names the extracted title for one paper, counts a batch, flags needsReview, and is silent when nothing was imported
+    - movePapers renames the paper folder into the target and re-points the record
+    - movePapers skips papers already in the target and continues past unknown ids and collisions
+    - moveFolder returns the new path and rejects self, subtree, and no-op moves before touching disk
+    - resolvePdfUri follows the stored path for papers inside collection folders and returns null for unknown ids
   integration:
     - single paper import writes files, persists metadata, and emits paper:added
     - batch import continues after a per-item failure

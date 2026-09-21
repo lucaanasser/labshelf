@@ -66,6 +66,7 @@ type PaperRow = {
   id: string;
   title: string;
   authors: string | null;
+  keywords: string | null;
   year: number | null;
   path: string;
   citekey: string;
@@ -145,12 +146,13 @@ export class SqliteResearchDatabase implements IResearchDatabase {
   async upsertPaper(paper: PaperRecord): Promise<void> {
     this.requireConnection().prepare(`
       INSERT INTO papers (id, title, authors, year, path, citekey, status, summary,
-        journal, publisher, volume, issue, pages, doi, url, issn, language)
+        journal, publisher, volume, issue, pages, doi, url, issn, language, keywords)
       VALUES (@id, @title, @authors, @year, @path, @citeKey, @status, @summary,
-        @journal, @publisher, @volume, @issue, @pages, @doi, @url, @issn, @language)
+        @journal, @publisher, @volume, @issue, @pages, @doi, @url, @issn, @language, @keywords)
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         authors = excluded.authors,
+        keywords = excluded.keywords,
         year = excluded.year,
         path = excluded.path,
         citekey = excluded.citekey,
@@ -169,6 +171,7 @@ export class SqliteResearchDatabase implements IResearchDatabase {
       id: paper.id,
       title: paper.title,
       authors: paper.authors ? JSON.stringify(paper.authors) : null,
+      keywords: paper.keywords?.length ? JSON.stringify(paper.keywords) : null,
       year: paper.year ?? null,
       path: paper.path,
       citeKey: paper.citeKey,
@@ -188,7 +191,7 @@ export class SqliteResearchDatabase implements IResearchDatabase {
 
   async listPapers(): Promise<PaperRecord[]> {
     const rows = this.requireConnection().prepare(`
-      SELECT id, title, authors, year, path, citekey, status, summary,
+      SELECT id, title, authors, keywords, year, path, citekey, status, summary,
         journal, publisher, volume, issue, pages, doi, url, issn, language
       FROM papers
       ORDER BY title COLLATE NOCASE ASC
@@ -201,6 +204,7 @@ export class SqliteResearchDatabase implements IResearchDatabase {
       citeKey: row.citekey,
       status: row.status,
       ...(row.authors !== null ? { authors: this.parseAuthors(row.authors) } : {}),
+      ...(row.keywords !== null ? { keywords: this.parseAuthors(row.keywords) } : {}),
       ...(row.year !== null ? { year: row.year } : {}),
       ...(row.summary !== null ? { summary: row.summary } : {}),
       ...(row.journal !== null ? { journal: row.journal } : {}),
@@ -298,6 +302,7 @@ export class SqliteResearchDatabase implements IResearchDatabase {
 
     const newColumns: Array<[string, string]> = [
       ["authors", "TEXT"],
+      ["keywords", "TEXT"],
       ["journal", "TEXT"],
       ["publisher", "TEXT"],
       ["volume", "TEXT"],

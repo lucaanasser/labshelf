@@ -7,10 +7,11 @@ import type { WorkspaceLogger } from '../../src/core/logger';
 function makeRequireServices(paperService?: Partial<PaperService>, logger?: Partial<WorkspaceLogger>): RequireServices {
   const ps = paperService ?? { listPapers: jest.fn(async () => []), addPapersFromUris: jest.fn(), regenerateBibTeX: jest.fn(async () => 0) };
   const lg = logger ?? { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
-  const tm = { getThemeForPaper: jest.fn(async () => 'auto'), setThemeForPaper: jest.fn(async () => {}), isValidTheme: jest.fn(() => true), getEffectiveTheme: jest.fn(() => 'dark'), generateThemeCss: jest.fn(() => ''), mapVsCodeTheme: jest.fn(() => 'dark'), onVsCodeThemeChange: jest.fn(() => ({ dispose: jest.fn() })), dispose: jest.fn() } as any;
+  const tm = { getThemeForPaper: jest.fn(async () => 'auto'), setThemeForPaper: jest.fn(async () => {}), isValidTheme: jest.fn(() => true), getEffectiveTheme: jest.fn(() => 'dark'), mapVsCodeTheme: jest.fn(() => 'dark'), onVsCodeThemeChange: jest.fn(() => ({ dispose: jest.fn() })), dispose: jest.fn() } as any;
   const am = { createHighlight: jest.fn(), createNote: jest.fn(), getAnnotationsByPaper: jest.fn(async () => []), deleteAnnotation: jest.fn(), updateAnnotation: jest.fn(), validatePosition: jest.fn() } as any;
   const db = { listPapers: jest.fn(async () => []), upsertPaper: jest.fn(), deletePaper: jest.fn(), appendLog: jest.fn() } as any;
-  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as WorkspaceLogger, themeManager: tm, annotationManager: am, database: db }));
+  const store = { getReadingState: jest.fn(async () => null), setReadingState: jest.fn(async () => {}) } as any;
+  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as WorkspaceLogger, themeManager: tm, annotationManager: am, database: db, paperDataStore: store }));
 }
 
 function makeNullRequireServices(): RequireServices {
@@ -97,5 +98,29 @@ describe('registerCommands — library guard', () => {
     await handler();
 
     expect(vscode.window.showQuickPick).not.toHaveBeenCalled();
+  });
+});
+
+describe('registerCommands — opening a paper', () => {
+  const paper = { id: 'p1', title: 'A Paper', path: '/lib/papers/p1', citeKey: 'a2026', status: 'unread' as const };
+
+  function handlerFor(name: string): (...args: unknown[]) => Promise<void> {
+    const call = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(([n]) => n === name);
+    if (!call) { throw new Error(`${name} is not registered`); }
+    return call[1];
+  }
+
+  it('openPaperPdf opens the LabShelf reader instead of the default PDF handler', async () => {
+    registerCommands(makeContext(), makeRequireServices({ listPapers: jest.fn(async () => [paper]) }));
+    await handlerFor('labshelf.openPaperPdf')('p1');
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('labshelf.openPdfViewer', 'p1');
+    expect(vscode.commands.executeCommand).not.toHaveBeenCalledWith('vscode.open', expect.anything());
+  });
+
+  it('openPaperPdfExternal keeps the default handler available as an escape hatch', async () => {
+    registerCommands(makeContext(), makeRequireServices({ listPapers: jest.fn(async () => [paper]) }));
+    await handlerFor('labshelf.openPaperPdfExternal')('p1');
+    const call = (vscode.commands.executeCommand as jest.Mock).mock.calls.find(([n]) => n === 'vscode.open');
+    expect(call?.[1].fsPath).toBe('/lib/papers/p1/paper.pdf');
   });
 });

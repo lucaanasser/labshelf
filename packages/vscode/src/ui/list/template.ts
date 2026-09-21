@@ -1,25 +1,21 @@
 /**
- * Generates the full HTML/CSS/JS document for the paper list webview panel, including the inline detail sidebar and all interactive controls.
+ * Generates the static HTML shell for the list webview panel. Folder contents arrive afterwards as state messages, so the shell is rendered only once per panel.
  *
- * @depends ui/library/libraryTreeDataProvider.ts, @labshelf/core, ui/list/template.css.ts, ui/list/template.icons.ts, ui/list/template.script.ts
+ * @depends ui/list/template.css.ts, ui/list/template.icons.ts, ui/list/template.script.ts
  * @dependents ui/list/listWebviewPanel.ts, ui/list/index.ts
  */
 import * as vscode from 'vscode';
-import type { LibraryNode } from '../library/libraryTreeDataProvider.js';
-import type { PaperRecord } from '@labshelf/core';
 import { listPanelCss } from './template.css.js';
 import { secIcon } from './template.icons.js';
 import { buildListScript } from './template.script.js';
 
 /**
- * Builds and returns the complete HTML string for the paper list webview, embedding paper data as JSON and all inline styles and scripts.
+ * Builds the complete HTML shell for the list webview: collection header with search and actions, the status and subfolder filter bar, sortable column heads, the paper list, and the detail pane.
  * @usedBy ui/list/listWebviewPanel.ts
  * @returns A full HTML document string ready to assign to webview.html.
  */
-export function buildListPanelHtml(webview: vscode.Webview, collection: LibraryNode | undefined, papers: PaperRecord[]): string {
+export function buildListPanelHtml(webview: vscode.Webview): string {
   const n = nonce();
-  const title = esc(collection?.label ?? 'LabShelf');
-  const papersJson = JSON.stringify(papers);
 
   return `<!doctype html>
 <html lang="en">
@@ -27,44 +23,46 @@ export function buildListPanelHtml(webview: vscode.Webview, collection: LibraryN
 <meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${n}';">
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>${title}</title>
+<title>LabShelf</title>
 <style>${listPanelCss()}</style>
 </head>
 <body>
 <div class="app">
   <div class="list-pane">
     <div class="list-header">
-      <span style="opacity:.6;display:inline-flex;width:15px;height:15px">${secIcon('book')}</span>
-      <span class="list-header-title">${title}</span>
-      <span class="list-header-count" id="paperCount"></span>
-      <span class="list-header-spacer"></span>
-      <button class="list-add-btn" id="addPaperBtn" title="Add PDF or folder">+ Add</button>
+      <nav class="breadcrumb" id="breadcrumb" aria-label="Collection path"></nav>
+      <div class="search-box">
+        <span class="search-icon">${secIcon('search')}</span>
+        <input id="searchInput" type="text" placeholder="Search title, author, year, keyword  ( / )" spellcheck="false" autocomplete="off"/>
+        <button class="search-clear" id="searchClear" title="Clear search (Esc)">${secIcon('x')}</button>
+      </div>
+      <button class="list-icon-btn" id="includeSubBtn" title="Show papers from subfolders">${secIcon('layers')}</button>
+      <button class="list-icon-btn" id="newFolderBtn" title="New subfolder">${secIcon('folder-plus')}</button>
+      <button class="list-add-btn" id="addPaperBtn" title="Add PDF or folder here">+ Add</button>
       <button class="list-icon-btn" id="toggleDetailBtn" title="Toggle details panel">${secIcon('panel-right')}</button>
     </div>
-    <div class="col-heads">
-      <div></div><div></div>
-      <div>Title</div><div>Creator</div><div>Status</div>
-      <div title="Attachments" style="display:flex;align-items:center;justify-content:center">${secIcon('paperclip')}</div>
+    <div class="filter-bar">
+      <div class="status-filters" id="statusFilters" role="tablist" aria-label="Reading status"></div>
+      <div class="sub-strip" id="subStrip" aria-label="Subfolders"></div>
     </div>
-    <div class="paper-list" id="paperList"></div>
+    <div class="col-heads" id="colHeads">
+      <div></div><div></div>
+      <div class="col-head sortable" data-sort="title">Title<span class="sort-ind">${secIcon('chevron-down')}</span></div>
+      <div class="col-head sortable" data-sort="creator">Creator<span class="sort-ind">${secIcon('chevron-down')}</span></div>
+      <div class="col-head sortable" data-sort="year">Year<span class="sort-ind">${secIcon('chevron-down')}</span></div>
+      <div class="col-head sortable col-pub" data-sort="publication">Publication<span class="sort-ind">${secIcon('chevron-down')}</span></div>
+      <div class="col-head sortable" data-sort="status">Status<span class="sort-ind">${secIcon('chevron-down')}</span></div>
+    </div>
+    <div class="paper-list" id="paperList" tabindex="0"><div class="detail-placeholder">Loading…</div></div>
   </div>
   <div class="detail-resizer" id="detailResizer" title="Drag to resize"></div>
   <div class="detail-pane" id="detailPane">
     <div class="detail-placeholder">Select a paper to see details</div>
   </div>
 </div>
-${buildListScript(n, papersJson)}
+${buildListScript(n)}
 </body>
 </html>`;
-}
-
-/**
- * Returns a minimal loading placeholder HTML string shown while the paper list is being fetched.
- * @usedBy ui/list/listWebviewPanel.ts
- * @returns A short HTML document string with a "Loading…" message.
- */
-export function loadingHtml(): string {
-  return '<!doctype html><html><body style="font-family:var(--vscode-font-family);color:var(--vscode-foreground);background:var(--vscode-editor-background);padding:24px;">Loading…</body></html>';
 }
 
 // ─── private helpers ───────────────────────────────────────────────────────────
@@ -72,8 +70,4 @@ export function loadingHtml(): string {
 function nonce(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   return Array.from({ length: 32 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
-function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

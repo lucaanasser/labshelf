@@ -1,0 +1,6 @@
+[
+  { "text": "1. Alpha, B. (2018). Foundations of testing.", "x": 50, "xEnd": 300, "y": 800, "height": 12, "column": 0 },
+  { "text": "Computing Reviews, 4(2), 88-99.", "x": 70, "xEnd": 280, "y": 786, "height": 12, "column": 0 },
+  { "text": "2. Beta, C. (2019). Advanced methods in verification.", "x": 50, "xEnd": 340, "y": 760, "height": 12, "column": 0 },
+  { "text": "3. Gamma, D. (2020). A concise note.", "x": 50, "xEnd": 300, "y": 734, "height": 12, "column": 0 }
+]

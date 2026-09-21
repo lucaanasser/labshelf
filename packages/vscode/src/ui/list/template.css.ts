@@ -9,6 +9,9 @@
 export function listPanelCss(): string {
   return `
 *{box-sizing:border-box;margin:0;padding:0}
+:root{--cols:28px 22px minmax(0,1fr) 150px 52px 170px 86px}
+/* Narrow editors drop the Publication column before anything else gets squeezed. */
+@media (max-width:860px){:root{--cols:28px 22px minmax(0,1fr) 130px 52px 86px}.col-pub{display:none !important}}
 html,body{height:100%;overflow:hidden}
 body{
   font-family:var(--vscode-font-family);
@@ -26,23 +29,58 @@ body{
   min-width:0;
 }
 .list-header{
-  display:flex;align-items:center;gap:8px;
-  padding:6px 12px;
+  display:flex;align-items:center;gap:6px;
+  padding:5px 8px;
   border-bottom:1px solid var(--vscode-panel-border,rgba(128,128,128,.2));
   background:var(--vscode-sideBar-background,var(--vscode-editor-background));
   flex-shrink:0;
 }
-.list-header-title{font-weight:600;font-size:13px}
+/* ── Breadcrumb ── */
+.breadcrumb{display:flex;align-items:center;gap:1px;flex:1;min-width:0;overflow:hidden;white-space:nowrap}
+.crumb{
+  display:inline-flex;align-items:center;gap:4px;flex-shrink:1;min-width:0;
+  padding:2px 5px;border-radius:3px;border:1px solid transparent;
+  background:none;color:var(--vscode-descriptionForeground);
+  font:inherit;font-size:12px;cursor:pointer;
+}
+.crumb>span{overflow:hidden;text-overflow:ellipsis}
+.crumb svg{width:13px;height:13px;flex-shrink:0;opacity:.8}
+.crumb:hover{background:var(--vscode-toolbar-hoverBackground);color:var(--vscode-foreground)}
+.crumb.current{color:var(--vscode-foreground);font-weight:600;font-size:13px;cursor:default;flex-shrink:0}
+.crumb.current:hover{background:none}
+.crumb-sep{display:inline-flex;width:14px;height:14px;flex-shrink:0;opacity:.5}
+.crumb-sep svg{width:14px;height:14px}
+/* ── Search ── */
+.search-box{
+  display:flex;align-items:center;gap:4px;width:260px;flex-shrink:1;min-width:90px;
+  padding:0 4px 0 6px;height:24px;border-radius:3px;
+  background:var(--vscode-input-background);
+  border:1px solid var(--vscode-input-border,transparent);
+}
+.search-box:focus-within{border-color:var(--vscode-focusBorder)}
+.search-icon{display:inline-flex;width:13px;height:13px;opacity:.6;flex-shrink:0}
+.search-icon svg{width:13px;height:13px}
+.search-box input{
+  flex:1;min-width:0;border:none;outline:none;background:none;
+  color:var(--vscode-input-foreground);font:inherit;font-size:12px;
+}
+.search-box input::placeholder{color:var(--vscode-input-placeholderForeground)}
+.search-clear{
+  display:none;align-items:center;justify-content:center;width:16px;height:16px;
+  border:none;background:none;cursor:pointer;color:var(--vscode-foreground);opacity:.6;border-radius:3px;
+}
+.search-clear svg{width:12px;height:12px}
+.search-clear:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground)}
+.search-box.has-query .search-clear{display:flex}
+.list-header-count:empty{display:none}
 .list-header-count{
-  font-size:11px;
-  color:var(--vscode-descriptionForeground);
+  font-size:11px;flex-shrink:0;
   background:var(--vscode-badge-background);
   color:var(--vscode-badge-foreground);
   border-radius:10px;padding:0 6px;
 }
-.list-header-spacer{flex:1}
 .list-add-btn{
-  padding:2px 8px;border-radius:3px;font-size:11px;cursor:pointer;
+  flex-shrink:0;padding:2px 8px;border-radius:3px;font-size:11px;cursor:pointer;
   background:var(--vscode-button-background);
   color:var(--vscode-button-foreground);
   border:none;
@@ -50,7 +88,7 @@ body{
 .list-add-btn:hover{background:var(--vscode-button-hoverBackground)}
 .col-heads{
   display:grid;
-  grid-template-columns:28px 22px 1fr 170px 120px 28px;
+  grid-template-columns:var(--cols);
   padding:3px 4px;
   border-bottom:1px solid var(--vscode-panel-border,rgba(128,128,128,.2));
   font-size:11px;
@@ -64,7 +102,7 @@ body{
 .paper-row{cursor:pointer}
 .paper-row-main{
   display:grid;
-  grid-template-columns:28px 22px 1fr 170px 120px 28px;
+  grid-template-columns:var(--cols);
   align-items:center;padding:5px 4px;gap:0;
   border-bottom:1px solid var(--vscode-panel-border,rgba(128,128,128,.07));
 }
@@ -92,12 +130,75 @@ body{
 .col-title{font-size:13px}
 .col-meta{font-size:12px;color:var(--vscode-descriptionForeground)}
 .col-attach{text-align:center;font-size:11px;color:var(--vscode-descriptionForeground)}
+.title-cell{display:flex;align-items:center;gap:8px;min-width:0}
+.title-cell>.title-text{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.loc-chip{
+  flex-shrink:0;max-width:45%;overflow:hidden;text-overflow:ellipsis;
+  font-size:10px;padding:0 6px;border-radius:8px;cursor:pointer;
+  color:var(--vscode-descriptionForeground);
+  border:1px solid var(--vscode-panel-border,rgba(128,128,128,.3));
+}
+.loc-chip:hover{color:var(--vscode-foreground);border-color:var(--vscode-focusBorder)}
+.paper-row.selected .loc-chip{color:inherit;border-color:currentColor;opacity:.8}
+.paper-row.dragging{opacity:.45}
+mark{background:var(--vscode-editor-findMatchHighlightBackground,rgba(234,92,0,.33));color:inherit;border-radius:2px}
+/* ── Filter bar: status tabs + subfolder chips ── */
+.filter-bar{
+  display:flex;align-items:center;gap:10px;flex-shrink:0;min-height:30px;
+  padding:3px 10px;overflow:hidden;
+  border-bottom:1px solid var(--vscode-panel-border,rgba(128,128,128,.2));
+}
+.status-filters{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.status-tab{
+  display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:10px;
+  border:none;background:none;cursor:pointer;font:inherit;font-size:11px;
+  color:var(--vscode-descriptionForeground);
+}
+.status-tab:hover{color:var(--vscode-foreground);background:var(--vscode-toolbar-hoverBackground)}
+.status-tab.active{color:var(--vscode-foreground);background:var(--vscode-list-inactiveSelectionBackground);font-weight:600}
+.status-tab .n{font-weight:400;opacity:.7}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--vscode-descriptionForeground)}
+.status-dot.s-unread{background:var(--vscode-charts-blue,#4aa5f0)}
+.status-dot.s-reading{background:var(--vscode-charts-yellow,#e5c07b)}
+.status-dot.s-done{background:var(--vscode-charts-green,#4ec994)}
+.sub-strip{
+  display:flex;align-items:center;gap:4px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;
+  padding-left:10px;border-left:1px solid var(--vscode-panel-border,rgba(128,128,128,.25));
+}
+.sub-strip::-webkit-scrollbar{display:none}
+.sub-strip:empty{display:none}
+.sub-chip{
+  display:inline-flex;align-items:center;gap:5px;flex-shrink:0;padding:2px 8px;border-radius:3px;
+  border:1px solid var(--vscode-panel-border,rgba(128,128,128,.3));background:none;cursor:pointer;
+  font:inherit;font-size:11px;color:var(--vscode-foreground);
+}
+.sub-chip svg{width:12px;height:12px;opacity:.75}
+.sub-chip .n{color:var(--vscode-descriptionForeground)}
+.sub-chip:hover{background:var(--vscode-list-hoverBackground);border-color:var(--vscode-focusBorder)}
+/* While a paper is being dragged, every place it can be dropped lights up. */
+body.dragging-papers .sub-chip,body.dragging-papers .crumb:not(.current){border-color:var(--vscode-focusBorder);border-style:dashed}
+.drop-target{
+  background:var(--vscode-list-dropBackground,rgba(83,89,93,.5)) !important;
+  outline:1px dashed var(--vscode-focusBorder);outline-offset:-1px;
+}
+.paper-list:focus{outline:none}
+/* ── Sortable heads ── */
+.col-head.sortable{cursor:pointer;display:flex;align-items:center;gap:2px}
+.col-head.sortable:hover{color:var(--vscode-foreground)}
+.sort-ind{display:none;width:12px;height:12px;flex-shrink:0}
+.sort-ind svg{width:12px;height:12px}
+.col-head.sorted{color:var(--vscode-foreground)}
+.col-head.sorted .sort-ind{display:inline-flex}
+.col-head.sorted.asc .sort-ind{transform:rotate(180deg)}
+.list-icon-btn.active{opacity:1;background:var(--vscode-toolbar-activeBackground,var(--vscode-toolbar-hoverBackground));color:var(--vscode-textLink-foreground)}
+.list-icon-btn:disabled{opacity:.3;cursor:default;background:none}
+.list-icon-btn.hidden{display:none}
 /* ── Children ── */
 .paper-children{display:none;background:var(--vscode-editor-background)}
 .paper-row.expanded .paper-children{display:block}
 .child-row{
   display:grid;
-  grid-template-columns:28px 22px 1fr 170px 120px 28px;
+  grid-template-columns:var(--cols);
   align-items:center;padding:4px 4px;gap:0;
   padding-left:28px;
   font-size:12px;color:var(--vscode-descriptionForeground);
@@ -108,12 +209,15 @@ body{
 .child-row>div{padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* ── Status badges ── */
 .badge{
+  border:none;font-family:inherit;cursor:pointer;
   display:inline-block;padding:1px 6px;border-radius:8px;
   font-size:10px;font-weight:500;vertical-align:middle;
 }
 .badge-unread{background:var(--vscode-badge-background);color:var(--vscode-badge-foreground)}
 .badge-reading{background:var(--vscode-charts-yellow,#e5c07b);color:#1e1e1e}
 .badge-done{background:var(--vscode-charts-green,#4ec994);color:#1e1e1e}
+.badge:hover{filter:brightness(1.12);outline:1px solid var(--vscode-focusBorder)}
+.paper-row.cursor:not(.selected) .paper-row-main{background:var(--vscode-list-inactiveSelectionBackground)}
 /* ── Empty state ── */
 .empty-state{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -187,12 +291,32 @@ body.detail-collapsed .detail-resizer.dragging{
 .sec-body.hidden{display:none}
 /* ── List header toolbar icon ── */
 .list-icon-btn{
-  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
   width:22px;height:22px;border:none;background:none;cursor:pointer;
   border-radius:4px;color:var(--vscode-foreground);opacity:.75;
 }
 .list-icon-btn:hover{opacity:1;background:var(--vscode-toolbar-hoverBackground)}
 .list-icon-btn svg{width:15px;height:15px}
+.detail-head{padding:12px 12px 10px;border-bottom:1px solid var(--vscode-sideBar-border,var(--vscode-panel-border,rgba(128,128,128,.2)))}
+.detail-head .detail-paper-title{padding:0;border:none}
+.detail-byline{margin-top:4px;font-size:12px;color:var(--vscode-descriptionForeground);line-height:1.4}
+.detail-venue{margin-top:2px;font-size:11px;color:var(--vscode-descriptionForeground);font-style:italic}
+.detail-head .detail-action-row{padding:10px 0 0;border:none}
+.status-seg{display:flex;margin-top:8px;border-radius:4px;overflow:hidden;border:1px solid var(--vscode-panel-border,rgba(128,128,128,.3))}
+.status-seg button{
+  flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:3px 0;
+  border:none;background:none;cursor:pointer;font:inherit;font-size:11px;color:var(--vscode-descriptionForeground);
+}
+.status-seg button+button{border-left:1px solid var(--vscode-panel-border,rgba(128,128,128,.3))}
+.status-seg button:hover{background:var(--vscode-list-hoverBackground);color:var(--vscode-foreground)}
+.status-seg button.on{background:var(--vscode-list-inactiveSelectionBackground);color:var(--vscode-foreground);font-weight:600}
+.kw-list{display:flex;flex-wrap:wrap;gap:4px}
+.kw{
+  padding:1px 7px;border-radius:8px;cursor:pointer;font:inherit;font-size:11px;background:none;
+  color:var(--vscode-foreground);border:1px solid var(--vscode-panel-border,rgba(128,128,128,.3));
+}
+.kw:hover{border-color:var(--vscode-focusBorder);color:var(--vscode-textLink-foreground)}
+.more-link{margin-top:4px;padding:0;border:none;background:none;cursor:pointer;font:inherit;font-size:11px;color:var(--vscode-textLink-foreground)}
 .detail-field{margin-bottom:6px}
 .detail-label{font-size:11px;color:var(--vscode-descriptionForeground);margin-bottom:1px}
 .detail-value{line-height:1.4}

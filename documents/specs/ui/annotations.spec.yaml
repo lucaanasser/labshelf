@@ -1,30 +1,44 @@
 feature:
-  name: Annotations - Highlights and Notes (Phase 2)
+  name: Annotations - Highlights and Notes
   module: pdf-viewer
   description: >
-    Enable users to create, view, edit, and delete annotations (highlights, notes, comments)
-    on PDF pages. Annotations are stored in per-paper JSON sidecars
-    (.research/papers/<id>/data.json) via PaperDataStore, which is the source of truth.
-    The SQLite table is a local cache rebuilt on startup by LibraryIndexer.
-    Display annotations in a sidebar panel with grouping by page.
+    Enable users to create, view, edit, and delete annotations
+    (highlights, notes, comments) on PDF pages. Annotations are stored
+    in per-paper JSON sidecars (.research/papers/<id>/data.json) via
+    PaperDataStore, which is the source of truth. The SQLite table is a
+    local cache rebuilt on startup by LibraryIndexer. Display
+    annotations in the reader's left sidebar, on the Annotations tab
+    (see ui/pdf-reader-navigation.spec.yaml). A highlight is attributed
+    to the page that contains the selection, not to
+    PDFViewer.currentPageNumber. Users can export the whole set to
+    Markdown from the tab header or from labshelf.exportAnnotations
+    (see ui/pdf-reader-paper-resources.spec.yaml).
 
 architecture:
   inputs:
-    - User text selection in PDF viewer
-    - Annotation create/edit/delete commands from toolbar
-    - Click on annotation in sidebar
+    - User text selection in the reader viewer
+    - The .page ancestor of the selection's start node
+      (element.closest('.page').dataset.pageNumber) — this is the page
+      attributed to the highlight, not PDFViewer.currentPageNumber
+    - Annotation color pick from the selection bubble
+    - Annotation delete from the sidebar list
+    - Click on an annotation row in the sidebar (jumps to page and pushes history)
+    - Export requests from the Annotations tab header or from
+      labshelf.exportAnnotations
     - Paper ID for querying annotations
   outputs:
     - Persisted annotations in .research/papers/<id>/data.json (via PaperDataStore)
     - ANNOTATION_CREATED event
     - ANNOTATION_UPDATED event
     - ANNOTATION_DELETED event
-    - Annotation sidebar UI with interactive list
-    - PDF highlights rendered as overlay
+    - HostToWebview.updateAnnotations after every mutation
+    - Markdown export written to clipboard or to
+      <paper.path>/annotations.md via showSaveDialog
   dependencies:
     - PaperDataStore (source of truth for annotations — JSON sidecars)
     - ResearchDatabase (local cache only, rebuilt by LibraryIndexer)
-    - PdfViewerPanel from Phase 1
+    - PdfViewerPanel (host-side lifecycle)
+    - pdf-viewer/shared/annotationsMarkdown (pure Markdown formatter)
     - EventBus for event emission
     - Logger for annotation operations
     - Types: Annotation interface
@@ -41,9 +55,9 @@ database:
 
 events:
   emits:
-    - ANNOTATION_CREATED (annotation: Annotation)
-    - ANNOTATION_UPDATED (annotation: Annotation)
-    - ANNOTATION_DELETED (annotationId: string, paperId: string)
+    - 'ANNOTATION_CREATED (annotation: Annotation)'
+    - 'ANNOTATION_UPDATED (annotation: Annotation)'
+    - 'ANNOTATION_DELETED (annotationId: string, paperId: string)'
   listens: []
 
 errors:
@@ -61,45 +75,75 @@ errors:
 
 ui:
   components:
-    - Annotation toolbar: "Highlight" button, color picker (yellow, green, blue, red, pink)
-    - Highlight overlay: transparent rectangles on PDF with selected color
-    - Annotation sidebar: grouped by page, shows icon (highlight dot), preview text, created date
-    - Context menu on highlight: Edit, Delete, Copy text, Open note
-    - Annotation list item: expandable to show full content, click navigates to page
-    - Inline note editor: textarea for editing note content
-    - Delete confirmation: "Are you sure?" dialog
+    - 'Selection bubble (webview/ui/selectionBubble.ts): five color swatches (yellow, green, blue, red, pink), a separator, and a "Cite" icon button for Copy with Citation. Anchored above (or below) the selection rectangle.'
+    - 'Annotations tab in the left sidebar (webview/ui/annotationsTab.ts): grouped by page ("Page N" headers), one row per annotation, coloured dot indicator, delete icon button per row, click or Enter jumps to the page via goToPage (which records the departure through NavHistory).'
+    - 'Tab header: title "Annotations" plus two icon buttons — clipboard (Copy annotations as Markdown) and download (Export annotations to a Markdown file). Both post exportAnnotations with target=clipboard or target=file.'
+    - 'Preview: annotation content is truncated to PREVIEW_CHARS (140) with an ellipsis in the sidebar.'
+  not_yet_implemented:
+    - 'Highlight overlay drawn on the page canvas: out of scope for this delivery. Only the sidebar row and the selection bubble represent highlights today.'
+    - 'Inline note editing UI: annotation edits go through the updateAnnotation message but the reader has no in-sidebar editor yet.'
+    - 'Delete confirmation dialog: the delete button removes the annotation immediately.'
 
 tests:
   unit:
-    - AnnotationManager.createHighlight() saves to PaperDataStore sidecar and emits event
-    - AnnotationManager.updateAnnotation() persists changes to sidecar
-    - AnnotationManager.deleteAnnotation() removes from sidecar and emits event
-    - AnnotationManager.queryByPaper() returns sorted annotations by page
-    - Color validation rejects invalid colors
-    - Position validation accepts valid {x, y, width, height} and rejects invalid
-    - Annotation.toString() generates preview text correctly
+    - "__tests__/pdf-viewer/AnnotationManager.test.ts:
+      createHighlight saves to PaperDataStore sidecar and emits
+      ANNOTATION_CREATED; updateAnnotation persists changes;
+      deleteAnnotation removes and emits ANNOTATION_DELETED;
+      getAnnotationsByPaper returns annotations sorted by page then
+      createdAt; color validation rejects invalid colors; position
+      validation accepts normalized {x, y, width, height} in [0,1]
+      and rejects invalid"
+    - "__tests__/pdf-viewer/shared/annotationsMarkdown.test.ts:
+      formatAnnotationsMarkdown emits the header
+      '# <title>\n\n<authorYearLabel> · `@<citekey>`'; empty state is
+      '_No annotations._'; annotations group by pageNumber ascending
+      and by createdAt within a page; highlights render as block
+      quotes followed by '<!-- highlight: <color> --> [@<citekey>, p.
+      <n>]'; notes/comments/tags render as '**Type:** text'"
+    - "__tests__/pdf-viewer/PdfViewerPanel.test.ts: pageNumber
+      attributed to a new highlight is the value posted by
+      selectionBubble (derived from closest('.page').dataset.pageNumber),
+      not the panel's currentPageNumber"
   integration:
-    - User selects text → shows color picker → chooses color → highlight created
-    - New highlight appears in sidebar under correct page group
-    - Clicking highlight in sidebar navigates PDF to page and highlights
-    - Editing annotation updates UI and DB
-    - Deleting annotation removes from both UI and DB
-    - Sidebar persists across page navigation (cache)
-    - Multiple annotations on same page display correctly without overlap
+    - selectionBubble posts createAnnotation with pageNumber derived
+      from the selection's .page ancestor; the host writes through
+      AnnotationManager, then posts updateAnnotations
+    - a new highlight appears in the Annotations tab under the
+      correct page group after the host posts updateAnnotations
+    - clicking a row in the Annotations tab jumps to the page and
+      pushes a history entry (via history.recordDeparture)
+    - deleting an annotation removes it from both the UI and the
+      sidecar; the SQLite cache is rebuilt on next startup
+    - multiple annotations on the same page display correctly
+    - the tab-header Copy button, the file button, and the
+      labshelf.exportAnnotations command produce identical Markdown
+      output
   fixtures:
-    - sample-with-positions.json (highlight positions on known PDF)
-    - mock-annotations.json (various types and colors)
+    - __tests__/fixtures/mock-annotations.json (various types and colors)
 
 ai_notes:
   embeddings: false
   semantic_search: false
+  page_attribution_fix: >
+    Before this overhaul the webview attributed a new highlight to
+    PDFViewer.currentPageNumber, so a selection made across the top of
+    page N while the viewer scroll had already moved currentPageNumber
+    to N+1 was saved on N+1. It is now derived from
+    selection.getRangeAt(0).startContainer.closest('.page').dataset.pageNumber.
+    The Copy with Citation flow uses the same rule.
+  export_markdown_reference: >
+    Markdown export lives on the Annotations tab header ("Export" menu:
+    To clipboard / To file...) and is also reachable via the command
+    palette command labshelf.exportAnnotations. Both paths call
+    shared/annotationsMarkdown. See ui/pdf-reader-paper-resources.spec.yaml.
   position_tracking: >
-    Position {x, y, width, height} is stored in PDF coordinates.
-    Need to verify position validity and handle PDF.js coordinate system
-    conversion (may require scaling based on zoom level).
+    Position {x, y, width, height} is stored normalized to [0,1] in PDF
+    coordinates. Multi-rect highlights are out of scope for this
+    delivery; they land with the drawn-on-page annotation phase.
   performance_concern: >
-    Rendering many highlights on a single page could be slow.
-    Consider caching rendered highlights and using CSS overlays.
+    Rendering many highlights on a single page could be slow. Highlights
+    reuse the pdf.js text layer overlay to avoid a separate canvas.
   ui_polish: >
-    Annotation colors should match VS Code's token colors if possible
-    for visual consistency. Sidebar should support keyboard navigation.
+    Annotation colors are the five preset swatches. Sidebar rows are
+    keyboard-navigable (up/down + Enter to jump).

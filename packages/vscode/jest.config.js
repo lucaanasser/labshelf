@@ -1,6 +1,12 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  // TypeScript 7 ships only the native compiler, without the JS API ts-jest
+  // needs, so tests compile with the aliased TypeScript 6 package instead.
+  // See also .pnpmfile.cjs, which covers ts-jest's own require("typescript").
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { compiler: 'typescript-js' }],
+  },
   roots: ['<rootDir>/__tests__', '<rootDir>/src'],
   testMatch: ['**/__tests__/**/*.test.ts', '**/?(*.)+(spec|test).ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
@@ -8,6 +14,9 @@ module.exports = {
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/extension.ts',
+    // DOM-bound reader webview code; its branching logic lives in webview/logic, which is covered.
+    '!src/pdf-viewer/webview/main.ts',
+    '!src/pdf-viewer/webview/ui/**',
   ],
   coverageThreshold: {
     global: {

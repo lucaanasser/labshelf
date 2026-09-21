@@ -27,7 +27,11 @@ structure:
       open VS Code workspace.
     storage/data/paperDataStore.ts: >
       Owns per-paper JSON sidecars at .research/papers/<id>/data.json; CRUD for
-      annotations and theme preferences. Source of truth for that data.
+      annotations, theme preferences, and the optional reading state
+      (page + zoom + offsets + sidebar). Source of truth for that data.
+      All writes for a given paper are serialized through a per-paper
+      write queue so a scroll-driven reading-state save cannot overwrite
+      a concurrent annotation write.
     storage/data/libraryIndexer.ts: >
       Rebuilds the SQLite cache on startup by scanning papers/**/metadata.yaml
       and .research/papers/**/data.json. Idempotent.
@@ -41,6 +45,8 @@ architecture:
     - workspace extension context
     - filesystem read and write requests
     - paper IDs for sidecar lookup
+    - reading state writes from the PDF reader (see
+      ui/pdf-reader-navigation.spec.yaml)
   outputs:
     - .research folder structure (including .research/papers/ and .research/sync/)
     - persisted library root in globalState
@@ -52,6 +58,60 @@ architecture:
     - storage/fileSystemService
     - yaml (for metadata.yaml parsing in storage/data/libraryIndexer)
     - db/database (ResearchDatabase, written by storage/data/libraryIndexer)
+    - pdf-viewer/shared/readingState (normalizeReadingState; DOM-free
+      helper reused by both PaperDataStore and the reader webview)
+  paper_data_shape:
+    description: >
+      PaperData persists three concerns per paper. All fields except
+      `annotations` and `theme` are optional; a file written before
+      this spec (no `reading` key) continues to load without error.
+    fields:
+      annotations:
+        type: Annotation[]
+        source_of_truth: true
+      theme:
+        type: PdfTheme (auto | light | dark | sepia | high-contrast)
+        default: auto
+      reading:
+        type: ReadingState
+        optional: true
+        shape: >
+          { page: number, scaleValue: string, left?: number, top?: number,
+            sidebar?: { open: boolean, tab: "thumbnails" | "outline" | "annotations", width?: number },
+            updatedAt: string (ISO) }
+        validation: normalizeReadingState drops the value if page is not
+          finite or scaleValue is neither a positive number nor one of
+          the pdf.js presets (page-width, page-fit, page-actual, auto);
+          sidebar.width is clamped to [160, 480].
+    accessor_methods:
+      - getReadingState(paperId): Promise<ReadingState | null>
+      - setReadingState(paperId, state): Promise<void>
+      - getAnnotations, getAnnotationsByPage, addAnnotation, updateAnnotation, deleteAnnotation (unchanged)
+      - getTheme, setTheme (unchanged)
+  write_queue:
+    description: >
+      PaperDataStore maintains an internal Map<paperId, Promise<void>>.
+      Every mutator (setReadingState, addAnnotation, updateAnnotation,
+      deleteAnnotation, setTheme) chains onto the tail of that paper's
+      queue. A load-modify-save runs to completion before the next
+      queued task starts.
+    invariants:
+      - two writes for the same paperId never interleave
+      - a rejected task does not poison the queue (errors are surfaced
+        to the caller and the next task runs)
+      - writes for different papers may run concurrently
+    reason: >
+      Before the queue, all mutators were load-modify-save. A save of
+      the reading state triggered by scroll could load the sidecar
+      before a fresh annotation write finished, then save without the
+      new annotation. The queue makes each paper's sidecar effectively
+      single-threaded from the store's perspective.
+    exactOptionalPropertyTypes_note: >
+      save() only writes fields that are actually present. `reading` is
+      omitted when the paper has no stored state; `left`, `top` and
+      `sidebar` inside a reading state are omitted when absent. This
+      matches the TypeScript exactOptionalPropertyTypes rule enabled by
+      the base tsconfig.
 
 database:
   tables_used:
@@ -59,9 +119,12 @@ database:
     - annotations (written by LibraryIndexer.rebuild() from sidecar JSON)
   migrations: []
   notes: >
-    SQLite is a local cache only. The source of truth for papers is metadata.yaml;
-    for annotations and themes it is .research/papers/<id>/data.json.
-    PaperDataStore owns sidecar reads and writes; LibraryIndexer rebuilds the DB.
+    SQLite is a local cache only. The source of truth for papers is
+    metadata.yaml; for annotations, themes, and reading state it is
+    .research/papers/<id>/data.json. PaperDataStore owns sidecar reads
+    and writes; LibraryIndexer rebuilds the papers and annotations
+    tables. The reading state is not indexed into SQLite — the reader
+    reads it directly from PaperDataStore.getReadingState.
 
 events:
   emits: []
@@ -75,11 +138,18 @@ errors:
     - text read or write fails in FileSystemService
     - metadata.yaml missing or malformed (paper skipped during rebuild)
     - sidecar data.json corrupt (paper data skipped, empty state returned)
+    - reading field present but malformed (dropped by normalizeReadingState)
+    - concurrent mutators on the same paper (serialized by the write queue)
   handling_strategy: >
-    The setup flow returns undefined on cancel or inaccessible paths and shows
-    an error message when the library cannot be created. LibraryIndexer skips
-    unreadable papers/sidecars and logs warnings. PaperDataStore returns an
-    empty default when the sidecar is absent.
+    The setup flow returns undefined on cancel or inaccessible paths and
+    shows an error message when the library cannot be created.
+    LibraryIndexer skips unreadable papers/sidecars and logs warnings.
+    PaperDataStore returns an empty default when the sidecar is absent.
+    A malformed `reading` field is dropped (returned as null from
+    getReadingState) rather than throwing; annotations and theme are
+    still loaded. Concurrent mutators for a single paper are serialized
+    by the per-paper write queue; a failing task surfaces the error to
+    its caller but does not block the next task.
 
 ui:
   components:
@@ -89,18 +159,44 @@ ui:
 
 tests:
   unit:
-    - LibraryPaths resolves .research, papers, logs, index, app log, paperDataDir, paperDataPath, syncDir paths
-    - resolveLibraryRoot returns undefined for missing or invalid roots
-    - ensureLibraryStructure creates .research, .research/logs, .research/papers, .research/sync, papers
-    - FileSystemService writes and reads UTF-8 text
-    - PaperDataStore.load returns empty default when sidecar is absent
-    - PaperDataStore CRUD for annotations and themes persists and reloads correctly
-    - LibraryIndexer.rebuild() scans papers/**/metadata.yaml and .research/papers/**/data.json
-    - LibraryIndexer.rebuild() is idempotent (running twice does not duplicate data)
-    - migrateSidecarsFromDb exports annotations from DB to sidecars without duplicating
+    - "__tests__/storage/libraryLocation.test.ts: resolveLibraryRoot
+      returns undefined for missing or invalid roots;
+      ensureLibraryStructure creates .research, .research/logs,
+      .research/papers, .research/sync, papers"
+    - "__tests__/storage/fileSystemService.test.ts: FileSystemService
+      writes and reads UTF-8 text; exists, ensureDirectory, readText
+      behave as documented"
+    - "__tests__/storage/libraryIndexer.test.ts:
+      LibraryIndexer.rebuild scans papers/**/metadata.yaml and
+      .research/papers/**/data.json, is idempotent, and does not
+      index the `reading` field into SQLite (no reading table)"
+    - "__tests__/storage/paperDataStore.test.ts: load returns empty
+      default when the sidecar is absent; CRUD for annotations and
+      themes persists and reloads correctly"
+    - "__tests__/storage/paperDataStore.test.ts: getReadingState
+      returns null when the field is absent, loads a valid stored
+      state, and returns null for a malformed state
+      (normalizeReadingState drop)"
+    - "__tests__/storage/paperDataStore.test.ts: setReadingState
+      round-trips through the sidecar and does NOT include
+      `reading` in the JSON when unset"
+    - "__tests__/storage/paperDataStore.test.ts: the per-paper write
+      queue serializes concurrent mutators for the same paperId (an
+      annotation add and a setReadingState issued at the same time
+      both persist)"
+    - "__tests__/storage/paperDataStore.test.ts: writes for
+      different paperIds may run concurrently"
+    - "__tests__/storage/paperDataStore.test.ts: a rejected mutator
+      does not poison the paper's queue — the next task still runs"
+    - LibraryPaths resolves .research, papers, logs, index, app log,
+      paperDataDir, paperDataPath, syncDir paths
+    - migrateSidecarsFromDb exports annotations from DB to sidecars
+      without duplicating
   integration:
     - first-run setup wizard persists the chosen library root
     - rebuild after fresh install restores annotations from sidecars
+    - a paper whose sidecar was written before the `reading` field
+      loads without error (backwards compatibility)
 
 ai_notes:
   embeddings: false

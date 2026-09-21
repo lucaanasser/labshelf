@@ -1,6 +1,8 @@
 /**
  * Reads raw text from a PdfDocumentLike — page-1 font-grouped blocks for title
- * inference, and concatenated text from the first N pages for identifier detection.
+ * inference, concatenated text from the first N pages for identifier detection,
+ * and link annotation targets, which often carry the DOI even when the text
+ * layer is unreadable.
  *
  * @depends io/pdf/types.ts
  * @dependents io/pdf/parser.ts
@@ -61,4 +63,61 @@ export async function extractFirstPagesText(document: PdfDocumentLike, pageCount
   }
 
   return chunks.join("\n");
+}
+
+/**
+ * Returns the first `pageCount` pages as separate strings. Keeping pages apart
+ * is what makes a repeated running header detectable.
+ * @usedBy io/pdf/parser.ts
+ * @returns One entry per page that yielded text.
+ */
+export async function extractPageTexts(document: PdfDocumentLike, pageCount: number): Promise<string[]> {
+  const pages: string[] = [];
+  const limit = Math.min(document.numPages ?? pageCount, pageCount);
+
+  for (let pageNumber = 1; pageNumber <= limit; pageNumber += 1) {
+    try {
+      const page = await document.getPage(pageNumber);
+      const textContent = await page.getTextContent({ normalizeWhitespace: true });
+      const pageText = textContent.items
+        .map((item) => item.str ?? "")
+        .join(" ")
+        .trim();
+      if (pageText) {
+        pages.push(pageText);
+      }
+    } catch {
+      // One unreadable page must not cost us the others.
+    }
+  }
+
+  return pages;
+}
+
+/**
+ * Collects the target URLs of every link annotation on the first `pageCount` pages.
+ * @usedBy io/pdf/parser.ts
+ * @returns Deduplicated list of annotation URLs; empty when the backend exposes none.
+ */
+export async function extractLinkUrls(document: PdfDocumentLike, pageCount: number): Promise<string[]> {
+  const urls = new Set<string>();
+  const limit = Math.min(document.numPages ?? pageCount, pageCount);
+
+  for (let pageNumber = 1; pageNumber <= limit; pageNumber += 1) {
+    const page = await document.getPage(pageNumber);
+    if (typeof page.getAnnotations !== "function") {
+      break;
+    }
+
+    const annotations = await page.getAnnotations().catch(() => []);
+    for (const annotation of annotations) {
+      for (const candidate of [annotation.url, annotation.unsafeUrl]) {
+        if (typeof candidate === "string" && candidate.trim()) {
+          urls.add(candidate.trim());
+        }
+      }
+    }
+  }
+
+  return [...urls];
 }

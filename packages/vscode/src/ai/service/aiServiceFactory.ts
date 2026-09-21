@@ -33,7 +33,7 @@ export interface AiServiceFactoryDependencies {
   eventBus: ExtensionEventBus;
   logger: ILogger;
   pdfOpener: PdfDocumentOpener;
-  resolvePdfUri: (paperId: string) => vscode.Uri | null;
+  resolvePdfUri: (paperId: string) => Promise<vscode.Uri | null>;
   preferOnnx?: boolean;
 }
 

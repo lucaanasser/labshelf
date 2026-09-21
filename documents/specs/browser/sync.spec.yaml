@@ -25,10 +25,9 @@ feature:
 
 architecture:
   inputs:
-    - popup sends { type: "sync.now" } to trigger a manual sync
-    - popup sends { type: "sync.status" } to poll current state
-    - library-page sends { type: "sync.scheduleSoon", reason } after any local
-      mutation (paper added/updated/deleted, folder rename/delete)
+    - 'popup sends { type: "sync.now" } to trigger a manual sync'
+    - 'popup sends { type: "sync.status" } to poll current state'
+    - 'library-page sends { type: "sync.scheduleSoon", reason } after any local mutation (paper added/updated/deleted, folder rename/delete)'
     - autoSyncScheduler fires via bx.alarms at autoSyncMinutes cadence
     - syncOnIdle fires via bx.idle transition to "idle" (≥5 min)
     - eventDebouncer fires via bx.alarms after 30 s of quiet
@@ -78,10 +77,10 @@ database:
 events:
   emits: []
   listens:
-    - runtime onMessage: sync.now, sync.status, sync.scheduleSoon
-    - alarms onAlarm: labshelf.autoSync, labshelf.debouncedSync
-    - idle onStateChanged: "idle" → schedule sync
-    - storage onChanged: labshelf.settings → re-apply alarm interval
+    - 'runtime onMessage: sync.now, sync.status, sync.scheduleSoon'
+    - 'alarms onAlarm: labshelf.autoSync, labshelf.debouncedSync'
+    - 'idle onStateChanged: "idle" → schedule sync'
+    - 'storage onChanged: labshelf.settings → re-apply alarm interval'
 
 errors:
   expected_failures:
@@ -108,15 +107,14 @@ errors:
 
 ui:
   components:
-    - popup "Sync now" button (disabled when not connected)
-    - popup sync-status footer line showing last sync time or error
-    - popup auto-sync meta line ("AUTO-SYNC · N MIN" or "AUTO-SYNC · OFF")
-    - popup status indicator with states idle | connected | syncing | error
-    - toolbar action badge: empty (disconnected), dim dot (connected idle),
-      cycling spinner (syncing, blue), "!" (error, red)
-    - toolbar action title text shows last sync timestamp or error message
-    - options page "DRIVE CONNECTION" section with disconnect button
-    - options page "SYNC" section with auto-sync interval input (0 disables)
+    - 'popup "Sync now" button (disabled when not connected)'
+    - 'popup sync-status footer line showing last sync time or error'
+    - 'popup auto-sync meta line ("AUTO-SYNC · N MIN" or "AUTO-SYNC · OFF")'
+    - 'popup status indicator with states idle | connected | syncing | error'
+    - 'toolbar action badge: empty (disconnected), dim dot (connected idle), cycling spinner (syncing, blue), "!" (error, red)'
+    - 'toolbar action title text shows last sync timestamp or error message'
+    - 'options page "DRIVE CONNECTION" section with disconnect button'
+    - 'options page "SYNC" section with auto-sync interval input (0 disables)'
 
 tests:
   unit: []

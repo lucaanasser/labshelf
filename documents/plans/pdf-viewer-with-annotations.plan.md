@@ -1,5 +1,10 @@
 # PDF Viewer with Annotations and LaTeX Integration
 
+> **Historical document.** It records the original PDF viewer plan (May 2026) and is kept for context.
+> File paths and type names below refer to the layout at that time and have since moved.
+> For the current structure see [`reference/modules.md`](../reference/modules.md) and
+> [`reference/directories.md`](../reference/directories.md).
+
 **Creation date**: May 2026  
 **Status**: Planning  
 **Priority**: High  

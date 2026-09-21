@@ -25,7 +25,8 @@ export interface AiIndexerDependencies {
   vectorStore: SqliteVectorStore;
   metadataStore: AiMetadataStore;
   extractor: PdfTextExtractor;
-  resolvePdfUri: (paperId: string) => vscode.Uri | null;
+  // Async because a paper's folder is only known to the index: papers live in any collection folder under papers/.
+  resolvePdfUri: (paperId: string) => Promise<vscode.Uri | null>;
   fileSystem: { readBinary: (uri: vscode.Uri) => Promise<Uint8Array> };
   enqueue: (job: () => Promise<void>) => void;
 }
@@ -75,7 +76,7 @@ export class AiIndexer {
   }
 
   private async runIndex(paperId: string): Promise<void> {
-    const pdfUri = this.deps.resolvePdfUri(paperId);
+    const pdfUri = await this.deps.resolvePdfUri(paperId);
     if (!pdfUri) return;
     this.deps.eventBus.emit(EVENTS.AI_INDEX_STARTED, { paperId });
     try {

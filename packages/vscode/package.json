@@ -10,35 +10,6 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:labshelf.addPaper",
-    "onCommand:labshelf.openPaper",
-    "onCommand:labshelf.openSidebar",
-    "onCommand:labshelf.searchLibrary",
-    "onCommand:labshelf.generateBibTeX",
-    "onCommand:labshelf.rebuildIndex",
-    "onCommand:labshelf.openPaperPdf",
-    "onCommand:labshelf.openPaperFolder",
-    "onCommand:labshelf.copyCitation",
-    "onCommand:labshelf.openListTab",
-    "onCommand:labshelf.newFolder",
-    "onCommand:labshelf.deletePaper",
-    "onCommand:labshelf.openPdfViewer",
-    "onCommand:labshelf.sync.connect",
-    "onCommand:labshelf.sync.now",
-    "onCommand:labshelf.sync.disconnect",
-    "onCommand:labshelf.openSettings",
-    "onCommand:labshelf.ai.rebuildIndex",
-    "onCommand:labshelf.ai.searchByClaim",
-    "onCommand:labshelf.ai.searchByText",
-    "onCommand:labshelf.ai.openSettings",
-    "onView:labshelf.library",
-    "onView:labshelf.writing",
-    "onView:labshelf.reading",
-    "onView:labshelf.insights",
-    "onView:labshelf.assist",
-    "onView:labshelf.agents"
-  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -47,6 +18,16 @@
         "title": "Research: Add Paper",
         "category": "LabShelf",
         "icon": "$(file-add)"
+      },
+      {
+        "command": "labshelf.makeSearchable",
+        "title": "Research: Make Scanned Paper Searchable (OCR)",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.makeLibrarySearchable",
+        "title": "Research: Make All Scanned Papers Searchable (OCR)",
+        "category": "LabShelf"
       },
       {
         "command": "labshelf.openPaper",
@@ -100,6 +81,12 @@
         "icon": "$(new-folder)"
       },
       {
+        "command": "labshelf.newFolderAtRoot",
+        "title": "New Folder at Library Root",
+        "category": "LabShelf",
+        "icon": "$(new-folder)"
+      },
+      {
         "command": "labshelf.library.refresh",
         "title": "Refresh",
         "category": "LabShelf",
@@ -133,17 +120,22 @@
       },
       {
         "command": "labshelf.sync.connect",
-        "title": "Sync: Conectar ao Google Drive",
+        "title": "Sync: Connect to Google Drive",
         "category": "LabShelf"
       },
       {
         "command": "labshelf.sync.now",
-        "title": "Sync: Sincronizar Agora",
+        "title": "Sync: Sync Now",
         "category": "LabShelf"
       },
       {
         "command": "labshelf.sync.disconnect",
-        "title": "Sync: Desconectar do Google Drive",
+        "title": "Sync: Disconnect from Google Drive",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.configureLibrary",
+        "title": "Configure Library",
         "category": "LabShelf"
       },
       {
@@ -176,6 +168,59 @@
       {
         "command": "labshelf.ai.openSettings",
         "title": "AI: Open Settings",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.fetchMetadata",
+        "title": "Research: Fetch Metadata for Paper"
+      },
+      {
+        "command": "labshelf.resolveMissingMetadata",
+        "title": "Research: Resolve Missing Metadata"
+      },
+      {
+        "command": "labshelf.openPaperPdfExternal",
+        "title": "Research: Open Paper PDF in Default Viewer",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.exportAnnotations",
+        "title": "Research: Export Annotations to Markdown",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.reader.zoomIn",
+        "title": "Reader: Zoom In",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.reader.zoomOut",
+        "title": "Reader: Zoom Out",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.reader.zoomReset",
+        "title": "Reader: Reset Zoom",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.reader.find",
+        "title": "Reader: Find in Document",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.reader.historyBack",
+        "title": "Reader: Go Back",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.reader.historyForward",
+        "title": "Reader: Go Forward",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.reader.toggleSidebar",
+        "title": "Reader: Toggle Sidebar",
         "category": "LabShelf"
       }
     ],
@@ -230,7 +275,7 @@
     "viewsWelcome": [
       {
         "view": "labshelf.library",
-        "contents": "Nenhuma pasta ainda.\n[Nova pasta](command:labshelf.newFolder)\nVocê também pode arrastar PDFs para cá."
+        "contents": "No folders yet.\n[New folder](command:labshelf.newFolder)\nYou can also drag PDFs here."
       },
       {
         "view": "labshelf.settings",
@@ -245,7 +290,7 @@
           "group": "navigation@1"
         },
         {
-          "command": "labshelf.newFolder",
+          "command": "labshelf.newFolderAtRoot",
           "when": "view == labshelf.library",
           "group": "navigation@2"
         },
@@ -258,12 +303,12 @@
       "view/item/context": [
         {
           "command": "labshelf.addPaperHere",
-          "when": "view == labshelf.library && viewItem == labshelfFolder",
+          "when": "view == labshelf.library && viewItem =~ /^labshelf(Folder|Root)$/",
           "group": "inline@1"
         },
         {
           "command": "labshelf.newFolder",
-          "when": "view == labshelf.library && viewItem == labshelfFolder",
+          "when": "view == labshelf.library && viewItem =~ /^labshelf(Folder|Root)$/",
           "group": "1_modify@1"
         },
         {
@@ -276,6 +321,36 @@
           "when": "view == labshelf.library && viewItem == labshelfFolder",
           "group": "1_modify@3"
         }
+      ],
+      "commandPalette": [
+        {
+          "command": "labshelf.reader.zoomIn",
+          "when": "activeWebviewPanelId == 'labshelfPdf'"
+        },
+        {
+          "command": "labshelf.reader.zoomOut",
+          "when": "activeWebviewPanelId == 'labshelfPdf'"
+        },
+        {
+          "command": "labshelf.reader.zoomReset",
+          "when": "activeWebviewPanelId == 'labshelfPdf'"
+        },
+        {
+          "command": "labshelf.reader.find",
+          "when": "activeWebviewPanelId == 'labshelfPdf'"
+        },
+        {
+          "command": "labshelf.reader.historyBack",
+          "when": "activeWebviewPanelId == 'labshelfPdf'"
+        },
+        {
+          "command": "labshelf.reader.historyForward",
+          "when": "activeWebviewPanelId == 'labshelfPdf'"
+        },
+        {
+          "command": "labshelf.reader.toggleSidebar",
+          "when": "activeWebviewPanelId == 'labshelfPdf'"
+        }
       ]
     },
     "configuration": {
@@ -285,7 +360,7 @@
           "type": "number",
           "default": 15,
           "minimum": 1,
-          "description": "Intervalo de sincronizacao automatica com o Google Drive (em minutos)."
+          "description": "Interval between automatic Google Drive syncs, in minutes."
         },
         "labshelf.ai.enabled": {
           "type": "boolean",
@@ -301,15 +376,167 @@
           "type": "string",
           "default": "Xenova/bge-small-en-v1.5",
           "description": "HuggingFace ONNX text embedding model used for semantic search."
+        },
+        "labshelf.ocr.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Read a PDF optically when its text layer is missing or unreadable, so scanned papers and files with damaged fonts still yield metadata. Only runs when the text layer fails."
+        },
+        "labshelf.ocr.makeSearchable": {
+          "type": "boolean",
+          "default": true,
+          "description": "After importing a scanned paper, read every page and add an invisible text layer so the PDF can be searched (Ctrl+F) and its text selected. The pages themselves are not altered. Runs in the background; requires labshelf.ocr.enabled."
+        },
+        "labshelf.ocr.maxPages": {
+          "type": "number",
+          "default": 150,
+          "minimum": 1,
+          "description": "Scanned documents with more pages than this are not given a text layer automatically, since each page takes several seconds to read."
+        },
+        "labshelf.ocr.languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "eng"
+          ],
+          "description": "Tesseract language codes used for OCR, for example [\"eng\", \"por\"]. Language data is downloaded once on first use."
+        },
+        "labshelf.reader.vimKeys": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable single-key vim navigation in the PDF reader (j/k, d/u, gg/G, /, n/N, H/L, w, t). Conventional shortcuts stay active."
+        },
+        "labshelf.reader.defaultZoom": {
+          "type": "string",
+          "enum": [
+            "page-width",
+            "page-fit",
+            "page-actual",
+            "auto"
+          ],
+          "default": "page-width",
+          "description": "Zoom applied when a paper is opened without a stored reading position, and by Reset Zoom."
+        },
+        "labshelf.reader.toolbarAutoHide": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide the reader toolbar while scrolling down; it returns on scroll up, when the pointer nears the top, or on keyboard focus."
+        },
+        "labshelf.reader.restorePosition": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reopen each paper at the page, zoom and sidebar state where it was last read."
+        },
+        "labshelf.reader.hoverPreviews": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a preview when hovering a citation, figure, equation, table or section link."
+        },
+        "labshelf.reader.hoverDelayMs": {
+          "type": "number",
+          "default": 250,
+          "minimum": 0,
+          "maximum": 2000,
+          "description": "Delay before a hover preview opens, in milliseconds."
+        },
+        "labshelf.reader.citationStyle": {
+          "type": "string",
+          "enum": [
+            "pandoc",
+            "latex",
+            "author-year",
+            "citekey"
+          ],
+          "enumDescriptions": [
+            "> quote, then [@key, p. 12]",
+            "``quote'' \\cite[p.~12]{key}",
+            "\"quote\" (Silva et al., 2021, p. 12)",
+            "quote @key"
+          ],
+          "default": "pandoc",
+          "description": "Format used by Copy with Citation in the PDF reader."
+        },
+        "labshelf.reader.openBeside": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the reader beside the current editor. Disable to open it in the active editor group."
         }
       }
-    }
+    },
+    "keybindings": [
+      {
+        "command": "labshelf.reader.zoomIn",
+        "key": "ctrl+=",
+        "when": "activeWebviewPanelId == 'labshelfPdf'",
+        "mac": "cmd+="
+      },
+      {
+        "command": "labshelf.reader.zoomIn",
+        "key": "ctrl+shift+=",
+        "when": "activeWebviewPanelId == 'labshelfPdf'",
+        "mac": "cmd+shift+="
+      },
+      {
+        "command": "labshelf.reader.zoomOut",
+        "key": "ctrl+-",
+        "when": "activeWebviewPanelId == 'labshelfPdf'",
+        "mac": "cmd+-"
+      },
+      {
+        "command": "labshelf.reader.zoomReset",
+        "key": "ctrl+0",
+        "when": "activeWebviewPanelId == 'labshelfPdf'",
+        "mac": "cmd+0"
+      },
+      {
+        "command": "labshelf.reader.find",
+        "key": "ctrl+f",
+        "when": "activeWebviewPanelId == 'labshelfPdf'",
+        "mac": "cmd+f"
+      },
+      {
+        "command": "labshelf.reader.historyBack",
+        "key": "alt+left",
+        "when": "activeWebviewPanelId == 'labshelfPdf'",
+        "mac": "alt+left"
+      },
+      {
+        "command": "labshelf.reader.historyForward",
+        "key": "alt+right",
+        "when": "activeWebviewPanelId == 'labshelfPdf'",
+        "mac": "alt+right"
+      },
+      {
+        "command": "labshelf.reader.toggleSidebar",
+        "key": "f4",
+        "when": "activeWebviewPanelId == 'labshelfPdf'"
+      },
+      {
+        "command": "labshelf.reader.historyBack",
+        "key": "alt+left",
+        "mac": "cmd+[",
+        "when": "activeWebviewPanelId == 'labshelfPdf'"
+      },
+      {
+        "command": "labshelf.reader.historyForward",
+        "key": "alt+right",
+        "mac": "cmd+]",
+        "when": "activeWebviewPanelId == 'labshelfPdf'"
+      }
+    ]
   },
   "scripts": {
-    "compile": "tsc -p ./",
-    "build": "tsc -p ./",
+    "compile": "pnpm run build",
+    "build": "pnpm run build:host && pnpm run build:webview",
+    "build:host": "tsc -p ./",
+    "build:webview": "node build/reader.mjs",
     "watch": "tsc -watch -p ./",
-    "typecheck": "tsc --noEmit -p ./",
+    "watch:webview": "node build/reader.mjs --watch",
+    "typecheck": "tsc --noEmit -p ./ && pnpm run typecheck:webview",
+    "typecheck:webview": "tsc --noEmit -p src/pdf-viewer/webview/tsconfig.json",
+    "vscode:prepublish": "pnpm run build:host && node build/reader.mjs --production",
     "lint": "eslint . --ext .ts",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -324,16 +551,21 @@
   "dependencies": {
     "@labshelf/ai": "workspace:*",
     "@labshelf/core": "workspace:*",
+    "@napi-rs/canvas": "^1.0.9",
     "@thednp/dommatrix": "^3.0.4",
-    "pdfjs-dist": "^5.7.284",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "~6.3.289",
+    "tesseract.js": "^7.0.0",
     "yaml": "^2.7.1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.10",
     "@types/vscode": "^1.98.0",
+    "esbuild": "^0.24.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.4.9",
-    "typescript": "^5.8.2"
+    "typescript": "^7.0.2",
+    "typescript-js": "npm:typescript@^6.0.3"
   }
 }

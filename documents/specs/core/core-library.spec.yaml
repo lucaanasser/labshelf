@@ -23,7 +23,7 @@ architecture:
     - list of file and/or folder URIs
     - configured library root and paper paths
   outputs:
-    - paper directory under papers/<id>/
+    - paper directory <id>/ under papers/ or under the chosen collection folder
     - metadata record in the database
     - metadata.yaml and bib.bib artifacts
     - paper:added event per successfully imported paper

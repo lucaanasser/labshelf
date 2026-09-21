@@ -18,7 +18,7 @@ architecture:
   outputs:
     - sqlite tables and rows
   dependencies:
-    - better-sqlite3
+    - node:sqlite (DatabaseSync)
     - storage/fileSystemService
     - vscode workspace.fs
 

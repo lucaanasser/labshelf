@@ -12,6 +12,6 @@
     "@labshelf/core": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "*"
+    "typescript": "^7.0.2"
   }
 }

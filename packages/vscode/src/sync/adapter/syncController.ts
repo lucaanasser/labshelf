@@ -106,17 +106,17 @@ export class SyncController implements vscode.Disposable {
     }
   }
 
-  /** Returns whether the controller is currently authenticated with Google Drive. @usedBy syncTreeDataProvider. @returns boolean */
+  /** Returns whether the controller is currently authenticated with Google Drive. @usedBy ui/settings/settingsWebviewPanel.ts. @returns boolean */
   isConnected(): boolean {
     return this.auth.isAuthenticated();
   }
 
-  /** Returns whether a sync operation is currently in progress. @usedBy syncTreeDataProvider. @returns boolean */
+  /** Returns whether a sync operation is currently in progress. @usedBy ui/settings/settingsWebviewPanel.ts. @returns boolean */
   isSyncing(): boolean {
     return this.syncing;
   }
 
-  /** Returns the locale time string of the last successful sync, or null. @usedBy syncTreeDataProvider. @returns string | null */
+  /** Returns the locale time string of the last successful sync, or null. @usedBy ui/settings/settingsWebviewPanel.ts. @returns string | null */
   getLastSyncTime(): string | null {
     return this.lastSyncTime;
   }

@@ -1,14 +1,19 @@
 # LabShelf UI Redesign — Zotero-style Layout
 
+> **Historical document.** It records the Zotero-style UI redesign as it was carried out and is kept for context.
+> File paths and type names below refer to the layout at that time and have since moved.
+> For the current structure see [`reference/modules.md`](reference/modules.md) and
+> [`reference/directories.md`](reference/directories.md).
+
 ## What was implemented
 
 ### Architecture change
 The previous UI placed the full paper list inside the VS Code sidebar (a WebviewView). This was replaced with a **tree + tab** model inspired by Zotero:
 
-- **Sidebar** → `CollectionsTreeDataProvider` (TreeView) showing a navigation tree of collections
+- **Sidebar** → `CollectionsTreeDataProvider` (TreeView) showing a navigation tree of collections (today `LibraryTreeDataProvider`, showing real folders instead of collections)
 - **Editor tab** → `ListWebviewPanel` (WebviewPanel) showing the detailed paper list with a details sidebar
 
-The old `SidebarWebviewProvider` (full list in the sidebar) was removed from the extension activation. The code still exists in `src/ui/sidebarWebviewProvider.ts` and `src/ui/sidebarHtml.ts` as a reference.
+The old `SidebarWebviewProvider` (full list in the sidebar) was removed from the extension activation. Its files, `src/ui/sidebarWebviewProvider.ts` and `src/ui/sidebarHtml.ts`, were kept as a reference at the time and have since been deleted.
 
 ### Collections sidebar (`src/ui/collectionsTreeDataProvider.ts`)
 - Renders a tree with built-in virtual collections: **My Library** (all papers), **Recently Read** (reading/done status), **Unfiled Items** (all papers until collection membership is implemented)

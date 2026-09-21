@@ -1,5 +1,10 @@
 # Plan: Central Library Outside the Workspace
 
+> **Historical document.** It records a plan written before the central library was implemented and is kept for context.
+> File paths and type names below refer to the layout at that time and have since moved.
+> For the current structure see [`reference/modules.md`](../reference/modules.md) and
+> [`reference/directories.md`](../reference/directories.md).
+
 ## TL;DR
 
 Implement a configurable central library mode set up on first use, persisted globally, so that LabShelf works with or without a folder open in VS Code. All papers are imported into a single user-chosen directory (e.g. `~/Research/LabShelfLibrary`) instead of depending on the current workspace.
@@ -13,11 +18,11 @@ Implement a configurable central library mode set up on first use, persisted glo
 
 ## Current State (Baseline)
 
-1. The extension requires `workspaceFolder` to activate: [src/extension.ts](src/extension.ts#L23) and [src/extension.ts](src/extension.ts#L26).
-2. Data paths depend on the workspace root via `WorkspacePaths`: [src/storage/workspacePaths.ts](src/storage/workspacePaths.ts#L8).
-3. Paper import writes to `papers/<id>` inside the workspace: [src/core/paperService.ts](src/core/paperService.ts#L29).
-4. SQLite index uses `.research/index.sqlite` in the workspace folder: [src/storage/workspacePaths.ts](src/storage/workspacePaths.ts#L24).
-5. UI and commands are already decoupled from the physical path and consume `PaperService`, which makes the change easier: [src/commands/registerCommands.ts](src/commands/registerCommands.ts#L18), [src/ui/listWebviewPanel.ts](src/ui/listWebviewPanel.ts#L11), [src/ui/collectionsTreeDataProvider.ts](src/ui/collectionsTreeDataProvider.ts#L20).
+1. The extension requires `workspaceFolder` to activate: `src/extension.ts` and `src/extension.ts`.
+2. Data paths depend on the workspace root via `WorkspacePaths`: `src/storage/workspacePaths.ts`.
+3. Paper import writes to `papers/<id>` inside the workspace: `src/core/paperService.ts`.
+4. SQLite index uses `.research/index.sqlite` in the workspace folder: `src/storage/workspacePaths.ts`.
+5. UI and commands are already decoupled from the physical path and consume `PaperService`, which makes the change easier: `src/commands/registerCommands.ts`, `src/ui/listWebviewPanel.ts`, `src/ui/collectionsTreeDataProvider.ts`.
 
 ## Expected Feature Outcome
 
@@ -50,10 +55,10 @@ Suggested new file:
 - Option B: keep `WorkspacePaths` and remove the dependency on `WorkspaceFolder`, accepting an arbitrary root URI.
 
 Direct impact:
-- [src/storage/workspacePaths.ts](src/storage/workspacePaths.ts)
-- [src/core/paperService.ts](src/core/paperService.ts#L20)
-- [src/core/logger.ts](src/core/logger.ts)
-- [src/extension.ts](src/extension.ts#L22)
+- `src/storage/workspacePaths.ts`
+- `src/core/paperService.ts`
+- `src/core/logger.ts`
+- `src/extension.ts`
 
 ### 3) Activation without a required workspace
 
@@ -63,7 +68,7 @@ Direct impact:
   2. If absent, initialize minimal state and trigger setup on the first write command (or immediate setup with confirmation).
 
 Direct impact:
-- [src/extension.ts](src/extension.ts)
+- `src/extension.ts`
 
 ### 4) Library guard for mutable commands
 
@@ -71,7 +76,7 @@ Direct impact:
 - Read commands (`openPaper`, `searchLibrary`) must also check index availability.
 
 Direct impact:
-- [src/commands/registerCommands.ts](src/commands/registerCommands.ts)
+- `src/commands/registerCommands.ts`
 
 ### 5) Configuration persistence
 
@@ -88,27 +93,27 @@ Criteria:
 
 ### Entry point and service composition
 
-- [src/extension.ts](src/extension.ts)
+- `src/extension.ts`
   1. `activate(context)`: currently requires workspace; must resolve central library instead.
   2. `initializeDatabase(indexPath, fileSystemService)`: unchanged, but `indexPath` will come from the central library.
 
 ### Paths and storage
 
-- [src/storage/workspacePaths.ts](src/storage/workspacePaths.ts)
+- `src/storage/workspacePaths.ts`
   1. `researchRoot()`
   2. `papersRoot()`
   3. `logsRoot()`
   4. `indexPath()`
   5. `appLogPath()`: all must stop depending on `WorkspaceFolder`.
 
-- [src/storage/fileSystemService.ts](src/storage/fileSystemService.ts)
+- `src/storage/fileSystemService.ts`
   1. `ensureDirectory(uri)`
   2. `writeText(uri, content)`
   3. `readText(uri)`: already supports arbitrary URIs; no structural change expected.
 
 ### Import core
 
-- [src/core/paperService.ts](src/core/paperService.ts)
+- `src/core/paperService.ts`
   1. `addPaperFromUri(sourceUri)` uses `paths.papersRoot()`.
   2. `addPapersFromUris(uris)` and recursive expansion remain valid.
   3. `deletePaper(paperId, deleteFiles)` maintains physical removal in the central library.
@@ -116,27 +121,27 @@ Criteria:
 
 ### Database and logging
 
-- [src/db/sqliteResearchDatabase.ts](src/db/sqliteResearchDatabase.ts)
+- `src/db/sqliteResearchDatabase.ts`
   1. `initialize()` ensures the database directory is created.
   2. `upsertPaper`, `listPapers`, `deletePaper`, `appendLog` — no functional change.
 
-- [src/core/logger.ts](src/core/logger.ts): writes logs to `app.log`; must receive paths from the new central root.
+- `src/core/logger.ts`: writes logs to `app.log`; must receive paths from the new central root.
 
 ### UI and commands
 
-- [src/commands/registerCommands.ts](src/commands/registerCommands.ts)
+- `src/commands/registerCommands.ts`
   1. `registerCommands(...)`: add library guard/setup before storage/db-dependent operations.
 
-- [src/ui/collectionsTreeDataProvider.ts](src/ui/collectionsTreeDataProvider.ts): flow unchanged, but must show a friendly error if the library is unavailable.
+- `src/ui/collectionsTreeDataProvider.ts`: flow unchanged, but must show a friendly error if the library is unavailable.
 
-- [src/ui/listWebviewPanel.ts](src/ui/listWebviewPanel.ts): actions (`addPaper`, `dropPapers`, `openPdf`) now depend on the same guard.
+- `src/ui/listWebviewPanel.ts`: actions (`addPaper`, `dropPapers`, `openPdf`) now depend on the same guard.
 
 ### Affected specs
 
-- [documents/specs/core-library.spec.yaml](documents/specs/core-library.spec.yaml)
-- [documents/specs/sidebar.spec.yaml](documents/specs/sidebar.spec.yaml)
-- [documents/specs/commands.spec.yaml](documents/specs/commands.spec.yaml)
-- [documents/specs/database.spec.yaml](documents/specs/database.spec.yaml)
+- `documents/specs/core-library.spec.yaml`
+- `documents/specs/sidebar.spec.yaml`
+- `documents/specs/commands.spec.yaml`
+- `documents/specs/database.spec.yaml`
 
 Minimum spec updates:
 1. `architecture.inputs` without workspace requirement.
@@ -146,33 +151,33 @@ Minimum spec updates:
 
 ### Related existing tests
 
-- [__tests__/core/paperService.test.ts](__tests__/core/paperService.test.ts)
-- [__tests__/commands/registerCommands.test.ts](__tests__/commands/registerCommands.test.ts)
-- [__tests__/storage/fileSystemService.test.ts](__tests__/storage/fileSystemService.test.ts)
-- [__tests__/db/database.test.ts](__tests__/db/database.test.ts)
+- `__tests__/core/paperService.test.ts`
+- `__tests__/commands/registerCommands.test.ts`
+- `__tests__/storage/fileSystemService.test.ts`
+- `__tests__/db/database.test.ts`
 
 Important note: there are signs of drift between old tests and current APIs (e.g. `registerCommands`, `FileSystemService`, `SqliteResearchDatabase` signatures). The delivery must include incremental test alignment by layer to avoid false coverage.
 
 ## Directories Involved
 
 Source code:
-- [src/core](src/core)
-- [src/storage](src/storage)
-- [src/db](src/db)
-- [src/commands](src/commands)
-- [src/ui](src/ui)
+- `src/core`
+- `src/storage`
+- `src/db`
+- `src/commands`
+- `src/ui`
 
 Specs:
-- [documents/specs](documents/specs)
+- `documents/specs`
 
 Tests:
-- [__tests__/core](__tests__/core)
-- [__tests__/commands](__tests__/commands)
-- [__tests__/storage](__tests__/storage)
-- [__tests__/db](__tests__/db)
+- `__tests__/core`
+- `__tests__/commands`
+- `__tests__/storage`
+- `__tests__/db`
 
 Planning:
-- [documents/plans](documents/plans)
+- `documents/plans`
 
 ## Implementation Plan (Phases)
 

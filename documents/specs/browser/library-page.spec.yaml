@@ -105,11 +105,11 @@ ui:
                 action labels bracketed via ::before/::after content "[ " / " ]"
 
   components:
-    - sidebar tree row: "▾/▸ <FOLDER NAME> [hover: + ✎ ×]"
-    - paper list row: "TITLE / authors · CITE KEY · YEAR · FOLDER · [STATUS PILL]"
-    - detail card: title + cite + status pills + metadata grid (key/value) + actions stack
-    - breadcrumb crumbs: "LIBRARY › FOO › BAR" (each crumb selects that folder)
-    - footer status pill: "• DRIVE · SYNCED HH:MM:SS" or "▶ SYNCING" or "SYNC ERR · <msg>"
+    - 'sidebar tree row: "▾/▸ <FOLDER NAME> [hover: + ✎ ×]"'
+    - 'paper list row: "TITLE / authors · CITE KEY · YEAR · FOLDER · [STATUS PILL]"'
+    - 'detail card: title + cite + status pills + metadata grid (key/value) + actions stack'
+    - 'breadcrumb crumbs: "LIBRARY › FOO › BAR" (each crumb selects that folder)'
+    - 'footer status pill: "• DRIVE · SYNCED HH:MM:SS" or "▶ SYNCING" or "SYNC ERR · <msg>"'
 
 tests:
   unit:

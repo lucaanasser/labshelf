@@ -10,4 +10,7 @@ export interface BatchImportResult {
   success: PaperRecord[];
   failed: Array<{ path: string; error: string }>;
   skipped: string[];
+  // Imported, but no registry confirmed the record — the title and authors are
+  // a best guess and the user should be offered a lookup.
+  needsReview?: PaperRecord[];
 }

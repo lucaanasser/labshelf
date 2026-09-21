@@ -1,5 +1,10 @@
 # PDF Viewer: Problems Found and Solutions Applied
 
+> **Historical document.** It records a PDF viewer investigation from 2026-05-13 and is kept for context.
+> File paths and type names below refer to the layout at that time and have since moved.
+> For the current structure see [`reference/modules.md`](../reference/modules.md) and
+> [`reference/directories.md`](../reference/directories.md).
+
 Date: 2026-05-13  
 Scope: Phases 1, 2, and 3 (basic viewer, annotations, and themes)
 

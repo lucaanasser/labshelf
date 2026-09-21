@@ -1,4 +1,6 @@
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
+import { PDF_VIEWER_CONFIG } from '../../src/pdf-viewer/config';
+import { THEME_PRESETS, presetFor, toPageColors } from '../../src/pdf-viewer/shared/themePresets';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 
@@ -81,55 +83,25 @@ describe('ThemeManager', () => {
     });
   });
 
-  // ── generateThemeCss ────────────────────────────────────────────────────
-  describe('generateThemeCss', () => {
-    it('generates valid CSS for light theme', () => {
-      const css = manager.generateThemeCss('light');
-      expect(css).toContain(':root');
-      expect(css).toContain('--pdf-bg');
-      expect(css).toContain('--pdf-text');
-      expect(css).toContain(':root[data-pdf-theme="light"]');
+  describe('theme presets', () => {
+    it('has exactly one page-colour preset per concrete theme', () => {
+      const concrete = PDF_VIEWER_CONFIG.THEMES.available.filter((t) => t !== 'auto').sort();
+      expect(Object.keys(THEME_PRESETS).sort()).toEqual(concrete);
     });
 
-    it('generates valid CSS for dark theme', () => {
-      const css = manager.generateThemeCss('dark');
-      expect(css).toContain(':root');
-      expect(css).toContain('#1e1e1e');
+    it('maps black-on-white to null so the light theme never recolours figures', () => {
+      expect(toPageColors(THEME_PRESETS.light.bg, THEME_PRESETS.light.text)).toBeNull();
+      expect(toPageColors('#FFFFFF', '#000000')).toBeNull();
+      expect(toPageColors(THEME_PRESETS.dark.bg, THEME_PRESETS.dark.text)).toEqual({
+        background: '#1e1e1e', foreground: '#e8e8e8',
+      });
     });
 
-    it('generates valid CSS for sepia theme', () => {
-      const css = manager.generateThemeCss('sepia');
-      expect(css).toContain('#f4efe4');
-    });
-
-    it('generates valid CSS for high-contrast theme', () => {
-      const css = manager.generateThemeCss('high-contrast');
-      expect(css).toContain('#000000');
-      expect(css).toContain('#ffffff');
-    });
-
-    it('generates selectors for all themes so the webview can switch without rerendering', () => {
-      const css = manager.generateThemeCss('auto');
-      expect(css).toContain(':root[data-pdf-theme="light"]');
-      expect(css).toContain(':root[data-pdf-theme="dark"]');
-      expect(css).toContain(':root[data-pdf-theme="sepia"]');
-      expect(css).toContain(':root[data-pdf-theme="high-contrast"]');
-    });
-
-    it('resolves auto to current VS Code theme when generating CSS', () => {
-      vscode.window.activeColorTheme = { kind: vscode.ColorThemeKind.Light };
-      const css = manager.generateThemeCss('auto');
-      // Should use light theme values
-      expect(css).toContain('#f0f0f0');
-    });
-
-    it('falls back to light for unrecognized theme name', () => {
-      const css = manager.generateThemeCss('unknown');
-      expect(css).toContain('#f0f0f0');
+    it('falls back to light for an unknown theme', () => {
+      expect(presetFor('nope')).toEqual(THEME_PRESETS.light);
     });
   });
 
-  // ── isValidTheme ────────────────────────────────────────────────────────
   describe('isValidTheme', () => {
     it('accepts all valid theme names', () => {
       expect(manager.isValidTheme('auto')).toBe(true);

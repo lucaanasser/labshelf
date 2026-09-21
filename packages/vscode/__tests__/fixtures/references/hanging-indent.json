@@ -1,0 +1,7 @@
+[
+  { "text": "Smith, J. (2020). A study of testing.", "x": 50, "xEnd": 300, "y": 800, "height": 12, "column": 0 },
+  { "text": "Journal of Software Engineering, 12(3), 45-67.", "x": 70, "xEnd": 350, "y": 786, "height": 12, "column": 0 },
+  { "text": "Doe, A., & Lee, K. (2019). Verification techniques", "x": 50, "xEnd": 340, "y": 760, "height": 12, "column": 0 },
+  { "text": "for large-scale systems. Proceedings of ICSE.", "x": 70, "xEnd": 340, "y": 746, "height": 12, "column": 0 },
+  { "text": "Nguyen, T. (2021). A concise note on formal methods.", "x": 50, "xEnd": 360, "y": 720, "height": 12, "column": 0 }
+]
