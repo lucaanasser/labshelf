@@ -3,9 +3,6 @@
  * and OAuth client as the VS Code extension (sync/auth/googleDriveAuth.ts there), with the tokens in the terminal's
  * own TokenStore. The browser is opened for the user; the URL is also handed to the caller to print, for SSH sessions
  * or when no browser can be launched.
- *
- * @depends node:http, node:crypto, sync/tokenStore, sync/googleDriveCredentials
- * @dependents sync/syncService, cli auth
  */
 import * as crypto from "node:crypto";
 import * as http from "node:http";
@@ -67,6 +64,7 @@ export class CliDriveAuth implements IAuthProvider {
     private readonly client: OAuthClient | undefined,
     private readonly store: TokenStore,
     private readonly fetchImpl: typeof fetch = fetch,
+    private readonly interactiveLogin?: LoginOptions,
   ) {}
 
   /** @returns where the tokens are kept */
@@ -101,9 +99,12 @@ export class CliDriveAuth implements IAuthProvider {
     return this.tokens.access_token;
   }
 
-  /** IAuthProvider.authenticate: interactive login with default options is not possible here. */
+  /** IAuthProvider.authenticate: keeps existing tokens, otherwise runs the login flow with the options given at construction. */
   async authenticate(): Promise<void> {
-    throw new Error("Use `labshelf auth login` (or :login in the TUI) to sign in.");
+    await this.load();
+    if (this.tokens) { return; }
+    if (!this.interactiveLogin) { throw new Error("Use `labshelf auth login` (or :login in the TUI) to sign in."); }
+    await this.login(this.interactiveLogin);
   }
 
   /**

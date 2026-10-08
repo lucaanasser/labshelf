@@ -107,8 +107,35 @@ describe("CliDriveAuth: state", () => {
     expect(store.loads).toBe(1);
   });
 
-  it("authenticate() refuses to run an interactive login by itself", async () => {
+  it("authenticate() without login options tells the user how to sign in", async () => {
     await expect(new CliDriveAuth(CLIENT, new MemoryTokenStore()).authenticate()).rejects.toThrow(/labshelf auth login/);
+  });
+
+  it("authenticate() keeps stored tokens without opening a browser", async () => {
+    const open = jest.fn();
+    const auth = new CliDriveAuth(CLIENT, new MemoryTokenStore({ ...FRESH }), undefined, { openBrowser: open });
+    await auth.authenticate();
+    expect(open).not.toHaveBeenCalled();
+    expect(auth.isAuthenticated()).toBe(true);
+  });
+});
+
+describe("CliDriveAuth.authenticate login flow", () => {
+  it("runs the login flow with the options given at construction when not signed in", async () => {
+    const store = new MemoryTokenStore();
+    const fn = (async () => new Response(JSON.stringify({ access_token: "a", refresh_token: "r", expires_in: 3600 }))) as typeof fetch;
+    const urls: string[] = [];
+    const auth = new CliDriveAuth(CLIENT, store, fn, {
+      openBrowser: (url) => {
+        urls.push(url);
+        const u = new URL(url);
+        void fetch(`${u.searchParams.get("redirect_uri")}/?code=abc&state=${u.searchParams.get("state")}`);
+      },
+    });
+    await auth.authenticate();
+    expect(urls).toHaveLength(1);
+    expect(auth.isAuthenticated()).toBe(true);
+    expect(store.saves).toHaveLength(1);
   });
 });
 

@@ -7,7 +7,6 @@
  * @dependents main, cli/commands, ui/app
  */
 import * as path from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { BibTeXService, PdfImportParser } from "@labshelf/core";
 
@@ -20,7 +19,7 @@ import { TerminalPaperService } from "../library/paperService.js";
 import { SidecarReader } from "../library/sidecars.js";
 import { cacheDir } from "../platform/dirs.js";
 import { NodeFileSystem } from "../platform/nodeFileSystem.js";
-import { moveToTrash } from "../platform/system.js";
+import { moveToTrash, openExternal } from "../platform/system.js";
 import { defaultRenderer, ThumbnailService } from "../preview/thumbnails.js";
 import { CliDriveAuth, resolveOAuthClient } from "../sync/driveAuth.js";
 import { SyncService } from "../sync/syncService.js";
@@ -50,7 +49,7 @@ export interface OpenOptions {
   /** Watch the library for changes made by other apps (the TUI does; one-shot CLI commands do not). */
   watch?: boolean;
   /** dist/thumbnailWorker.mjs, resolved by main from the bundle's location. */
-  thumbnailWorkerUrl?: URL;
+  thumbnailWorkerUrl: URL;
 }
 
 /**
@@ -66,7 +65,10 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const store = new LibraryStore(paths);
   await store.reload();
 
-  const auth = new CliDriveAuth(resolveOAuthClient(env), createTokenStore(env));
+  const auth = new CliDriveAuth(resolveOAuthClient(env), createTokenStore(env), fetch, {
+    openBrowser: (url) => openExternal(url),
+    onUrl: (url) => void logger.log("INFO", "sync", "Google sign-in started", { url }),
+  });
   const sync = new SyncService({ paths, auth, store, logger });
   await sync.init();
 
@@ -88,7 +90,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   });
 
   const sidecars = new SidecarReader(paths);
-  const workerUrl = options.thumbnailWorkerUrl ?? pathToFileURL(path.join(bundleDir(), "thumbnailWorker.mjs"));
+  const workerUrl = options.thumbnailWorkerUrl;
   const renderer = defaultRenderer(path.join(cacheDir(env), "tmp"), workerUrl);
   const thumbnails = new ThumbnailService(cacheDir(env), renderer.render, logger);
   const imageProtocol = detectImageProtocol(env, env["LABSHELF_IMAGES"] ?? options.config.terminal?.images ?? "auto");
@@ -131,9 +133,4 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
       if (pending) { await pending.catch(() => undefined); }
     },
   };
-}
-
-// Directory of the running bundle; only used when main did not pass the worker URL (tests never render).
-function bundleDir(): string {
-  return typeof __dirname === "string" ? __dirname : process.cwd();
 }
