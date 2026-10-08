@@ -121,15 +121,3 @@ export async function runLibrarySetupWizard(
     return undefined;
   }
 }
-
-/**
- * Re-runs the setup wizard to let the user choose a new library location (used when the stored path is invalid).
- * @usedBy extension.ts (indirectly via storage/index.ts)
- * @returns the new library root URI, or undefined if the user cancelled
- */
-export async function reconfigureLibrary(
-  context: vscode.ExtensionContext,
-  fsService: FileSystemService,
-): Promise<vscode.Uri | undefined> {
-  return runLibrarySetupWizard(context, fsService);
-}

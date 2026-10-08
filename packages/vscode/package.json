@@ -241,31 +241,6 @@
           "type": "tree"
         },
         {
-          "id": "labshelf.writing",
-          "name": "Writing",
-          "type": "tree"
-        },
-        {
-          "id": "labshelf.reading",
-          "name": "Reading",
-          "type": "tree"
-        },
-        {
-          "id": "labshelf.insights",
-          "name": "Insights",
-          "type": "tree"
-        },
-        {
-          "id": "labshelf.assist",
-          "name": "Assist",
-          "type": "tree"
-        },
-        {
-          "id": "labshelf.agents",
-          "name": "Agents",
-          "type": "tree"
-        },
-        {
           "id": "labshelf.settings",
           "name": "Settings",
           "type": "tree"
@@ -275,7 +250,7 @@
     "viewsWelcome": [
       {
         "view": "labshelf.library",
-        "contents": "Loading your library…",
+        "contents": "Loading your library\u2026",
         "when": "!labshelf.libraryLoaded"
       },
       {

@@ -1,8 +1,5 @@
 /**
- * Rebuilds the SQLite cache by scanning metadata.yaml files and data.json sidecars on disk.
- *
- * @depends @labshelf/core, storage/fileSystemService, storage/paths/libraryPaths, storage/data/paperDataStore
- * @dependents extension.ts, storage/data/index.ts, storage/index.ts
+ * Rebuilds the SQLite papers cache by scanning metadata.yaml files on disk.
  */
 import * as vscode from "vscode";
 import YAML from "yaml";
@@ -11,10 +8,9 @@ import type { PaperRecord, IResearchDatabase } from "@labshelf/core";
 import { parseTextLayerInfo } from "@labshelf/core";
 import { FileSystemService } from "../fileSystemService.js";
 import type { ILibraryPaths } from "../paths/libraryPaths.js";
-import { PaperDataStore } from "./paperDataStore.js";
 
 /**
- * Idempotent indexer that walks the library tree and upserts all papers, annotations, and themes into SQLite.
+ * Idempotent indexer that walks the library tree and upserts all papers into SQLite.
  * @usedBy extension.ts
  */
 export class LibraryIndexer {
@@ -22,24 +18,21 @@ export class LibraryIndexer {
     private readonly paths: ILibraryPaths,
     private readonly fsService: FileSystemService,
     private readonly database: IResearchDatabase,
-    private readonly paperDataStore: PaperDataStore,
   ) {}
 
   /**
    * Scans papers/ and .research/papers/ and rebuilds the full SQLite cache via upsert.
    * @usedBy extension.ts
-   * @returns object with counts of indexed papers and annotations
+   * @returns the count of indexed papers
    */
-  async rebuild(): Promise<{ papers: number; annotations: number }> {
+  async rebuild(): Promise<{ papers: number }> {
     const papers = await this.scanPapers();
-    let annotations = 0;
 
     for (const paper of papers) {
       await this.database.upsertPaper(paper);
-      annotations += await this.indexPaperData(paper.id);
     }
 
-    return { papers: papers.length, annotations };
+    return { papers: papers.length };
   }
 
   // Walks papers/** collecting every folder that contains a metadata.yaml.
@@ -102,20 +95,6 @@ export class LibraryIndexer {
       ...(tags.length ? { tags } : {}),
       ...(typeof meta.note === "string" ? { note: meta.note } : {}),
     };
-  }
-
-  // Loads a paper's sidecar and replays its annotations and theme into the cache.
-  private async indexPaperData(paperId: string): Promise<number> {
-    const data = await this.paperDataStore.load(paperId);
-    const existing = await this.database.getAnnotationsByPaper(paperId);
-    for (const annotation of existing) {
-      await this.database.deleteAnnotation(annotation.id);
-    }
-    for (const annotation of data.annotations) {
-      await this.database.upsertAnnotation(annotation);
-    }
-    await this.database.setThemePreference(paperId, data.theme);
-    return data.annotations.length;
   }
 }
 

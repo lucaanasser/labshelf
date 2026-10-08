@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { LibraryIndexer } from '../../src/storage/data/libraryIndexer';
-import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 import { LibraryPaths } from '../../src/storage/paths/libraryPaths';
 import { InMemoryResearchDatabase } from '@labshelf/core';
@@ -34,22 +33,12 @@ const F = vscode.FileType.File;
 const D = vscode.FileType.Directory;
 
 describe('LibraryIndexer', () => {
-  it('rebuilds papers from metadata.yaml and annotations from sidecars', async () => {
+  it('rebuilds papers from metadata.yaml', async () => {
     const root = vscode.Uri.file('/lib');
     const paths = new LibraryPaths(root);
-
-    const sidecar = JSON.stringify({
-      annotations: [
-        { id: 'a1', paperId: 'paper-1', type: 'note', pageNumber: 1, content: 'hi',
-          createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
-      ],
-      theme: 'dark',
-    });
-
     const fs = makeFakeFs({
       files: {
         '/lib/papers/paper-1/metadata.yaml': 'title: First Paper\nstatus: reading\nyear: 2024\n',
-        '/lib/.research/papers/paper-1/data.json': sidecar,
       },
       dirs: {
         '/lib/papers': [['paper-1', D]],
@@ -59,34 +48,20 @@ describe('LibraryIndexer', () => {
 
     const db = new InMemoryResearchDatabase();
     await db.initialize();
-    const store = new PaperDataStore(paths.researchRoot(), fs);
-    const indexer = new LibraryIndexer(paths, fs, db, store);
+    const result = await new LibraryIndexer(paths, fs, db).rebuild();
 
-    const result = await indexer.rebuild();
-
-    expect(result).toEqual({ papers: 1, annotations: 1 });
+    expect(result).toEqual({ papers: 1 });
     const papers = await db.listPapers();
     expect(papers).toHaveLength(1);
     expect(papers[0]!.title).toBe('First Paper');
     expect(papers[0]!.status).toBe('reading');
-    expect(await db.getAnnotationsByPaper('paper-1')).toHaveLength(1);
-    expect(await db.getThemePreference('paper-1')).toBe('dark');
   });
 
   it('is idempotent: rebuilding twice does not duplicate data', async () => {
     const root = vscode.Uri.file('/lib');
     const paths = new LibraryPaths(root);
     const fs = makeFakeFs({
-      files: {
-        '/lib/papers/paper-1/metadata.yaml': 'title: P\n',
-        '/lib/.research/papers/paper-1/data.json': JSON.stringify({
-          annotations: [
-            { id: 'a1', paperId: 'paper-1', type: 'note', pageNumber: 1, content: 'x',
-              createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
-          ],
-          theme: 'auto',
-        }),
-      },
+      files: { '/lib/papers/paper-1/metadata.yaml': 'title: P\n' },
       dirs: {
         '/lib/papers': [['paper-1', D]],
         '/lib/papers/paper-1': [['metadata.yaml', F]],
@@ -95,15 +70,13 @@ describe('LibraryIndexer', () => {
 
     const db = new InMemoryResearchDatabase();
     await db.initialize();
-    const store = new PaperDataStore(paths.researchRoot(), fs);
-    const indexer = new LibraryIndexer(paths, fs, db, store);
+    const indexer = new LibraryIndexer(paths, fs, db);
 
     await indexer.rebuild();
     const second = await indexer.rebuild();
 
-    expect(second).toEqual({ papers: 1, annotations: 1 });
+    expect(second).toEqual({ papers: 1 });
     expect(await db.listPapers()).toHaveLength(1);
-    expect(await db.getAnnotationsByPaper('paper-1')).toHaveLength(1);
   });
 
   it('recurses into nested folders to find paper folders', async () => {
@@ -122,8 +95,7 @@ describe('LibraryIndexer', () => {
 
     const db = new InMemoryResearchDatabase();
     await db.initialize();
-    const store = new PaperDataStore(paths.researchRoot(), fs);
-    const indexer = new LibraryIndexer(paths, fs, db, store);
+    const indexer = new LibraryIndexer(paths, fs, db);
 
     const result = await indexer.rebuild();
     expect(result.papers).toBe(1);
@@ -136,10 +108,9 @@ describe('LibraryIndexer', () => {
     const fs = makeFakeFs({ dirs: { '/lib/papers': [] } });
     const db = new InMemoryResearchDatabase();
     await db.initialize();
-    const store = new PaperDataStore(paths.researchRoot(), fs);
-    const indexer = new LibraryIndexer(paths, fs, db, store);
+    const indexer = new LibraryIndexer(paths, fs, db);
 
-    expect(await indexer.rebuild()).toEqual({ papers: 0, annotations: 0 });
+    expect(await indexer.rebuild()).toEqual({ papers: 0 });
   });
 });
 
@@ -165,7 +136,7 @@ describe('LibraryIndexer — fields that only live in metadata.yaml', () => {
     const db = new InMemoryResearchDatabase();
     await db.initialize();
 
-    await new LibraryIndexer(paths, fs, db, new PaperDataStore(paths.researchRoot(), fs)).rebuild();
+    await new LibraryIndexer(paths, fs, db).rebuild();
     const byId = new Map((await db.listPapers()).map((paper) => [paper.id, paper]));
 
     expect(byId.get('scan')).toMatchObject({
@@ -198,7 +169,7 @@ describe('LibraryIndexer — hasPdf derived from the folder listing', () => {
   ])('sets hasPdf for %s', async (_name, entries, expected) => {
     const { paths, fs, db } = fsWith(entries as Array<[string, number]>);
     await db.initialize();
-    await new LibraryIndexer(paths, fs, db, new PaperDataStore(paths.researchRoot(), fs)).rebuild();
+    await new LibraryIndexer(paths, fs, db).rebuild();
     expect((await db.listPapers())[0]!.hasPdf).toBe(expected);
   });
 
@@ -208,7 +179,7 @@ describe('LibraryIndexer — hasPdf derived from the folder listing', () => {
     (vscode.workspace.fs.stat as jest.Mock).mockClear();
     const readDirectory = fs.readDirectory as unknown as jest.Mock;
     readDirectory.mockClear();
-    await new LibraryIndexer(paths, fs, db, new PaperDataStore(paths.researchRoot(), fs)).rebuild();
+    await new LibraryIndexer(paths, fs, db).rebuild();
     // papers/ and the one paper folder — the PDF presence reuses that listing.
     expect(readDirectory).toHaveBeenCalledTimes(2);
     expect(vscode.workspace.fs.stat).not.toHaveBeenCalled();

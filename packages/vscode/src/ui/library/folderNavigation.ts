@@ -69,11 +69,6 @@ export function parentDir(p: string, sep: string): string {
   return idx <= 0 ? p : p.slice(0, idx);
 }
 
-/** Last path segment of `p`. */
-export function baseName(p: string, sep: string): string {
-  return p.slice(p.lastIndexOf(sep) + 1);
-}
-
 /** Root-first chain of folders from papers/ down to `dirPath`; just the root when `dirPath` is outside it. */
 export function breadcrumbFor(rootDir: string, dirPath: string, sep: string): LibraryNode[] {
   const chain: LibraryNode[] = [rootNode(rootDir)];

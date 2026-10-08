@@ -16,7 +16,7 @@ import type { ExtensionEventBus, PaperRecord } from "@labshelf/core";
 
 /** The slice of the indexer reindexLibrary drives. */
 export interface ReindexableIndexer {
-  rebuild(): Promise<{ papers: number; annotations: number }>;
+  rebuild(): Promise<{ papers: number }>;
 }
 
 /** The slice of the database reindexLibrary reads. */

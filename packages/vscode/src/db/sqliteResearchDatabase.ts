@@ -1,5 +1,5 @@
 /**
- * SQLite-backed implementation of IResearchDatabase that persists papers, annotations, logs, and theme preferences.
+ * SQLite-backed implementation of IResearchDatabase that persists papers and logs.
  *
  * @depends @labshelf/core, storage/fileSystemService
  * @dependents extension.ts
@@ -8,60 +8,10 @@ import * as path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import * as vscode from "vscode";
 
-import type {
-  LogEntry,
-  PaperRecord,
-  Annotation,
-  AnnotationColor,
-  AnnotationType,
-  PdfTheme,
-  IResearchDatabase,
-} from "@labshelf/core";
+import type { LogEntry, PaperRecord, IResearchDatabase } from "@labshelf/core";
 import { parseTextLayerInfo } from "@labshelf/core";
 import { FileSystemService } from "../storage/fileSystemService.js";
 import { ensureAiSchema } from "./ai/aiSchema.js";
-
-type AnnotationRow = {
-  id: string;
-  paperId: string;
-  type: string;
-  pageNumber: number;
-  content: string;
-  color: string | null;
-  position: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-// Converts a raw SQLite annotation row into a typed Annotation, safely parsing the JSON position field.
-function rowToAnnotation(row: AnnotationRow): Annotation {
-  let position: Annotation['position'] | undefined;
-  if (row.position) {
-    try {
-      const parsed = JSON.parse(row.position) as unknown;
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        const p = parsed as Record<string, unknown>;
-        if (typeof p.x === 'number' && typeof p.y === 'number' &&
-            typeof p.width === 'number' && typeof p.height === 'number') {
-          position = { x: p.x, y: p.y, width: p.width, height: p.height };
-        }
-      }
-    } catch {
-      // ignore malformed position
-    }
-  }
-  return {
-    id: row.id,
-    paperId: row.paperId,
-    type: row.type as AnnotationType,
-    pageNumber: row.pageNumber,
-    content: row.content,
-    ...(row.color ? { color: row.color as AnnotationColor } : {}),
-    ...(position ? { position } : {}),
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
 
 type PaperRow = {
   id: string;
@@ -90,7 +40,7 @@ type PaperRow = {
 };
 
 /**
- * Concrete IResearchDatabase backed by a WAL-mode SQLite file; applies additive schema migrations on initialize.
+ * Concrete IResearchDatabase backed by a WAL-mode SQLite file; creates its schema on initialize.
  * @usedBy extension.ts (via createSqliteResearchDatabase)
  */
 export class SqliteResearchDatabase implements IResearchDatabase {
@@ -114,7 +64,24 @@ export class SqliteResearchDatabase implements IResearchDatabase {
         path TEXT NOT NULL,
         citekey TEXT NOT NULL,
         status TEXT NOT NULL,
-        summary TEXT
+        summary TEXT,
+        keywords TEXT,
+        journal TEXT,
+        publisher TEXT,
+        volume TEXT,
+        issue TEXT,
+        pages TEXT,
+        doi TEXT,
+        url TEXT,
+        issn TEXT,
+        language TEXT,
+        -- JSON-encoded TextLayerInfo.
+        text_layer TEXT,
+        -- 1/0/NULL honest-attachment flag (see PaperRow.has_pdf).
+        has_pdf INTEGER,
+        -- The user's labels (JSON array) and free-text note, mirrored from metadata.yaml.
+        tags TEXT,
+        note TEXT
       );
 
       CREATE TABLE IF NOT EXISTS logs (
@@ -128,9 +95,6 @@ export class SqliteResearchDatabase implements IResearchDatabase {
       );
     `);
 
-    this.ensureColumns();
-    this.ensureAnnotationsTable();
-    this.ensureThemePreferencesTable();
     ensureAiSchema(this.connection);
   }
 
@@ -138,7 +102,7 @@ export class SqliteResearchDatabase implements IResearchDatabase {
    * Exposes the underlying DatabaseSync handle to AI-side stores.
    *
    * The AI subsystem reads and writes its own tables (chunk_embeddings,
-   * paper_metadata_ai, reading_events, s2_cache) declared by ensureAiSchema.
+   * paper_metadata_ai, reading_events) declared by ensureAiSchema.
    * Sharing the connection avoids opening a second file handle on the same
    * SQLite database.
    *
@@ -246,63 +210,6 @@ export class SqliteResearchDatabase implements IResearchDatabase {
     this.requireConnection().prepare(`DELETE FROM papers WHERE id = ?`).run(id);
   }
 
-  async createAnnotation(data: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>): Promise<Annotation> {
-    const now = new Date().toISOString();
-    const id = `ann-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    this.requireConnection().prepare(
-      `INSERT INTO annotations (id, paperId, type, pageNumber, content, color, position, createdAt, updatedAt)
-       VALUES (@id, @paperId, @type, @pageNumber, @content, @color, @position, @createdAt, @updatedAt)`,
-    ).run({ id, paperId: data.paperId, type: data.type, pageNumber: data.pageNumber, content: data.content,
-      color: data.color ?? null, position: data.position ? JSON.stringify(data.position) : null, createdAt: now, updatedAt: now });
-    return { ...data, id, createdAt: now, updatedAt: now };
-  }
-
-  async upsertAnnotation(annotation: Annotation): Promise<void> {
-    this.requireConnection().prepare(
-      `INSERT INTO annotations (id, paperId, type, pageNumber, content, color, position, createdAt, updatedAt)
-       VALUES (@id, @paperId, @type, @pageNumber, @content, @color, @position, @createdAt, @updatedAt)
-       ON CONFLICT(id) DO UPDATE SET paperId=excluded.paperId, type=excluded.type,
-         pageNumber=excluded.pageNumber, content=excluded.content, color=excluded.color,
-         position=excluded.position, createdAt=excluded.createdAt, updatedAt=excluded.updatedAt`,
-    ).run({ id: annotation.id, paperId: annotation.paperId, type: annotation.type,
-      pageNumber: annotation.pageNumber, content: annotation.content, color: annotation.color ?? null,
-      position: annotation.position ? JSON.stringify(annotation.position) : null,
-      createdAt: annotation.createdAt, updatedAt: annotation.updatedAt });
-  }
-
-  async updateAnnotation(id: string, content: string): Promise<Annotation | null> {
-    const now = new Date().toISOString();
-    this.requireConnection().prepare(`UPDATE annotations SET content = @content, updatedAt = @updatedAt WHERE id = @id`).run({ id, content, updatedAt: now });
-    return this.findAnnotation(id);
-  }
-
-  async deleteAnnotation(id: string): Promise<void> {
-    this.requireConnection().prepare(`DELETE FROM annotations WHERE id = ?`).run(id);
-  }
-
-  async getAnnotationsByPaper(paperId: string): Promise<Annotation[]> {
-    const rows = this.requireConnection().prepare(`SELECT * FROM annotations WHERE paperId = ? ORDER BY pageNumber ASC, createdAt ASC`).all(paperId) as AnnotationRow[];
-    return rows.map(rowToAnnotation);
-  }
-
-  async getAnnotationsByPage(paperId: string, pageNumber: number): Promise<Annotation[]> {
-    const rows = this.requireConnection().prepare(`SELECT * FROM annotations WHERE paperId = @paperId AND pageNumber = @pageNumber ORDER BY createdAt ASC`).all({ paperId, pageNumber }) as AnnotationRow[];
-    return rows.map(rowToAnnotation);
-  }
-
-  async getThemePreference(paperId: string): Promise<PdfTheme> {
-    const row = this.requireConnection().prepare(`SELECT theme FROM paperThemePreferences WHERE paperId = ?`).get(paperId) as { theme: string } | undefined;
-    return (row?.theme as PdfTheme) ?? 'auto';
-  }
-
-  async setThemePreference(paperId: string, theme: PdfTheme): Promise<void> {
-    const now = new Date().toISOString();
-    this.requireConnection().prepare(
-      `INSERT INTO paperThemePreferences (paperId, theme, updatedAt) VALUES (@paperId, @theme, @updatedAt)
-       ON CONFLICT(paperId) DO UPDATE SET theme = excluded.theme, updatedAt = excluded.updatedAt`,
-    ).run({ paperId, theme, updatedAt: now });
-  }
-
   async appendLog(entry: LogEntry): Promise<void> {
     this.requireConnection().prepare(`INSERT INTO logs (timestamp, level, module, message, stack, context) VALUES (@timestamp, @level, @module, @message, @stack, @context)`).run({
       timestamp: entry.timestamp, level: entry.level, module: entry.module, message: entry.message,
@@ -314,76 +221,6 @@ export class SqliteResearchDatabase implements IResearchDatabase {
   private requireConnection(): DatabaseSync {
     if (!this.connection) { throw new Error("SQLite database has not been initialized"); }
     return this.connection;
-  }
-
-  // Adds any missing bibliographic columns to the papers table (additive migration).
-  private ensureColumns(): void {
-    const db = this.requireConnection();
-    const existing = new Set(
-      (db.prepare(`PRAGMA table_info(papers)`).all() as Array<{ name: string }>).map((c) => c.name),
-    );
-
-    const newColumns: Array<[string, string]> = [
-      ["authors", "TEXT"],
-      ["keywords", "TEXT"],
-      ["journal", "TEXT"],
-      ["publisher", "TEXT"],
-      ["volume", "TEXT"],
-      ["issue", "TEXT"],
-      ["pages", "TEXT"],
-      ["doi", "TEXT"],
-      ["url", "TEXT"],
-      ["issn", "TEXT"],
-      ["language", "TEXT"],
-      // JSON-encoded TextLayerInfo.
-      ["text_layer", "TEXT"],
-      // 1/0/NULL honest-attachment flag (see PaperRow.has_pdf).
-      ["has_pdf", "INTEGER"],
-      // The user's labels (JSON array) and free-text note, mirrored from metadata.yaml.
-      ["tags", "TEXT"],
-      ["note", "TEXT"],
-    ];
-
-    for (const [col, type] of newColumns) {
-      if (!existing.has(col)) {
-        db.prepare(`ALTER TABLE papers ADD COLUMN ${col} ${type}`).run();
-      }
-    }
-  }
-
-  // Fetches a single annotation row by id and converts it to an Annotation, or returns null.
-  private findAnnotation(id: string): Annotation | null {
-    const row = this.requireConnection().prepare(`SELECT * FROM annotations WHERE id = ?`).get(id) as AnnotationRow | undefined;
-    return row ? rowToAnnotation(row) : null;
-  }
-  // Creates the annotations table and its paperId/pageNumber index if they do not exist.
-  private ensureAnnotationsTable(): void {
-    this.requireConnection().exec(`
-      CREATE TABLE IF NOT EXISTS annotations (
-        id TEXT PRIMARY KEY,
-        paperId TEXT NOT NULL,
-        type TEXT NOT NULL CHECK (type IN ('highlight', 'note', 'comment', 'tag')),
-        pageNumber INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        color TEXT CHECK (color IN ('yellow', 'green', 'blue', 'red', 'pink') OR color IS NULL),
-        position TEXT,
-        createdAt TEXT NOT NULL,
-        updatedAt TEXT NOT NULL,
-        FOREIGN KEY (paperId) REFERENCES papers(id) ON DELETE CASCADE
-      );
-      CREATE INDEX IF NOT EXISTS idx_annotations_paperId_page ON annotations(paperId, pageNumber);
-    `);
-  }
-  // Creates the paperThemePreferences table if it does not exist.
-  private ensureThemePreferencesTable(): void {
-    this.requireConnection().exec(`
-      CREATE TABLE IF NOT EXISTS paperThemePreferences (
-        paperId TEXT PRIMARY KEY,
-        theme TEXT NOT NULL CHECK (theme IN ('auto', 'light', 'dark', 'sepia', 'high-contrast')),
-        updatedAt TEXT NOT NULL,
-        FOREIGN KEY (paperId) REFERENCES papers(id) ON DELETE CASCADE
-      );
-    `);
   }
 
   // Deserializes the JSON-encoded text_layer column, dropping values it cannot trust.

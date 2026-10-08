@@ -1,7 +1,6 @@
 /**
  * Integration tests for the papers table of SqliteResearchDatabase on a real
- * SQLite file: the text-layer verdict round-trips, an index created by an
- * older version gains the column on start, and a value it cannot trust is
+ * SQLite file: the text-layer verdict round-trips, and a value it cannot trust is
  * dropped instead of breaking the list.
  */
 import * as fs from 'node:fs';
@@ -56,21 +55,6 @@ describe('SqliteResearchDatabase — papers', () => {
     expect((await database.listPapers())[0]).not.toHaveProperty('textLayer');
   });
 
-  it('adds the column to an index created before text layers existed', async () => {
-    const file = path.join(dir, 'old.sqlite');
-    const old = new DatabaseSync(file);
-    old.exec(`CREATE TABLE papers (id TEXT PRIMARY KEY, title TEXT NOT NULL, authors TEXT, year INTEGER,
-      path TEXT NOT NULL, citekey TEXT NOT NULL, status TEXT NOT NULL, summary TEXT)`);
-    old.prepare(`INSERT INTO papers (id, title, path, citekey, status) VALUES ('old1', 'Old', '/lib/papers/old1', 'old1', 'done')`).run();
-    old.close();
-
-    database = await open(file);
-
-    expect(await database.listPapers()).toEqual([expect.objectContaining({ id: 'old1', status: 'done' })]);
-    await database.upsertPaper(paper({ id: 'old1', textLayer: { state: 'missing', checkedAt: 'x' } }));
-    expect((await database.listPapers())[0]!.textLayer).toEqual({ state: 'missing', checkedAt: 'x' });
-  });
-
   it('round-trips hasPdf true and false', async () => {
     database = await open(path.join(dir, 'index.sqlite'));
     await database.upsertPaper(paper({ id: 'yes', hasPdf: true }));
@@ -94,20 +78,6 @@ describe('SqliteResearchDatabase — papers', () => {
     expect((await database.listPapers())[0]!.hasPdf).toBe(true);
     await database.upsertPaper(paper());
     expect((await database.listPapers())[0]).not.toHaveProperty('hasPdf');
-  });
-
-  it('adds has_pdf to an index created before the column existed', async () => {
-    const file = path.join(dir, 'old-haspdf.sqlite');
-    const old = new DatabaseSync(file);
-    old.exec(`CREATE TABLE papers (id TEXT PRIMARY KEY, title TEXT NOT NULL, authors TEXT, year INTEGER,
-      path TEXT NOT NULL, citekey TEXT NOT NULL, status TEXT NOT NULL, summary TEXT)`);
-    old.prepare(`INSERT INTO papers (id, title, path, citekey, status) VALUES ('old1', 'Old', '/lib/papers/old1', 'old1', 'done')`).run();
-    old.close();
-
-    database = await open(file);
-    expect((await database.listPapers())[0]).not.toHaveProperty('hasPdf');
-    await database.upsertPaper(paper({ id: 'old1', hasPdf: false }));
-    expect((await database.listPapers())[0]!.hasPdf).toBe(false);
   });
 
   it('drops a stored verdict it cannot trust', async () => {

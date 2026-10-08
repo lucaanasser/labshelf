@@ -13,7 +13,7 @@ const rec = (over: Partial<PaperRecord>): PaperRecord => ({
 
 // A stand-in indexer whose rebuild() upserts the state the disk now holds.
 function indexerThatWrites(db: InMemoryResearchDatabase, next: PaperRecord[]) {
-  return { rebuild: jest.fn(async () => { for (const p of next) { await db.upsertPaper(p); } return { papers: next.length, annotations: 0 }; }) };
+  return { rebuild: jest.fn(async () => { for (const p of next) { await db.upsertPaper(p); } return { papers: next.length }; }) };
 }
 
 async function freshDb(seed: PaperRecord[] = []): Promise<InMemoryResearchDatabase> {
