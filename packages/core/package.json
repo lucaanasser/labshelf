@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "scripts": {
     "typecheck": "tsc --noEmit -p ./",
+    "lint": "node ../../scripts/run-eslint.mjs && pnpm run lint:runtime",
+    "lint:runtime": "node ../../scripts/check-runtime-tsconfigs.mjs",
     "test": "jest"
   },
   "dependencies": {

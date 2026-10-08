@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc -p ./",
     "typecheck": "tsc --noEmit -p ./",
+    "lint": "node ../../scripts/run-eslint.mjs",
     "test": "echo \"No tests yet\""
   },
   "dependencies": {

@@ -9,6 +9,7 @@
     "dev:firefox": "node build/build.mjs --target=firefox && web-ext run --source-dir=dist/firefox",
     "package:firefox": "node build/build.mjs --target=firefox && web-ext build --source-dir=dist/firefox --artifacts-dir=dist/xpi --filename labshelf-{version}.xpi --overwrite-dest",
     "typecheck": "tsc --noEmit -p ./",
+    "lint": "node ../../scripts/run-eslint.mjs",
     "lint:manifest": "web-ext lint --source-dir=dist/firefox --self-hosted",
     "test": "jest",
     "test:coverage": "jest --coverage"

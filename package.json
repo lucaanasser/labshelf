@@ -6,6 +6,17 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "dev:vscode": "pnpm --filter @labshelf/vscode dev",
-    "build:vscode": "pnpm --filter @labshelf/vscode build"
+    "build:vscode": "pnpm --filter @labshelf/vscode build",
+    "lint": "pnpm -r lint && pnpm run lint:deps && pnpm run lint:unused && pnpm run lint:dirs",
+    "lint:deps": "depcruise packages/*/src --config .dependency-cruiser.cjs --ignore-known",
+    "lint:unused": "node scripts/summarize-knip.mjs",
+    "lint:dirs": "node scripts/check-directory-size.mjs",
+    "lint:deps:baseline": "depcruise-baseline packages/*/src --config .dependency-cruiser.cjs"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "^18.5.0",
+    "eslint": "^10.12.0",
+    "knip": "^6.40.0",
+    "typescript-eslint": "^8.71.1"
   }
 }

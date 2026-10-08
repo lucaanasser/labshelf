@@ -5,6 +5,7 @@
   "description": "The LabShelf PDF reader shared by the VS Code and browser extensions: DOM-free protocol and helpers and the reader UI, consumed as TypeScript source and bundled by each host.",
   "scripts": {
     "typecheck": "tsc --noEmit -p ./ && tsc --noEmit -p src/webview/tsconfig.json",
+    "lint": "node ../../scripts/run-eslint.mjs",
     "test": "jest",
     "test:coverage": "jest --coverage"
   },

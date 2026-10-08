@@ -1,0 +1,329 @@
+{
+  "packages/browser/src/background/index.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/browser/src/capture/resolvers/openalexResolver.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/browser/src/capture/resolvers/pmcResolver.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/browser/src/library-page/app.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/browser/src/library-page/controllers/paperController.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/browser/src/library-page/views/listHeaderView.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/browser/src/library-page/views/paperListView.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/browser/src/library-page/views/paperRow.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/browser/src/popup/index.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/browser/src/reader/browserReaderHost.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/browser/src/reader/index.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/src/io/bibtex/bibtexService.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/src/io/pdf/extractor.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/core/src/io/pdf/identifiers.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/src/io/pdf/localSignals.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/src/io/pdf/parser.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/src/io/pdf/registries.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/core/src/io/pdf/resolver.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/core/src/sync/core/treeScan.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/reader/src/webview/logic/captions.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/reader/src/webview/logic/referenceList.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/reader/src/webview/reader.ts": {
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "packages/reader/src/webview/ui/hoverPreview.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/reader/src/webview/ui/pdfLoader.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/reader/src/webview/ui/toolbar.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/reader/src/webview/ui/viewerSetup.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/terminal/__tests__/cli/commands.test.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/terminal/__tests__/library/paperService.test.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/terminal/__tests__/sync/syncService.test.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/terminal/__tests__/ui/app.test.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/terminal/__tests__/ui/preview.test.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/terminal/src/app/context.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/terminal/src/cli/commands.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/terminal/src/library/libraryScanner.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/terminal/src/library/paperService.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/terminal/src/main.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/terminal/src/sync/driveAuth.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/terminal/src/tui/input.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/terminal/src/ui/app.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "packages/vscode/src/commands/fetchMetadata.ts": {
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "packages/vscode/src/commands/registerAiCommands.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/commands/registerCommands.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/core/paperService.ts": {
+    "max-lines": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/db/sqliteResearchDatabase.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/extension.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/pdf-viewer/PdfViewerPanel.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "packages/vscode/src/pdf-viewer/renderer/PdfRenderer.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/pdf/searchablePdfBuilder.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/ui/list/listWebviewPanel.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/ui/list/template.css.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/ui/list/template.detail.script.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/ui/list/template.detail.tabs.script.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/ui/list/template.icons.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/ui/list/template.menu.script.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/ui/list/template.script.ts": {
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/ui/list/template.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/vscode/src/ui/settings/settingsWebviewPanel.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  }
+}

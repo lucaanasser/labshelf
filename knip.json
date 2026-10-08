@@ -1,0 +1,94 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [
+        "scripts/*.mjs"
+      ],
+      "project": [
+        "scripts/*.mjs"
+      ],
+      "ignoreBinaries": [
+        "tsc"
+      ]
+    },
+    "packages/core": {
+      "entry": [
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "__tests__/**/*.ts"
+      ]
+    },
+    "packages/ai": {
+      "entry": [
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "__tests__/**/*.ts"
+      ]
+    },
+    "packages/reader": {
+      "entry": [
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "__tests__/**/*.ts"
+      ]
+    },
+    "packages/latex": {
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/vscode": {
+      "entry": [
+        "src/extension.ts",
+        "build/*.mjs",
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "build/*.mjs",
+        "__tests__/**/*.ts"
+      ]
+    },
+    "packages/browser": {
+      "entry": [
+        "src/background/index.ts",
+        "src/popup/index.ts",
+        "src/options/index.ts",
+        "src/library-page/index.ts",
+        "src/reader/index.ts",
+        "src/ui/themeBoot.ts",
+        "src/content/scholar.ts",
+        "build/*.mjs",
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "build/*.mjs",
+        "__tests__/**/*.ts"
+      ]
+    },
+    "packages/terminal": {
+      "entry": [
+        "src/main.ts",
+        "src/preview/thumbnailWorker.ts",
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "build/*.mjs",
+        "__tests__/**/*.ts"
+      ],
+      "ignoreBinaries": [
+        "pdftoppm",
+        "secret-tool"
+      ]
+    }
+  }
+}
