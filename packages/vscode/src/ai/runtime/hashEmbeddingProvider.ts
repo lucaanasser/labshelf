@@ -1,12 +1,7 @@
 /**
- * Deterministic hash-based embedding provider. Used for testing and as the
- * fallback when the real ONNX runtime is unavailable (extension installed
- * without @xenova/transformers or onnxruntime-node). Quality is far below a
- * real model but the contract holds: same text yields the same vector,
- * cosine is well-defined.
- *
- * @depends @labshelf/ai (types)
- * @dependents ai/serviceFactory degraded path, unit tests
+ * Deterministic hash-based bag-of-words embedding provider. The same text
+ * yields the same vector and cosine similarity is well-defined, with no model
+ * files or native runtime involved.
  */
 import type { IEmbeddingProvider } from "@labshelf/ai";
 
@@ -22,9 +17,6 @@ export class HashEmbeddingProvider implements IEmbeddingProvider {
 
   /**
    * Produces a deterministic bag-of-words pseudo-embedding for each text.
-   *
-   * @usedBy degraded mode, unit tests
-   * @returns L2-normalised Float32Array vectors.
    */
   async embed(texts: string[]): Promise<Float32Array[]> {
     return texts.map((text) => this.embedOne(text));

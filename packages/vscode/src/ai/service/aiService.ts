@@ -26,7 +26,6 @@ import type { IndexerQueue } from "../indexer/indexerQueue.js";
 export interface AiServiceStatus {
   embeddingModelId: string;
   embeddingDimensions: number;
-  degradedMode: boolean;
   queuedJobs: number;
   running: boolean;
 }
@@ -40,7 +39,6 @@ export interface AiServiceDependencies {
   queue: IndexerQueue;
   eventBus: ExtensionEventBus;
   logger: ILogger;
-  degradedMode: boolean;
 }
 
 export class AiService {
@@ -109,7 +107,6 @@ export class AiService {
     return {
       embeddingModelId: this.deps.embedder.modelId,
       embeddingDimensions: this.deps.embedder.dimensions,
-      degradedMode: this.deps.degradedMode,
       queuedJobs: this.deps.queue.size(),
       running: this.deps.queue.isRunning(),
     };

@@ -21,7 +21,7 @@ An app contains only two kinds of code:
 
 1. **Wiring.** The composition root that builds core services with the app's adapters, registration of commands, views and pages, and the translation of UI events into core calls.
 2. **Code that cannot exist anywhere else:**
-   - VS Code: `vscode` API usage (activation, commands, tree views, webview panels, `SecretStorage`, settings), `node:sqlite` and the index database, Tesseract OCR, the ONNX embedding runtime.
+   - VS Code: `vscode` API usage (activation, commands, tree views, webview panels, `SecretStorage`, settings), `node:sqlite` and the index database, and Tesseract OCR.
    - Browser: manifests, the background service worker, content scripts, `chrome.*`/`browser.*` APIs, IndexedDB adapters, the popup and options pages, the helper-tab PDF fetch.
    - Terminal: raw TTY input and screen, kitty/iTerm2 images, CLI argument parsing, keychain token storage, the system clipboard, opener and trash.
 

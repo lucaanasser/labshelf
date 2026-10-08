@@ -348,16 +348,6 @@
           "default": true,
           "description": "Enable the AI subsystem (semantic search, metadata extraction, paraphrase guard)."
         },
-        "labshelf.ai.indexOnImport": {
-          "type": "boolean",
-          "default": true,
-          "description": "Run AI ingestion automatically when a paper is added or updated."
-        },
-        "labshelf.ai.textEmbeddingModelId": {
-          "type": "string",
-          "default": "Xenova/bge-small-en-v1.5",
-          "description": "HuggingFace ONNX text embedding model used for semantic search."
-        },
         "labshelf.ocr.enabled": {
           "type": "boolean",
           "default": true,
