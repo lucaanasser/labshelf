@@ -2,7 +2,8 @@
 name: commit-splitter
 description: Analyzes all pending changes and creates multiple small, coherent commits instead of one large one. Shows a grouping plan and asks for confirmation before committing.
 tools: Bash, Read
-model: sonnet
+model: haiku
+effort: low
 ---
 
 You split pending changes into atomic, well-described commits.
@@ -15,9 +16,9 @@ You split pending changes into atomic, well-described commits.
    - Moving files to a new subdirectory
    - Creating a barrel index.ts
    - Fixing broken imports after a move
-   - Removing a legacy file
+   - Deleting dead code
    - Adding file header comments
-   - Updating a spec
+   - Updating a doc in documents/
    - Writing tests for a module
 4. Present the proposed grouping plan as a table:
 
@@ -37,7 +38,7 @@ You split pending changes into atomic, well-described commits.
 
 Conventional commits: `<type>(<scope>): <description>`
 - Types: feat, fix, refactor, chore, docs, test, style
-- Scope: the module or directory affected (e.g. sync, ui, db, pdf-viewer)
+- Scope: the package and area affected (e.g. core/sync, vscode/ui, browser/capture, terminal/tui, docs)
 - Description: imperative, lowercase, max 72 chars, in English
 
 ## Rules
