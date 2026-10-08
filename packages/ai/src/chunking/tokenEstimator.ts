@@ -1,8 +1,8 @@
 /**
  * Lightweight token-count estimator used to bound chunk size before sending
  * text to the embedding model. We do not run a real tokenizer here to keep
- * @labshelf/ai dependency-free; the runtime tokenizer is owned by the ONNX
- * adapter. ~4 chars per token is the well-known approximation for English
+ * @labshelf/ai dependency-free; embedding providers own
+ * any real tokenizer. ~4 chars per token is the well-known approximation for English
  * academic text and is adequate for chunk sizing.
  *
  * @depends none

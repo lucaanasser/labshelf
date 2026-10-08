@@ -1,6 +1,6 @@
 /**
- * Float32-friendly cosine similarity. Embeddings produced by ONNX runtimes
- * arrive as Float32Array; converting them to plain arrays just to compute
+ * Float32-friendly cosine similarity. Embeddings are
+ * Float32Array; converting them to plain arrays just to compute
  * dot-products would waste allocations. Kept dependency-free.
  *
  * @depends none
