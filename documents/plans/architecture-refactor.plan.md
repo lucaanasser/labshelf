@@ -1,6 +1,6 @@
 # Plan: architecture refactor
 
-Status: draft
+Status: in progress (session 1 of 13)
 Size: GG — every package moves and duplicated logic merges across three apps; 13 sessions, one per phase (phases 4 and 9 are the heaviest). Adds a session if Q1 keeps the SQLite paper index (S10.5 grows).
 Pending decisions: 7
 
@@ -79,7 +79,7 @@ Open questions (each one blocks only the steps named):
 - [ ] **A4** ESLint runs as an error and passes: no source file over 300 lines, no test file over 500, no function over 50 lines. No directory holds more than 8 source files.
 - [ ] **A5** Each of these exists once, in core: the library mutations (one service instead of three), the `metadata.yaml` reader, the cite-key, tag and folder-name helpers, search, author formatting, shared config, the file logger, the Node file system, the lock store, PKCE auth, the sync coordinator, identifier detection, the PDF resolver chain, the reader host controller, the sidecar store, the design tokens, the icon set and the library UI.
 - [ ] **A6** The VS Code list panel and the browser library page render the same library alike, in dark and light. Screenshots are compared in S9.5.
-- [ ] **A7** `pnpm -r typecheck` and `pnpm -r test` pass. Core runs its own test suite.
+- [x] **A7** `pnpm -r typecheck` and `pnpm -r test` pass. Core runs its own test suite.
 - [ ] **A8** B1–B6 each have a regression test that fails before the fix.
 - [ ] **A9** The `health` skill reports no `@depends`/`@dependents`/`@usedBy` tags and no history language in comments.
 - [ ] **A10** Behaviour visible to the user changes only as listed in D7. Each listed change is covered by a test.

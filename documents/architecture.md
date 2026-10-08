@@ -91,4 +91,7 @@ The design system gives the three apps one look:
 - Lint enforces the rules in [AGENTS.md](../AGENTS.md) that a machine can check:
   - ESLint `max-lines` and `max-lines-per-function`;
   - import boundaries (dependency-cruiser): no app-to-app imports, no neutral → `node/` or `dom/` imports, no deep imports past an `index.ts`;
-  - unused files, exports and dependencies (knip).
+  - unused files, exports and dependencies (knip);
+  - directory size and per-runtime tsconfigs in core (`scripts/check-directory-size.mjs`, `scripts/check-runtime-tsconfigs.mjs`).
+
+  Existing violations are recorded in baselines (`.dependency-cruiser-known-violations.json`, `scripts/directory-size-baseline.json`, `packages/core/runtime-baseline.json`). A baselined violation is debt to remove; a new one fails `pnpm lint`.

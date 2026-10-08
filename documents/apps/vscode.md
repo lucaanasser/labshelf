@@ -12,8 +12,11 @@ The full LabShelf workspace inside VS Code:
 ## Build and run
 
 ```bash
-pnpm --filter "@labshelf/vscode..." build
+pnpm --filter @labshelf/vscode build   # host → out/extension.js, reader → dist/reader/
+pnpm dev:vscode                        # watches both
 ```
+
+- esbuild bundles the extension host from source, including `@labshelf/*`. Other dependencies (pdf.js, Tesseract, the native canvas) stay external and load from `node_modules`, because they locate their data files and binaries next to themselves. `tsc` only typechecks.
 
 - Open the repository in VS Code and press F5. This launches an Extension Development Host. On first run, use **LabShelf: Configure Library**.
 - Drive needs the Desktop OAuth client ([README.md](README.md#google-oauth-clients)). Tokens live in `SecretStorage` under `labshelf.gdrive.tokens`; **LabShelf: Disconnect from Google Drive** clears them.
@@ -23,7 +26,7 @@ pnpm --filter "@labshelf/vscode..." build
 
 Jest mocks `vscode`, and plain Node passes pdf.js's "am I Node?" check, so both hide bugs that appear only in the extension host. The host is an Electron utility process (`process.type === "utility"`), and pdf.js treats it as a browser. Any change to import, OCR, the text layer or pdf.js usage must run in a real host:
 
-1. Create a dummy extension: a `package.json` with `main` and empty `activationEvents`, plus a runner file that exports `run = async () => {…}`. In the runner, `require("vscode")` is real. Require the compiled extension modules, and resolve core from the extension package.
+1. Create a dummy extension: a `package.json` with `main` and empty `activationEvents`, plus a runner file that exports `run = async () => {…}`. In the runner, `require("vscode")` is real. Require the bundled `out/extension.js` (build first), or bundle the module under test with esbuild.
 2. Launch it directly, outside the sandbox. The `code` CLI wrapper detaches, so call the binary:
 
    ```bash
@@ -45,7 +48,7 @@ To test scans, render a real paper's pages to PNG and rebuild an image-only PDF 
 
 Webview UI (the reader and the list panel) can only be verified in a real browser:
 
-1. Stub `vscode` through `Module._load`, and call the compiled HTML builders (the reader shell renderer, the list panel template) to get the real HTML.
+1. Stub `vscode` through `Module._load`, and bundle and call the HTML builders (the reader shell renderer, the list panel template) to get the real HTML.
 2. Map `asWebviewUri` to a local static server that serves the repository and `pdfjs-dist`.
 3. Inject a `:root{--vscode-*}` block with the Dark or Light Modern values.
 4. Inject an `acquireVsCodeApi` stub under the page's CSP nonce. The stub records `postMessage` calls and answers `ready-for-init` with `init`.
