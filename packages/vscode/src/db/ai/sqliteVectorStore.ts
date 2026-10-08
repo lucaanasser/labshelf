@@ -4,7 +4,7 @@
  * the contract. We deliberately keep search() in-process (no SQL UDFs) so the
  * vector math runs on the same Float32Array layout used by the embedder.
  *
- * @depends node:sqlite, @labshelf/ai (types, rag/cosine), ./embeddingCodec.ts
+ * @depends node:sqlite, @labshelf/core (types, rag/cosine), ./embeddingCodec.ts
  * @dependents ai/aiIndexer, ai/aiService
  */
 import type { DatabaseSync } from "node:sqlite";
@@ -13,8 +13,8 @@ import type {
   VectorFilter,
   VectorMatch,
   VectorRecord,
-} from "@labshelf/ai";
-import { cosine } from "@labshelf/ai";
+} from "@labshelf/core";
+import { cosine } from "@labshelf/core";
 import { decodeEmbedding, encodeEmbedding } from "./embeddingCodec.js";
 
 type ChunkRow = {

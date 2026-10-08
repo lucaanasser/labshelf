@@ -21,15 +21,6 @@
         "__tests__/**/*.ts"
       ]
     },
-    "packages/ai": {
-      "entry": [
-        "__tests__/**/*.ts"
-      ],
-      "project": [
-        "src/**/*.ts",
-        "__tests__/**/*.ts"
-      ]
-    },
     "packages/reader": {
       "entry": [
         "__tests__/**/*.ts"

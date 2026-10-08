@@ -4,19 +4,20 @@
  * preserves the no-direct-DB-from-UI rule and gives us one place to swap or
  * stub the implementation in tests.
  *
- * @depends @labshelf/ai (RAG primitives), db/ai stores, runtime/*, indexer/*
+ * @depends @labshelf/core (RAG primitives), db/ai stores, runtime/*, indexer/*
  * @dependents extension.ts, future UI features
  */
-import type { ExtensionEventBus, ILogger } from "@labshelf/core";
 import type {
   AiPaperMetadata,
   ClaimSearchResult,
+  ExtensionEventBus,
   IEmbeddingProvider,
+  ILogger,
   ReadingEvent,
   VectorFilter,
   VectorMatch,
-} from "@labshelf/ai";
-import { retrieveTopK, searchByClaim as runSearchByClaim } from "@labshelf/ai";
+} from "@labshelf/core";
+import { retrieveTopK, searchByClaim as runSearchByClaim } from "@labshelf/core";
 import type { SqliteVectorStore } from "../../db/ai/sqliteVectorStore.js";
 import type { AiMetadataStore } from "../../db/ai/aiMetadataStore.js";
 import type { ReadingEventsStore } from "../../db/ai/readingEventsStore.js";

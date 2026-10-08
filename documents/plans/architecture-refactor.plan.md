@@ -150,7 +150,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S2.1 | Merge `ai` into `core/src/ai/` | S1.3 | M · module-splitter | ai tests pass in core | [ ] |
+| S2.1 | Merge `ai` into `core/src/ai/` | S1.3 | M · module-splitter | ai tests pass in core | [x] |
 | S2.2 | Merge `reader` into `core/src/reader/` | S1.4 | M · module-splitter | reader tests pass in core | [ ] |
 | S2.3 | Point build scripts at core subpaths; delete `packages/reader` | S2.2 | M · implementer | all three builds pass | [ ] |
 | S2.4 | Apps depend only on `@labshelf/core` | S2.1, S2.3 | L · implementer (haiku) | A1 | [ ] |
@@ -400,7 +400,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 #### S2.1 — Merge `ai`
 
-- **Do:** move `packages/ai/src` to `core/src/ai/` and its tests to `core/__tests__/ai/`. Rename ai's `normalizeTitle` to `titleDedupKey`; it clashes with core's.
+- **Do:** move `packages/ai/src` to `core/src/ai/` and its tests to `core/__tests__/ai/`.
 
 #### S2.2 — Merge `reader`
 
@@ -714,3 +714,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-08 S1.2–S1.7 done (Q2: the four resolvers and `titleMatch.ts` stay for pdf-finding.plan.md; Q3, Q4, Q5 delete). Kept because still used: `rewritePath` (unexported), `HeldSyncLock` (unexported from the barrel), `scorePageDifficulty` and `extractTerms` in ai (the ingestion difficulty score calls them; only their barrel exports went), `shortAuthors` in the terminal. Reader constants are unexported where only their own file uses them. IndexedDB version 2 drops the `byHash` and `byFolder` indexes. A pre-existing VS Code `index.sqlite` without the later `papers` columns must be deleted once; it is a rebuildable cache.
 - 2026-10-08 S1.8 done: B1 `SyncController.setPaths` repoints the controller when the root changes and `labshelf.configureLibrary` calls `ensureSyncController`; B4 the ONNX path and the model download are gone (the hash provider is built directly, `degradedMode` and the two model events deleted); B5 `CliDriveAuth.authenticate()` keeps stored tokens or runs the login flow with the options the composition root passes. Each has a test.
 - 2026-10-08 S1.1 done: `packages/latex`, its `knip.json` entry, its README mention and its lockfile entry are gone.
+- 2026-10-08 S2.1 done: `packages/ai` lives in `core/src/ai/`, exported from the core index; vscode imports it from `@labshelf/core`. `ai` has no `normalizeTitle` (it left with the analysis code in S1.3), so no rename was needed. `heuristics/` is split into `extractors/` and `scoring/` to meet the directory limit. The dependency-cruiser baseline lost 22 `ai` entries and 7 stale ones; a browser import past `capture/index.ts` that had no baseline entry now goes through the index.

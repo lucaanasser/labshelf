@@ -8,5 +8,6 @@ export type { CaptureDraft, SaveOptions, SavedPaper, SaveDecision } from "./capt
 export { draftFromScholarHit } from "./scholarCapture";
 export { idsFromRecord, draftFromRecord } from "./recordCapture";
 export { attachPdfToPaper } from "./addPaperFlow";
+export { isPdfBytes } from "./pdfBytes";
 export { findInLibrary } from "./libraryMatch";
 export type { DetectedIds } from "./doiDetector";

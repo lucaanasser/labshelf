@@ -1,16 +1,15 @@
 /**
  * Extracts per-page text from a paper's PDF using the existing PdfDocumentOpener
- * adapter, then runs the @labshelf/ai section detector to produce structured
+ * adapter, then runs the @labshelf/core section detector to produce structured
  * input for the ingestion pipeline. Falls back to per-page chunks when no
  * headings are detected.
  *
- * @depends @labshelf/core (PdfDocumentOpener), @labshelf/ai (chunking)
+ * @depends @labshelf/core (PdfDocumentOpener, chunking)
  * @dependents indexer/aiIndexer.ts
  */
 import * as vscode from "vscode";
-import type { PdfDocumentLike, PdfDocumentOpener } from "@labshelf/core";
-import type { ExtractedPdfText } from "@labshelf/ai";
-import { detectSections } from "@labshelf/ai";
+import type { ExtractedPdfText, PdfDocumentLike, PdfDocumentOpener } from "@labshelf/core";
+import { detectSections } from "@labshelf/core";
 import { FileSystemService } from "../../storage/fileSystemService.js";
 
 export class PdfTextExtractor {
@@ -21,7 +20,7 @@ export class PdfTextExtractor {
 
   /**
    * Reads the PDF at `pdfUri` and returns its per-page text plus detected
-   * sections, packaged for the @labshelf/ai pipeline.
+   * sections, packaged for the @labshelf/core pipeline.
    *
    * @usedBy aiIndexer
    * @returns Extracted text with paperId metadata.

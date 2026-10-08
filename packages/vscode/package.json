@@ -520,7 +520,6 @@
     "test:commands": "jest __tests__/commands"
   },
   "dependencies": {
-    "@labshelf/ai": "workspace:*",
     "@labshelf/core": "workspace:*",
     "@labshelf/reader": "workspace:*",
     "@napi-rs/canvas": "^1.0.9",

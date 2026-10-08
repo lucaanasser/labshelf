@@ -3,7 +3,7 @@
  * yields the same vector and cosine similarity is well-defined, with no model
  * files or native runtime involved.
  */
-import type { IEmbeddingProvider } from "@labshelf/ai";
+import type { IEmbeddingProvider } from "@labshelf/core";
 
 const TOKEN_RE = /[A-Za-z][A-Za-z0-9'-]{1,}/g;
 

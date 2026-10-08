@@ -3,11 +3,11 @@
  * schema simple; structured queries (e.g. method facet search) go through the
  * methods/datasets indexes that aiSchema declares.
  *
- * @depends node:sqlite, @labshelf/ai (types)
+ * @depends node:sqlite, @labshelf/core (types)
  * @dependents ai/aiIndexer, ai/aiService
  */
 import type { DatabaseSync } from "node:sqlite";
-import type { AiPaperMetadata } from "@labshelf/ai";
+import type { AiPaperMetadata } from "@labshelf/core";
 
 type Row = {
   paper_id: string;

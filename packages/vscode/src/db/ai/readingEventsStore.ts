@@ -3,11 +3,11 @@
  * and reading-session analytics. Bounded retention — caller may purge old
  * events with `pruneOlderThan` if needed.
  *
- * @depends node:sqlite, @labshelf/ai (types)
+ * @depends node:sqlite, @labshelf/core (types)
  * @dependents ai/aiService, pdf-viewer event hooks
  */
 import type { DatabaseSync } from "node:sqlite";
-import type { ReadingEvent } from "@labshelf/ai";
+import type { ReadingEvent } from "@labshelf/core";
 
 type Row = {
   paper_id: string;

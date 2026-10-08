@@ -1,4 +1,4 @@
-import type { AiPaperMetadata } from "@labshelf/ai";
+import type { AiPaperMetadata } from "@labshelf/core";
 import { describeIfSqlite, placeholderEnvTest, sqliteAvailable } from "./sqliteAvailable";
 
 placeholderEnvTest("AiMetadataStore");

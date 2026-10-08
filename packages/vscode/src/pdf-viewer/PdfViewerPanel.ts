@@ -1,12 +1,11 @@
 /**
  * Creates and manages the PDF reader webview panels: lifecycle, the typed host side of the reader protocol, reading-state persistence, clipboard/export actions and reading analytics.
  *
- * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/AnnotationManager.ts, ui/tabIcon.ts, pdf-viewer/renderer/PdfRenderer.ts, pdf-viewer/readerPrefs.ts, @labshelf/reader, @labshelf/core, @labshelf/ai (types only)
+ * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/AnnotationManager.ts, ui/tabIcon.ts, pdf-viewer/renderer/PdfRenderer.ts, pdf-viewer/readerPrefs.ts, @labshelf/reader, @labshelf/core
  * @dependents extension.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
-import type { ReadingEvent } from "@labshelf/ai";
-import type { ExtensionEventBus, ILogger, PaperRecord, Annotation, PdfTheme } from "@labshelf/core";
+import type { ExtensionEventBus, ILogger, PaperRecord, Annotation, PdfTheme, ReadingEvent } from "@labshelf/core";
 import { EVENTS } from "@labshelf/core";
 import { ThemeManager } from "./ThemeManager.js";
 import { AnnotationManager } from "./AnnotationManager.js";

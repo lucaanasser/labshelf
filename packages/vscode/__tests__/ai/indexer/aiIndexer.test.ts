@@ -2,7 +2,8 @@ import * as vscode from "vscode";
 import { AiIndexer } from "../../../src/ai/indexer/aiIndexer";
 import type { AiIndexerDependencies } from "../../../src/ai/indexer/aiIndexer";
 
-jest.mock("@labshelf/ai", () => ({
+jest.mock("@labshelf/core", () => ({
+  ...jest.requireActual("@labshelf/core"),
   runIngestion: jest.fn(async () => ({ metadata: {}, chunkCount: 1, embeddedChunks: 1 })),
 }));
 

@@ -1,17 +1,15 @@
 /**
  * Coordinates AI ingestion for newly added or updated papers. Subscribes to
- * paper:added / paper:updated and drives the @labshelf/ai pipeline through a
+ * paper:added / paper:updated and drives the @labshelf/core pipeline through a
  * single-worker queue. Idempotent: skips papers whose contentHash matches the
  * last indexed run.
  *
- * @depends vscode, @labshelf/core, @labshelf/ai, db/ai/*, runtime/*, pdf/*
+ * @depends vscode, @labshelf/core, db/ai/*, runtime/*, pdf/*
  * @dependents extension.ts wiring
  */
 import * as vscode from "vscode";
-import type { ExtensionEventBus, ILogger, IResearchDatabase } from "@labshelf/core";
-import { EVENTS } from "@labshelf/core";
-import type { IEmbeddingProvider } from "@labshelf/ai";
-import { runIngestion } from "@labshelf/ai";
+import type { ExtensionEventBus, IEmbeddingProvider, ILogger, IResearchDatabase } from "@labshelf/core";
+import { EVENTS, runIngestion } from "@labshelf/core";
 import type { AiMetadataStore } from "../../db/ai/aiMetadataStore.js";
 import type { SqliteVectorStore } from "../../db/ai/sqliteVectorStore.js";
 import { PdfTextExtractor } from "../pdf/pdfTextExtractor.js";
