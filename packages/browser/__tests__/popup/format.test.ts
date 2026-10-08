@@ -1,4 +1,4 @@
-import { folderName, folderPathLabel, metaLine, parseTags, pdfSourceLabel } from "../../src/popup/format";
+import { folderName, folderPathLabel, metaLine, parseTags } from "../../src/popup/format";
 
 describe("popup format", () => {
   it("writes the byline with surnames, et al. past three", () => {
@@ -13,9 +13,7 @@ describe("popup format", () => {
     expect(parseTags("")).toEqual([]);
   });
 
-  it("labels PDF sources and folders", () => {
-    expect(pdfSourceLabel("unpaywall")).toBe("Unpaywall (open access)");
-    expect(pdfSourceLabel("mystery")).toBe("mystery");
+  it("labels folders", () => {
     const folders = { folders: [{ path: "papers", label: "Library", depth: 0 }, { path: "papers/Thesis", label: "Thesis", depth: 1 }], lastFolder: "papers" };
     expect(folderName("papers", folders)).toBe("Library");
     expect(folderName("papers/Thesis", folders)).toBe("Thesis");

@@ -8,10 +8,6 @@
 
 // DOI: starts with 10. then a registrant prefix, slash, and suffix.
 const DOI_RE = /\b(10\.\d{4,}(?:\.\d+)*\/[^\s"',<>[\]{}|^`#?]+)/;
-// arXiv: new format (2301.12345) and URL forms (arxiv.org/abs/..., arxiv:...).
-const ARXIV_RE = /(?:arxiv\.org\/(?:abs|pdf|html)\/|^arxiv:|^\s*)(\d{4}\.\d{4,5}(?:v\d+)?)/i;
-// PMID: bare number in a PubMed URL, the `pmid:` scheme, or the meta value.
-const PMID_RE = /(?:pubmed(?:\.ncbi\.nlm\.nih\.gov)?\/|^pmid:\s*|^\s*)(\d{6,9})\b/i;
 // arXiv's own DOIs (10.48550/arXiv.2301.12345) name the preprint.
 const ARXIV_DOI_RE = /^10\.48550\/arxiv\.(\d{4}\.\d{4,5})(?:v\d+)?$/i;
 
@@ -62,21 +58,4 @@ export function arxivIdFromUrl(url: string): string | undefined {
 /** PubMed id in a PubMed URL. */
 export function pmidFromUrl(url: string): string | undefined {
   return /pubmed\.ncbi\.nlm\.nih\.gov\/(\d{6,9})\b|ncbi\.nlm\.nih\.gov\/pubmed\/(\d{6,9})\b/i.exec(url)?.slice(1).find(Boolean);
-}
-
-/**
- * Extracts identifiers from any string — URL, DOI text, "arxiv:1234.5678", "PMID: 12345".
- * Prefers arXiv over DOI when both match (arXiv landing pages embed both).
- * @usedBy library-page (paste-to-add), tests
- * @returns DetectedIds with at most one identifier set (the most specific match).
- */
-export function detectIdentifiers(input: string): DetectedIds {
-  const trimmed = input.trim();
-  const arxiv = ARXIV_RE.exec(trimmed)?.[1];
-  if (arxiv) return { arxivId: arxiv };
-  const doi = cleanDoi(trimmed);
-  if (doi) return { doi };
-  const pmid = PMID_RE.exec(trimmed)?.[1];
-  if (pmid) return { pmid };
-  return {};
 }

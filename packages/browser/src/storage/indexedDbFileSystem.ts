@@ -67,13 +67,6 @@ export class IndexedDbFileSystem implements LocalFileSystem {
     // Directories are implicit in the IDB file store; no sentinel needed.
   }
 
-  /** Returns the SHA-256 hash stored alongside the file without re-hashing. */
-  async getHash(filePath: string): Promise<string | undefined> {
-    const db = await getDb();
-    const row = await db.get("files", filePath);
-    return row?.hash;
-  }
-
   /** Deletes all files whose path starts with the given directory prefix. */
   async deleteDir(dirPath: string): Promise<void> {
     const db = await getDb();

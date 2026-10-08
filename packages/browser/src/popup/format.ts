@@ -1,14 +1,10 @@
 /**
  * Pure text helpers for the popup: the one-line byline under the title, tag
- * parsing, and human labels for folders. The PDF-source labels and PDF status
- * copy now live in ui/pdfCopy (shared with Scholar and the library page) and
- * are re-exported here so existing popup imports keep working.
- * @depends platform/runtimeMessages (types), ui/pdfCopy
+ * parsing, and human labels for folders.
+ * @depends platform/runtimeMessages (types)
  * @dependents popup/index
  */
 import type { DraftView, FoldersData } from "../platform/runtimeMessages";
-
-export { SOURCE_LABELS, pdfSourceLabel, pdfLineText } from "../ui/pdfCopy";
 
 /** "Edelman, Arias, Smith · SIAM J. Matrix Anal. Appl. · 1998" — surnames, et al. past three. */
 export function metaLine(d: Pick<DraftView, "authors" | "venue" | "year">): string {

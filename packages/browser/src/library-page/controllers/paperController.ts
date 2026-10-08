@@ -18,7 +18,7 @@
 import type { IFileSystem, PaperRecord, PaperStatus } from "@labshelf/core";
 import { BibTeXService, FolderService } from "@labshelf/core";
 import { attachPdfToPaper } from "../../capture";
-import { isPdfBytes } from "../../capture/pdfFetcher";
+import { isPdfBytes } from "../../capture/pdfBytes";
 import { openReader } from "../../reader/readerTabs";
 import type { AttachPdfData, IfNoPdf, PdfMiss, SaveOutcome, TabSummary } from "../../platform/runtimeMessages";
 import { IndexedDbFileSystem, deleteRecord, listAllRecords, upsertRecord } from "../../storage";

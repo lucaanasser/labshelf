@@ -31,7 +31,7 @@ export const DEFAULT_PREFS: UiPrefs = {
   detailCollapsed: false,
   sidebarWidth: 220,
   sidebarCollapsed: false,
-  secCollapsed: { notes: true, tags: true, related: true },
+  secCollapsed: { notes: true, tags: true },
   treeExpanded: [],
 };
 

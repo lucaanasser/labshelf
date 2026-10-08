@@ -8,4 +8,3 @@
 import polyfill from "webextension-polyfill";
 
 export const bx = polyfill;
-export type Browser = typeof polyfill;

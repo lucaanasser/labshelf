@@ -34,31 +34,12 @@ export async function listAllRecords(): Promise<PaperRecord[]> {
   return rows.map((r) => r.record);
 }
 
-/** Returns PaperRecords whose folderPath starts with the given prefix. */
-export async function listByFolder(prefix: string): Promise<PaperRecord[]> {
-  const db = await getDb();
-  const range = IDBKeyRange.bound(prefix, `${prefix}￿`, false, true);
-  const rows = await db.getAllFromIndex("metadata", "byFolder", range);
-  return rows.map((r) => r.record);
-}
-
-/** Case-insensitive substring search over title and authors. */
-export async function searchRecords(query: string): Promise<PaperRecord[]> {
-  const all = await listAllRecords();
-  const q = query.toLowerCase();
-  return all.filter(
-    (r) =>
-      r.title.toLowerCase().includes(q) ||
-      r.authors?.some((a) => a.toLowerCase().includes(q)),
-  );
-}
-
 /**
  * Maps a metadata.yaml sidecar onto a PaperRecord, the way the VS Code
  * LibraryIndexer does: the paper id is the folder name (== cite key) and the
  * path is where the folder sits in this library — the `path:` key inside the
  * file is whatever the last writer used (an absolute path on the desktop).
- * @usedBy upsertFromYaml, rebuildFromFiles
+ * @usedBy rebuildFromFiles
  * @returns The record, or undefined when the text is not a YAML mapping.
  */
 export function recordFromYaml(yamlText: string, folderPath: string): PaperRecord | undefined {
@@ -101,15 +82,6 @@ export function recordFromYaml(yamlText: string, folderPath: string): PaperRecor
   const tags = list("tags");
   if (tags.length) record.tags = tags;
   return record;
-}
-
-/**
- * Parses a metadata.yaml string and upserts the resulting PaperRecord.
- * @usedBy rebuildFromFiles
- */
-export async function upsertFromYaml(yamlText: string, folderPath: string): Promise<void> {
-  const record = recordFromYaml(yamlText, folderPath);
-  if (record) await upsertRecord(record, folderPath);
 }
 
 /**

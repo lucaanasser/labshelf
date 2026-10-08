@@ -23,10 +23,6 @@ import { parseHtmlPage, redirectTargets } from "./htmlPage";
 import { interpretPage } from "./pageFacts";
 import { isPdfBytes } from "./pdfBytes";
 
-// Re-exported so existing importers (and library-page, which wants only the
-// byte check) keep a single entry point.
-export { isPdfBytes };
-
 export interface FetchedPdf {
   bytes: Uint8Array;
   /** Final URL after redirects and interstitial hops. */

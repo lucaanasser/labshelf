@@ -1,6 +1,5 @@
 /**
- * IndexedDB store definitions for the labshelf browser extension. Version 1
- * schema: files (raw bytes), metadata (PaperRecord cache), manifest (sync state).
+ * IndexedDB store definitions for the labshelf browser extension. Schema: files (raw bytes), metadata (PaperRecord cache), manifest (sync state).
  * @depends @labshelf/core PaperRecord
  * @dependents idb/db, indexedDbFileSystem, paperRecordStore, manifestStore
  */
@@ -21,7 +20,7 @@ export interface MetadataRow {
   /** Same as PaperRecord.id. */
   paperId: string;
   record: PaperRecord;
-  /** "papers/<citeKey>" — indexed for fast folder-prefix queries. */
+  /** "papers/<citeKey>". */
   folderPath: string;
 }
 
@@ -35,12 +34,10 @@ export interface LabShelfSchema {
   files: {
     key: string;
     value: FileRow;
-    indexes: { byHash: string };
   };
   metadata: {
     key: string;
     value: MetadataRow;
-    indexes: { byFolder: string };
   };
   manifest: {
     key: string;

@@ -4,7 +4,7 @@
  * (actions, status segment), then Abstract, Keywords, Info, the PDF attachment
  * when one exists — otherwise a "No PDF" empty state offering Find PDF / Attach
  * PDF — the note and tags attached when saving from the toolbar (read-only here
- * for now), and the not-yet-implemented Related section.
+ * for now).
  *
  * @depends ui/dom, ui/icons, ui/pdfCopy, state/derive
  * @dependents views/detailPaneView
@@ -22,20 +22,16 @@ function field(label: string, value: string, mono = false): string {
   return `<div class="detail-field"><div class="detail-label">${esc(label)}</div><div class="detail-value${mono ? " mono" : ""}">${esc(value)}</div></div>`;
 }
 
-export function section(id: string, title: string, body: string, collapsed: boolean, actions = ""): string {
+export function section(id: string, title: string, body: string, collapsed: boolean): string {
   return `<div class="detail-section">` +
     `<div class="sec-head${collapsed ? " collapsed" : ""}" data-sec="${id}" role="button" aria-expanded="${!collapsed}">` +
-      `<div class="sec-head-left"><span class="sec-chevron${collapsed ? " collapsed" : ""}">${icon("chevron-down")}</span><span>${esc(title)}</span></div>${actions}` +
+      `<div class="sec-head-left"><span class="sec-chevron${collapsed ? " collapsed" : ""}">${icon("chevron-down")}</span><span>${esc(title)}</span></div>` +
     `</div>` +
     `<div class="sec-body${collapsed ? " hidden" : ""}" id="sec-${id}">${body}</div></div>`;
 }
 
 function muted(text: string): string {
   return `<div class="muted-note">${esc(text)}</div>`;
-}
-
-function soonBtn(title: string): string {
-  return `<div class="sec-actions"><button class="ls-icon-btn" title="${esc(title)}" disabled>${icon("plus")}</button></div>`;
 }
 
 export function statusSeg(current: PaperStatus | null): string {
@@ -136,9 +132,8 @@ export function paperDetailHtml(p: ListPaper, v: DetailViewState): string {
     (p.keywords?.length ? section("keywords", "Keywords", keywordsBody(p), c("keywords")) : "") +
     section("info", "Info", infoBody(p, v.openFolder), c("info")) +
     section("attach", attachmentsHeading(p.hasPdf), attachBody(p.hasPdf, v.pdfBusy), c("attach")) +
-    section("notes", p.note ? "1 Note" : "0 Notes", p.note ? `<div class="detail-note">${esc(p.note)}</div>` : muted("No note — add one when saving from the toolbar button"), c("notes"), soonBtn("Edit note (coming soon)")) +
-    section("tags", countLabel(p.tags?.length ?? 0, "Tag"), tagsBody(p), c("tags"), soonBtn("Edit tags (coming soon)")) +
-    section("related", "0 Related", muted("Related papers not yet implemented"), c("related"));
+    section("notes", p.note ? "1 Note" : "0 Notes", p.note ? `<div class="detail-note">${esc(p.note)}</div>` : muted("No note — add one when saving from the toolbar button"), c("notes")) +
+    section("tags", countLabel(p.tags?.length ?? 0, "Tag"), tagsBody(p), c("tags"));
 }
 
 /** The pane for a multi-selection. */

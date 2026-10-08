@@ -60,7 +60,7 @@ export function scheduleSyncSoon(reason: string): void {
 }
 
 /** Runs a sync now and reflects its status in the store. */
-export async function syncNow(store: LibraryStore): Promise<void> {
+async function syncNow(store: LibraryStore): Promise<void> {
   try {
     const status = await send<SyncStatusData>({ type: "sync.now" });
     store.set({ sync: status });

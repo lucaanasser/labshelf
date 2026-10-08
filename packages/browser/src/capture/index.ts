@@ -9,5 +9,4 @@ export { draftFromScholarHit } from "./scholarCapture";
 export { idsFromRecord, draftFromRecord } from "./recordCapture";
 export { attachPdfToPaper } from "./addPaperFlow";
 export { findInLibrary } from "./libraryMatch";
-export { detectIdentifiers } from "./doiDetector";
 export type { DetectedIds } from "./doiDetector";

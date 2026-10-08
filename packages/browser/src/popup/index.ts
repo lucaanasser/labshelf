@@ -22,7 +22,8 @@ import { icon } from "../ui/icons";
 import { applyTheme } from "../ui/theme";
 import { showDialog } from "../ui/dialog";
 import { noPdfDialogCopy } from "../ui/pdfCopy";
-import { folderName, metaLine, parseTags, pdfLineText, pdfSourceLabel } from "./format";
+import { folderName, metaLine, parseTags } from "./format";
+import { pdfLineText, pdfSourceLabel } from "../ui/pdfCopy";
 
 type PopupState = "loading" | "form" | "library" | "empty" | "saving" | "saved";
 

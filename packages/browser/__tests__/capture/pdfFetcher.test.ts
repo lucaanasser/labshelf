@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fetchPdf, isBotCheck, isPdfBytes, nextHopsFromHtml } from "../../src/capture/pdfFetcher";
+import { fetchPdf, isBotCheck, nextHopsFromHtml } from "../../src/capture/pdfFetcher";
+import { isPdfBytes } from "../../src/capture/pdfBytes";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "..", "fixtures", name), "utf8");
 const PDF = new TextEncoder().encode("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF");

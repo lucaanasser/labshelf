@@ -63,9 +63,6 @@ const BUTTON_CSS = `
 @keyframes lsx-spin { to { transform: rotate(360deg); } }
 `;
 
-// The menu's layer: fixed, above everything Scholar draws.
-const OVERLAY_CSS = "";
-
 const LABELS: Record<ButtonState, { glyph: string; text: string }> = {
   idle: { glyph: "logo", text: "Save to LabShelf" },
   saving: { glyph: "sync", text: "Finding PDF…" },
@@ -135,7 +132,7 @@ function overlayRoot(): ShadowRoot {
     const host = document.createElement("div");
     host.setAttribute(MOUNTED_ATTR, "overlay");
     document.documentElement.append(host);
-    overlay = kitShadow(host, OVERLAY_CSS, "position: fixed; top: 0; left: 0; z-index: 2147483000;");
+    overlay = kitShadow(host, "", "position: fixed; top: 0; left: 0; z-index: 2147483000;");
   }
   return overlay;
 }

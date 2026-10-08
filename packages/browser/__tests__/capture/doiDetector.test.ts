@@ -1,4 +1,4 @@
-import { arxivIdFromDoi, arxivIdFromUrl, cleanDoi, detectIdentifiers, pmidFromUrl } from "../../src/capture/doiDetector";
+import { arxivIdFromDoi, arxivIdFromUrl, cleanDoi, pmidFromUrl } from "../../src/capture/doiDetector";
 
 describe("cleanDoi", () => {
   it.each([
@@ -28,12 +28,5 @@ describe("other identifiers", () => {
   it("reads PMIDs from both PubMed URL forms", () => {
     expect(pmidFromUrl("https://pubmed.ncbi.nlm.nih.gov/12345678/")).toBe("12345678");
     expect(pmidFromUrl("https://www.ncbi.nlm.nih.gov/pubmed/7654321")).toBe("7654321");
-  });
-
-  it("detects one identifier in free text, preferring arXiv", () => {
-    expect(detectIdentifiers("arxiv:2301.12345")).toEqual({ arxivId: "2301.12345" });
-    expect(detectIdentifiers("doi: 10.1137/S0895479802410815")).toEqual({ doi: "10.1137/S0895479802410815" });
-    expect(detectIdentifiers("PMID: 12345678")).toEqual({ pmid: "12345678" });
-    expect(detectIdentifiers("nothing here")).toEqual({});
   });
 });

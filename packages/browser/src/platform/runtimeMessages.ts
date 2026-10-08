@@ -184,5 +184,3 @@ export interface TabSummary {
   url: string;
   active: boolean;
 }
-
-export const RUNTIME_CHANNEL = "labshelf.runtime";

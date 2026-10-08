@@ -23,26 +23,6 @@ const PAPER_MARKERS = new Set(["metadata.yaml", "paper.pdf"]);
 // What every paper's PDF is called inside its folder (same as core's LIBRARY_PDF_NAME).
 const PAPER_PDF = "paper.pdf";
 
-/** Returns the immediate sub-folder names under a directory prefix. */
-export async function getDirectSubfolders(dirPath: string): Promise<string[]> {
-  const db = await getDb();
-  const prefix = dirPath ? `${dirPath}/` : "";
-  const range = prefix
-    ? IDBKeyRange.bound(prefix, `${prefix}￿`, false, true)
-    : undefined;
-  const keys = await db.getAllKeys("files", range);
-  const seen = new Set<string>();
-  for (const key of keys) {
-    const rest = (key as string).slice(prefix.length);
-    const sep = rest.indexOf("/");
-    if (sep >= 0) {
-      seen.add(rest.slice(0, sep));
-    }
-    // Plain files at this level are not folders — exclude them.
-  }
-  return [...seen].sort();
-}
-
 /**
  * Builds the collection tree under `rootPath` from a single key scan.
  * @usedBy library-page controllers/dataController
@@ -117,19 +97,4 @@ export async function pdfDirs(rootPath: string = "papers"): Promise<Set<string>>
   const prefix = `${rootPath}/`;
   const keys = (await db.getAllKeys("files", IDBKeyRange.bound(prefix, `${prefix}￿`, false, true))) as string[];
   return pdfDirsFromKeys(keys);
-}
-
-/** Returns a flat list of all unique folder paths that contain at least one file. */
-export async function listAllFolders(): Promise<string[]> {
-  const db = await getDb();
-  const keys = await db.getAllKeys("files");
-  const folders = new Set<string>();
-  for (const key of keys) {
-    const parts = (key as string).split("/");
-    // Collect every ancestor directory path
-    for (let i = 1; i < parts.length; i++) {
-      folders.add(parts.slice(0, i).join("/"));
-    }
-  }
-  return [...folders].sort();
 }
