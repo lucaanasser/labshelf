@@ -1,35 +1,72 @@
-import { recordFromYaml } from "../../src/storage/paperRecordStore";
+import { rebuildFromFiles } from "../../src/storage/paperRecordStore";
 
-describe("recordFromYaml", () => {
-  it("maps a sidecar the way the VS Code indexer does (id = folder name, path = library path)", () => {
-    const yaml = [
-      "title: Efficient Algorithms",
-      "authors: [Hiroshi Imai, Takao Asano]",
-      "year: 1986",
-      "path: /Users/me/LabShelfLibrary/papers/Algo/imai1986",
-      "citekey: imai1986",
-      "status: reading",
-      "journal: SIAM J. Comput.",
-      "volume: 15",
-      "doi: 10.1137/0215034",
-      "keywords: [graphs]",
-      "tags: [geometry, to-read]",
-      "note: Cited in chapter 3",
-      "source: imai.pdf",
-    ].join("\n");
-    expect(recordFromYaml(yaml, "papers/Algo/imai1986")).toEqual({
-      id: "imai1986", title: "Efficient Algorithms", path: "papers/Algo/imai1986", citeKey: "imai1986", status: "reading",
-      authors: ["Hiroshi Imai", "Takao Asano"], year: 1986, journal: "SIAM J. Comput.", volume: "15", doi: "10.1137/0215034",
-      keywords: ["graphs"], tags: ["geometry", "to-read"], note: "Cited in chapter 3",
-    });
+const files = new Map<string, string>();
+const written: Array<{ paperId: string; record: Record<string, unknown>; folderPath: string }> = [];
+
+jest.mock("../../src/storage/idb/db", () => ({
+  getDb: async () => ({
+    getAllKeys: async () => [...files.keys()],
+    get: async (_store: string, key: string) => (files.has(key) ? { bytes: new TextEncoder().encode(files.get(key)) } : undefined),
+    transaction: () => ({
+      store: { clear: async () => { written.length = 0; }, put: async (row: (typeof written)[number]) => { written.push(row); } },
+      done: Promise.resolve(),
+    }),
+  }),
+}));
+
+// rebuildFromFiles bounds its key scan with the browser's IDBKeyRange; the fake store ignores the range.
+(globalThis as Record<string, unknown>)["IDBKeyRange"] = { bound: () => undefined };
+
+beforeEach(() => {
+  files.clear();
+  written.length = 0;
+});
+
+describe("rebuildFromFiles", () => {
+  it("builds one record per metadata.yaml, with the id and path taken from the folder", async () => {
+    files.set("papers/Algo/imai1986/metadata.yaml", "title: Efficient Algorithms\npath: /Users/me/elsewhere\ntextLayer: { state: native, checkedAt: \"2026-01-01\" }\n");
+    files.set("papers/Algo/imai1986/paper.pdf", "PDF");
+
+    await rebuildFromFiles();
+
+    expect(written).toEqual([{
+      paperId: "imai1986",
+      folderPath: "papers/Algo/imai1986",
+      record: {
+        id: "imai1986", title: "Efficient Algorithms", path: "papers/Algo/imai1986", citeKey: "imai1986",
+        status: "unread", hasPdf: true, textLayer: { state: "native", checkedAt: "2026-01-01" },
+      },
+    }]);
   });
 
-  it("falls back to the folder name and unread for a sparse or odd sidecar", () => {
-    expect(recordFromYaml("status: archived\n", "papers/x1")).toEqual({ id: "x1", title: "x1", path: "papers/x1", citeKey: "x1", status: "unread" });
+  it("sets hasPdf only for folders holding an exact paper.pdf", async () => {
+    files.set("papers/a/metadata.yaml", "title: A\n");
+    files.set("papers/a/paper.pdf", "PDF");
+    files.set("papers/b/metadata.yaml", "title: B\n");
+    files.set("papers/b/paper (conflict 2026-05-22).pdf", "PDF");
+
+    await rebuildFromFiles();
+
+    expect(Object.fromEntries(written.map((row) => [row.paperId, row.record["hasPdf"]]))).toEqual({ a: true, b: false });
   });
 
-  it("rejects text that is not a YAML mapping", () => {
-    expect(recordFromYaml("title: [unclosed", "papers/x")).toBeUndefined();
-    expect(recordFromYaml("- a\n- b\n", "papers/x")).toBeUndefined();
+  it("skips text that is not a YAML mapping and a metadata.yaml with no folder name", async () => {
+    files.set("papers/list/metadata.yaml", "- a\n- b\n");
+    files.set("papers/broken/metadata.yaml", "title: [unclosed");
+    files.set("/metadata.yaml", "title: Rootless\n");
+    files.set("papers/ok/metadata.yaml", "title: Fine\n");
+
+    await rebuildFromFiles();
+
+    expect(written.map((row) => row.paperId)).toEqual(["ok"]);
+  });
+
+  it("drops a number in a string field instead of turning it into text", async () => {
+    files.set("papers/p/metadata.yaml", "title: P\nvolume: 15\nissue: \"3\"\n");
+
+    await rebuildFromFiles();
+
+    expect(written[0]!.record).not.toHaveProperty("volume");
+    expect(written[0]!.record["issue"]).toBe("3");
   });
 });

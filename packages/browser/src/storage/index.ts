@@ -1,7 +1,5 @@
 /**
- * Barrel re-export for the storage layer.
- * @depends indexedDbFileSystem, paperRecordStore, folderTreeStore, idb/db, idb/schema
- * @dependents sync/browserSyncController (Phase 4), library-page (Phase 6)
+ * Public API of the browser storage layer.
  */
 export { IndexedDbFileSystem } from "./indexedDbFileSystem";
 export {
@@ -10,7 +8,6 @@ export {
   getRecord,
   listAllRecords,
   rebuildFromFiles,
-  recordFromYaml,
 } from "./paperRecordStore";
 export {
   buildFolderTree,

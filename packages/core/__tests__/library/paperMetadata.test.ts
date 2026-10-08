@@ -11,7 +11,7 @@ describe("parsePaperMetadata", () => {
   });
 });
 
-describe("paperRecordFromMetadata (same rules as the VS Code LibraryIndexer)", () => {
+describe("paperRecordFromMetadata", () => {
   it("maps every field and takes the id and PDF presence from the folder", () => {
     const record = paperRecordFromMetadata({
       title: "Attention Is All You Need",
@@ -52,5 +52,20 @@ describe("paperRecordFromMetadata (same rules as the VS Code LibraryIndexer)", (
     expect(record.status).toBe("unread");
     expect(record.year).toBeUndefined();
     expect(record.hasPdf).toBe(false);
+  });
+
+  it("drops numbers in string fields instead of coercing them", () => {
+    const record = paperRecordFromMetadata({ volume: 15, pages: 12, issue: "3" }, location);
+    expect(record).not.toHaveProperty("volume");
+    expect(record).not.toHaveProperty("pages");
+    expect(record.issue).toBe("3");
+  });
+
+  it("keeps blank strings and blank list entries as written", () => {
+    const record = paperRecordFromMetadata({ title: "", citekey: " ", journal: "", authors: ["", "Noam Shazeer"] }, location);
+    expect(record.title).toBe("");
+    expect(record.citeKey).toBe(" ");
+    expect(record.journal).toBe("");
+    expect(record.authors).toEqual(["", "Noam Shazeer"]);
   });
 });

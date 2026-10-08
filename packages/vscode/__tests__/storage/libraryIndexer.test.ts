@@ -148,6 +148,30 @@ describe('LibraryIndexer — fields that only live in metadata.yaml', () => {
   });
 });
 
+describe('LibraryIndexer — metadata.yaml that is not a mapping', () => {
+  it('skips a file whose top level is a list, and one that is not YAML', async () => {
+    const paths = libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath);
+    const fs = makeFakeFs({
+      files: {
+        '/lib/papers/list/metadata.yaml': '- title: A\n- title: B\n',
+        '/lib/papers/broken/metadata.yaml': 'title: [unclosed',
+        '/lib/papers/ok/metadata.yaml': 'title: Fine\n',
+      },
+      dirs: {
+        '/lib/papers': [['list', D], ['broken', D], ['ok', D]],
+        '/lib/papers/list': [['metadata.yaml', F]],
+        '/lib/papers/broken': [['metadata.yaml', F]],
+        '/lib/papers/ok': [['metadata.yaml', F]],
+      },
+    });
+    const db = new InMemoryResearchDatabase();
+    await db.initialize();
+
+    expect(await new LibraryIndexer(paths, fs, db).rebuild()).toEqual({ papers: 1 });
+    expect((await db.listPapers()).map((paper) => paper.id)).toEqual(['ok']);
+  });
+});
+
 describe('LibraryIndexer — hasPdf derived from the folder listing', () => {
   const SYMLINK = vscode.FileType.SymbolicLink;
 

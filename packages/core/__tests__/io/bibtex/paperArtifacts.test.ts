@@ -5,7 +5,7 @@
  */
 import YAML from 'yaml';
 
-import { BibTeXService } from '@labshelf/core';
+import { BibTeXService, paperRecordFromMetadata, parsePaperMetadata } from '@labshelf/core';
 import type { IFileSystem, PaperRecord } from '@labshelf/core';
 
 function memoryFs(initial: Record<string, string> = {}): IFileSystem & { files: Map<string, string> } {
@@ -102,5 +102,16 @@ describe('BibTeXService.writePaperArtifacts', () => {
     const noPdf = memoryFs();
     await new BibTeXService(noPdf).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
     expect(noPdf.files.get('/lib/papers/imai1986/bib.bib')).not.toContain('file =');
+  });
+
+  it('writes numeric-looking strings quoted so they read back as the same string', async () => {
+    const fs = memoryFs();
+
+    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ volume: '15', pages: '12' }), 'paper.pdf');
+
+    const meta = parsePaperMetadata(fs.files.get('/lib/papers/imai1986/metadata.yaml')!)!;
+    const record = paperRecordFromMetadata(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false });
+    expect(record.volume).toBe('15');
+    expect(record.pages).toBe('12');
   });
 });

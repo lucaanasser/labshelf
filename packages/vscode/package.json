@@ -525,8 +525,7 @@
     "@thednp/dommatrix": "^3.0.4",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "~6.3.289",
-    "tesseract.js": "^7.0.0",
-    "yaml": "^2.7.1"
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

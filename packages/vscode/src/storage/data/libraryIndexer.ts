@@ -2,15 +2,13 @@
  * Rebuilds the SQLite papers cache by scanning metadata.yaml files on disk.
  */
 import * as vscode from "vscode";
-import YAML from "yaml";
 
 import type { LibraryLayout, PaperRecord, IResearchDatabase } from "@labshelf/core";
-import { METADATA_FILE, PDF_FILE, isPaperStatus, parseTextLayerInfo } from "@labshelf/core";
+import { METADATA_FILE, PDF_FILE, paperRecordFromMetadata, parsePaperMetadata } from "@labshelf/core";
 import { FileSystemService } from "../fileSystemService.js";
 
 /**
  * Idempotent indexer that walks the library tree and upserts all papers into SQLite.
- * @usedBy extension.ts
  */
 export class LibraryIndexer {
   constructor(
@@ -21,8 +19,7 @@ export class LibraryIndexer {
 
   /**
    * Scans papers/ and .research/papers/ and rebuilds the full SQLite cache via upsert.
-   * @usedBy extension.ts
-   * @returns the count of indexed papers
+     * @returns the count of indexed papers
    */
   async rebuild(): Promise<{ papers: number }> {
     const papers = await this.scanPapers();
@@ -62,38 +59,16 @@ export class LibraryIndexer {
     }
   }
 
-  // Parses metadata.yaml; the paper id is the folder name (stable, == citeKey).
-  // hasPdf is derived by walk() from the folder listing, never read from YAML.
+  // The paper id is the folder name (stable, == citeKey). hasPdf is derived by walk() from the folder listing.
   private async readPaper(folder: vscode.Uri, metadataUri: vscode.Uri, hasPdf: boolean): Promise<PaperRecord | null> {
-    let meta: Record<string, unknown>;
+    let text: string;
     try {
-      const parsed = YAML.parse(await this.fsService.readText(metadataUri)) as unknown;
-      if (!parsed || typeof parsed !== "object") {
-        return null;
-      }
-      meta = parsed as Record<string, unknown>;
+      text = await this.fsService.readText(metadataUri);
     } catch {
       return null;
     }
-    const id = basename(folder);
-    const keywords = stringList(meta.keywords);
-    const textLayer = parseTextLayerInfo(meta.textLayer);
-    const tags = stringList(meta.tags);
-    return {
-      id,
-      title: typeof meta.title === "string" ? meta.title : id,
-      path: folder.fsPath,
-      citeKey: typeof meta.citekey === "string" ? meta.citekey : id,
-      status: isPaperStatus(meta.status) ? meta.status : "unread",
-      hasPdf,
-      ...(parseAuthors(meta.authors)),
-      ...(typeof meta.year === "number" ? { year: meta.year } : {}),
-      ...optStr(meta, "summary", "journal", "publisher", "volume", "issue", "pages", "doi", "url", "issn", "language"),
-      ...(keywords.length ? { keywords } : {}),
-      ...(textLayer ? { textLayer } : {}),
-      ...(tags.length ? { tags } : {}),
-      ...(typeof meta.note === "string" ? { note: meta.note } : {}),
-    };
+    const meta = parsePaperMetadata(text);
+    return meta ? paperRecordFromMetadata(meta, { id: basename(folder), path: folder.fsPath, hasPdf }) : null;
   }
 }
 
@@ -101,26 +76,4 @@ export class LibraryIndexer {
 function basename(uri: vscode.Uri): string {
   const parts = uri.fsPath.split(/[\\/]/).filter(Boolean);
   return parts[parts.length - 1] ?? "";
-}
-
-// Extracts a string array from a metadata authors field, returning an empty object if the field is absent.
-function parseAuthors(value: unknown): { authors?: string[] } {
-  const authors = stringList(value);
-  return authors.length ? { authors } : {};
-}
-
-// Keeps the string entries of a YAML list; anything else yields an empty list.
-function stringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
-}
-
-// Picks string-valued keys from a metadata record, omitting keys whose value is not a string.
-function optStr(meta: Record<string, unknown>, ...keys: string[]): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const key of keys) {
-    if (typeof meta[key] === "string") {
-      out[key] = meta[key] as string;
-    }
-  }
-  return out;
 }

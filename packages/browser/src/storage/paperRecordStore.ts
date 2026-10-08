@@ -1,12 +1,9 @@
 /**
- * Persistent cache of PaperRecord objects, derived from metadata.yaml files
- * stored in IndexedDB. Provides fast folder-scoped and title-search queries
- * without re-parsing YAML on every read.
- * @depends idb/db, @labshelf/core PaperRecord, yaml
- * @dependents library-page views (Phase 6), capture flow (Phase 5), storage/index
+ * Persistent cache of PaperRecord objects, derived from the metadata.yaml files
+ * stored in IndexedDB, so reads never re-parse YAML.
  */
-import { isPaperStatus, type PaperRecord, METADATA_FILE, PAPERS_DIR } from "@labshelf/core";
-import YAML from "yaml";
+import { METADATA_FILE, PAPERS_DIR, paperRecordFromMetadata, parsePaperMetadata, type PaperRecord } from "@labshelf/core";
+import { pdfDirsFromKeys } from "./folderTreeStore";
 import { getDb } from "./idb/db";
 
 /** Upserts a PaperRecord into the metadata cache. */
@@ -35,72 +32,25 @@ export async function listAllRecords(): Promise<PaperRecord[]> {
 }
 
 /**
- * Maps a metadata.yaml sidecar onto a PaperRecord, the way the VS Code
- * LibraryIndexer does: the paper id is the folder name (== cite key) and the
- * path is where the folder sits in this library — the `path:` key inside the
- * file is whatever the last writer used (an absolute path on the desktop).
- * @usedBy rebuildFromFiles
- * @returns The record, or undefined when the text is not a YAML mapping.
- */
-export function recordFromYaml(yamlText: string, folderPath: string): PaperRecord | undefined {
-  let meta: Record<string, unknown>;
-  try {
-    const parsed = YAML.parse(yamlText) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
-    meta = parsed as Record<string, unknown>;
-  } catch {
-    return undefined;
-  }
-  const id = folderPath.slice(folderPath.lastIndexOf("/") + 1);
-  if (!id) return undefined;
-  const str = (key: string): string | undefined => {
-    const v = meta[key];
-    if (typeof v === "string" && v.trim()) return v;
-    return typeof v === "number" ? String(v) : undefined;
-  };
-  const list = (key: string): string[] => {
-    const v = meta[key];
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim() !== "") : [];
-  };
-  const status = meta["status"];
-  const record: PaperRecord = {
-    id,
-    title: str("title") ?? id,
-    path: folderPath,
-    citeKey: str("citekey") ?? id,
-    status: isPaperStatus(status) ? status : "unread",
-  };
-  const authors = list("authors");
-  if (authors.length) record.authors = authors;
-  if (typeof meta["year"] === "number") record.year = meta["year"];
-  for (const key of ["summary", "journal", "publisher", "volume", "issue", "pages", "doi", "url", "issn", "language", "note"] as const) {
-    const value = str(key);
-    if (value) record[key] = value;
-  }
-  const keywords = list("keywords");
-  if (keywords.length) record.keywords = keywords;
-  const tags = list("tags");
-  if (tags.length) record.tags = tags;
-  return record;
-}
-
-/**
  * Rebuilds the entire metadata cache from the files store: every
  * metadata.yaml under papers/, at any depth (papers live inside collections).
  * Called after each sync cycle, which may have added, moved or removed papers.
- * @usedBy sync/browserSyncController
+ * The paper id is the folder name (== cite key) and the path is where the folder
+ * sits in this library, not the `path:` key the last writer left in the file.
  */
 export async function rebuildFromFiles(): Promise<void> {
   const db = await getDb();
   const keys = (await db.getAllKeys("files", IDBKeyRange.bound(`${PAPERS_DIR}/`, `${PAPERS_DIR}/\uffff`, false, true))) as string[];
+  const pdfs = pdfDirsFromKeys(keys);
   const decoder = new TextDecoder();
   const records: PaperRecord[] = [];
   for (const key of keys) {
     if (!key.endsWith(`/${METADATA_FILE}`)) continue;
-    const row = await db.get("files", key);
     const folderPath = key.slice(0, -`/${METADATA_FILE}`.length);
-    const record = row ? recordFromYaml(decoder.decode(row.bytes), folderPath) : undefined;
-    if (record) records.push(record);
+    const id = folderPath.slice(folderPath.lastIndexOf("/") + 1);
+    const row = id ? await db.get("files", key) : undefined;
+    const meta = row ? parsePaperMetadata(decoder.decode(row.bytes)) : undefined;
+    if (meta) records.push(paperRecordFromMetadata(meta, { id, path: folderPath, hasPdf: pdfs.has(folderPath) }));
   }
   // One transaction so readers never observe the cache half-cleared.
   const tx = db.transaction("metadata", "readwrite");
