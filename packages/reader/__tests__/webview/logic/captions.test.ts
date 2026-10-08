@@ -1,5 +1,5 @@
-import { findCaptionLines, floatRegion, pickCaption } from '../../../../src/pdf-viewer/webview/logic/captions';
-import type { TextLine } from '../../../../src/pdf-viewer/webview/logic/textLines';
+import { findCaptionLines, floatRegion, pickCaption } from '../../../src/webview/logic/captions';
+import type { TextLine } from '../../../src/webview/logic/textLines';
 
 const W = 612;
 const H = 792;

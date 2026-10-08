@@ -1,8 +1,8 @@
 /**
  * Find bar driving pdf.js' PDFFindController through the EventBus. "Highlight all" is always on: seeing every hit at once is the point of searching a paper.
  *
- * @depends pdf-viewer/webview/ui/{dom,icons,navHistory,context}.ts
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/ui/{dom,icons,navHistory,context}.ts
+ * @dependents webview/reader.ts
  */
 import type { ReaderContext } from "./context.js";
 import { byId, h, iconButton } from "./dom.js";
@@ -55,14 +55,14 @@ export class FindBar {
 
   /**
    * Registers a callback invoked whenever the find bar opens or closes.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   onToggle(fn: (open: boolean) => void): void { this.toggleListeners.push(fn); }
 
   /**
    * Opens the find bar, pre-filling it with the current text selection.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   show(): void {
@@ -81,7 +81,7 @@ export class FindBar {
 
   /**
    * Closes the find bar and clears the match count.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   close(): void {
@@ -97,7 +97,7 @@ export class FindBar {
 
   /**
    * Next/previous hit; opens the bar instead when there is nothing to repeat.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   again(previous: boolean): void {

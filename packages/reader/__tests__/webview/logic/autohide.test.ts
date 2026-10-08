@@ -1,4 +1,4 @@
-import { initialAutohide, toolbarVisibility, type AutohideInputs, type AutohideState } from '../../../../src/pdf-viewer/webview/logic/autohide';
+import { initialAutohide, toolbarVisibility, type AutohideInputs, type AutohideState } from '../../../src/webview/logic/autohide';
 
 function inputs(overrides: Partial<AutohideInputs> = {}): AutohideInputs {
   return {

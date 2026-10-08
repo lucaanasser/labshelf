@@ -3,7 +3,7 @@
  * DOM-free so jest (node env) can cover it; ui/keyboard.ts adapts KeyboardEvent into KeyInput.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/keyboard.ts, pdf-viewer/webview/ui/cheatsheet.ts, pdf-viewer/webview/main.ts (types only)
+ * @dependents webview/ui/keyboard.ts, webview/ui/cheatsheet.ts, webview/reader.ts (types only)
  */
 
 export type ReaderAction =
@@ -136,7 +136,7 @@ function matches(b: Binding, input: KeyInput, isMac: boolean): boolean {
 
 /**
  * Resolves one keydown into a reader action.
- * @usedBy pdf-viewer/webview/ui/keyboard.ts
+ * @usedBy webview/ui/keyboard.ts
  * @returns the action (or null) and the chord prefix to carry into the next keydown.
  */
 export function resolveKey(input: KeyInput, ctx: KeyContext): KeyResolution {
@@ -185,7 +185,7 @@ function displayKey(b: Binding, isMac: boolean): string {
 
 /**
  * Rows for the `?` overlay: one per action with every key that triggers it, vim keys included only when the layer is on.
- * @usedBy pdf-viewer/webview/ui/cheatsheet.ts
+ * @usedBy webview/ui/cheatsheet.ts
  * @returns rows in table order, grouped by `group`.
  */
 export function cheatsheetRows(ctx: Pick<KeyContext, "vimKeys" | "isMac">): CheatsheetRow[] {

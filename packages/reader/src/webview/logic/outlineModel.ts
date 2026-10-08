@@ -2,7 +2,7 @@
  * Flattens a pdf.js outline tree into rows the Outline tab can render, collapse and track against the current page.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/outlineTab.ts
+ * @dependents webview/ui/outlineTab.ts
  */
 
 /** Structural subset of pdf.js' `getOutline()` node. */
@@ -31,7 +31,7 @@ const MAX_DEPTH = 12;
 const MAX_ROWS = 5000;
 
 /**
- * @usedBy pdf-viewer/webview/ui/outlineTab.ts
+ * @usedBy webview/ui/outlineTab.ts
  * @returns rows in document order with stable numeric ids.
  */
 export function flattenOutline(nodes: readonly RawOutlineNode[] | null | undefined): OutlineRow[] {
@@ -59,7 +59,7 @@ export function flattenOutline(nodes: readonly RawOutlineNode[] | null | undefin
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/outlineTab.ts
+ * @usedBy webview/ui/outlineTab.ts
  * @returns the rows not hidden beneath a collapsed ancestor.
  */
 export function visibleRows(rows: readonly OutlineRow[], collapsed: ReadonlySet<number>): OutlineRow[] {
@@ -75,7 +75,7 @@ export function visibleRows(rows: readonly OutlineRow[], collapsed: ReadonlySet<
 
 /**
  * The active outline entry is the last one starting at or before the current page.
- * @usedBy pdf-viewer/webview/ui/outlineTab.ts
+ * @usedBy webview/ui/outlineTab.ts
  * @returns an index into `rowPages`, or -1 when no entry qualifies (pages not yet resolved are null).
  */
 export function activeOutlineIndex(rowPages: readonly (number | null)[], currentPage: number): number {

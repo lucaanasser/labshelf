@@ -1,8 +1,8 @@
 /**
  * `?` overlay listing every active shortcut, generated from the keymap so it can never drift from the real bindings.
  *
- * @depends pdf-viewer/webview/logic/keymap.ts, pdf-viewer/webview/ui/dom.ts, pdf-viewer/webview/ui/context.ts (types only)
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/logic/keymap.ts, webview/ui/dom.ts, webview/ui/context.ts (types only)
+ * @dependents webview/reader.ts
  */
 import { cheatsheetRows } from "../logic/keymap.js";
 import type { ReaderContext } from "./context.js";
@@ -19,7 +19,7 @@ export class Cheatsheet {
 
   /**
    * Opens the overlay if closed, closes it if open.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   toggle(): void {
@@ -28,7 +28,7 @@ export class Cheatsheet {
 
   /**
    * Closes the overlay and clears its content.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   close(): void {

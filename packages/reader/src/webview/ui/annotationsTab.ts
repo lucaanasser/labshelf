@@ -1,8 +1,8 @@
 /**
  * Annotations tab: the paper's highlights and notes grouped by page, with jump, delete and Markdown export.
  *
- * @depends pdf-viewer/webview/ui/{dom,icons,sidebar,hostBridge}.ts, @labshelf/core (types only)
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/ui/{dom,icons,sidebar,hostBridge}.ts, @labshelf/core (types only)
+ * @dependents webview/reader.ts
  */
 import type { Annotation } from "@labshelf/core";
 import { h, iconButton } from "./dom.js";
@@ -34,7 +34,7 @@ export class AnnotationsTab implements SidebarPanel {
 
   /**
    * Replaces the displayed annotations and re-renders the list.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   setAnnotations(annotations: Annotation[]): void {

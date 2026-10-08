@@ -1,6 +1,6 @@
 import type { Annotation } from '@labshelf/core';
-import { formatAnnotationsMarkdown } from '../../../src/pdf-viewer/shared/annotationsMarkdown';
-import type { CitablePaper } from '../../../src/pdf-viewer/shared/citationFormat';
+import { formatAnnotationsMarkdown } from '../../src/shared/annotationsMarkdown';
+import type { CitablePaper } from '../../src/shared/citationFormat';
 
 function paper(overrides: Partial<CitablePaper> = {}): CitablePaper {
   return { citeKey: 'doe2020', title: 'Great Paper', authors: ['Jane Doe'], year: 2020, ...overrides };

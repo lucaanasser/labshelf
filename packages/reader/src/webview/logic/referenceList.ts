@@ -2,8 +2,8 @@
  * Finds the References section and splits it into entries so a citation hover can show the cited work.
  * Deliberately conservative: when the layout is ambiguous it returns nothing, and the hover falls back to a cropped image of the destination rather than showing the wrong reference.
  *
- * @depends pdf-viewer/webview/logic/textLines.ts, pdf-viewer/webview/logic/inTextRefs.ts
- * @dependents pdf-viewer/webview/ui/citationResolver.ts
+ * @depends webview/logic/textLines.ts, webview/logic/inTextRefs.ts
+ * @dependents webview/ui/citationResolver.ts
  */
 import { foldText } from "./inTextRefs.js";
 import type { TextLine } from "./textLines.js";
@@ -33,7 +33,7 @@ export function isReferencesHeading(raw: string): boolean {
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/citationResolver.ts
+ * @usedBy webview/ui/citationResolver.ts
  * @returns the index of the heading line, or -1.
  */
 export function findReferencesStart(lines: readonly TextLine[]): number {
@@ -102,7 +102,7 @@ function build(group: TextLine[], looseNumber: number | null = null): ReferenceE
 /**
  * Splits reference-section lines (already in reading order) into entries.
  * Numbered lists split on their markers; unnumbered lists split on hanging indent. Anything else yields no entries.
- * @usedBy pdf-viewer/webview/ui/citationResolver.ts
+ * @usedBy webview/ui/citationResolver.ts
  * @returns the entries, or [] when no reliable boundary signal exists.
  */
 export function splitReferenceEntries(lines: readonly TextLine[]): ReferenceEntry[] {
@@ -195,7 +195,7 @@ export interface EntryQuery {
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/citationResolver.ts
+ * @usedBy webview/ui/citationResolver.ts
  * @returns the entry whose first line is the nearest at or below the destination, or null if none is plausibly close.
  */
 export function entryAtY(entries: readonly ReferenceEntry[], q: EntryQuery): ReferenceEntry | null {
@@ -235,7 +235,7 @@ const ACRONYM_AREA_CHARS = 90;
 
 /**
  * Resolves an author–year citation such as "(SILVA; COSTA, 2020)" or "Souza et al. (2019a)" against the reference list.
- * @usedBy pdf-viewer/webview/ui/citationResolver.ts
+ * @usedBy webview/ui/citationResolver.ts
  * @returns the matching entries (at most three); several are returned when the list genuinely has several candidates.
  */
 export function matchAuthorYear(entries: readonly ReferenceEntry[], q: AuthorYearQuery): ReferenceEntry[] {
@@ -265,7 +265,7 @@ export function matchAuthorYear(entries: readonly ReferenceEntry[], q: AuthorYea
 
 /**
  * Lookup for plain-text markers such as "[12]", where there is no link destination to measure against.
- * @usedBy pdf-viewer/webview/ui/citationResolver.ts
+ * @usedBy webview/ui/citationResolver.ts
  * @returns the entry whose leading marker carries that number, or null.
  */
 export function entryByNumber(entries: readonly ReferenceEntry[], n: number): ReferenceEntry | null {

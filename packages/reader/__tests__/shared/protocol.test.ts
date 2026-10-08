@@ -1,4 +1,4 @@
-import { isSafeExternalUrl, isWebviewMessage } from '../../../src/pdf-viewer/shared/protocol';
+import { isSafeExternalUrl, isWebviewMessage } from '../../src/shared/protocol';
 
 describe('isWebviewMessage', () => {
   describe('accepts a valid sample of every WebviewToHost command', () => {

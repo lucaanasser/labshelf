@@ -1,8 +1,8 @@
 /**
  * Zoom interactions: cursor-anchored ctrl/cmd+wheel and pinch, ladder steps, fit modes, and refit on resize.
  *
- * @depends pdf-viewer/webview/logic/{zoomMath,debounce}.ts, pdf-viewer/shared/protocol.ts (types only), pdf-viewer/webview/ui/context.ts (types only)
- * @dependents pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/statusPill.ts (types only)
+ * @depends webview/logic/{zoomMath,debounce}.ts, shared/protocol.ts (types only), webview/ui/context.ts (types only)
+ * @dependents webview/reader.ts, webview/ui/statusPill.ts (types only)
  */
 import type { ZoomPreset } from "../../shared/protocol.js";
 import { createDebouncer } from "../logic/debounce.js";
@@ -42,18 +42,18 @@ export class ZoomController {
   get scaleValue(): string { return this.ctx.pdfViewer.currentScaleValue; }
 
   /**
-   * @usedBy pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/statusPill.ts
+   * @usedBy webview/reader.ts, webview/ui/statusPill.ts
    * @returns void
    */
   zoomIn(): void { this.setScale(nextZoomStep(this.scale, 1)); }
   /**
-   * @usedBy pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/statusPill.ts
+   * @usedBy webview/reader.ts, webview/ui/statusPill.ts
    * @returns void
    */
   zoomOut(): void { this.setScale(nextZoomStep(this.scale, -1)); }
 
   /**
-   * @usedBy pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/statusPill.ts
+   * @usedBy webview/reader.ts, webview/ui/statusPill.ts
    * @returns void
    */
   setPreset(preset: ZoomPreset): void {
@@ -62,7 +62,7 @@ export class ZoomController {
 
   /**
    * Steps keep the viewport centre fixed, which is what a reader expects from a button or a key.
-   * @usedBy pdf-viewer/webview/ui/statusPill.ts, ZoomController (internal: zoomIn, zoomOut)
+   * @usedBy webview/ui/statusPill.ts, ZoomController (internal: zoomIn, zoomOut)
    * @returns void
    */
   setScale(scale: number): void {

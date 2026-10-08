@@ -1,8 +1,8 @@
 /**
  * Turns keydown events into reader actions via the pure keymap, and drives held-key scrolling with a rAF loop (key-repeat + smooth scrolling stutters).
  *
- * @depends pdf-viewer/webview/logic/{keymap,actionDedupe}.ts, pdf-viewer/webview/ui/dom.ts, pdf-viewer/webview/ui/context.ts (types only)
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/logic/{keymap,actionDedupe}.ts, webview/ui/dom.ts, webview/ui/context.ts (types only)
+ * @dependents webview/reader.ts
  */
 import { isDuplicateDelivery, type ActionSource, type ActionStamp } from "../logic/actionDedupe.js";
 import { ACTIONS_BLOCKED_WHILE_TYPING, CHORD_TIMEOUT_MS, resolveKey, type ReaderAction } from "../logic/keymap.js";
@@ -36,7 +36,7 @@ export class Keyboard {
 
   /**
    * Runs an action unless it is the same chord arriving a second time through the other route (keydown vs. host keybinding).
-   * @usedBy pdf-viewer/webview/main.ts, Keyboard.onKeyDown (internal)
+   * @usedBy webview/reader.ts, Keyboard.onKeyDown (internal)
    * @returns void
    */
   dispatch(action: ReaderAction, source: ActionSource): void {

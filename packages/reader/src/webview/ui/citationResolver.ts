@@ -1,8 +1,8 @@
 /**
  * Locates the References section and extracts the entry a citation link points at. Text extraction and layout analysis are lazy and cached per page.
  *
- * @depends pdf-viewer/webview/logic/{textLines,referenceList}.ts, pdf-viewer/webview/ui/pageText.ts
- * @dependents pdf-viewer/webview/ui/hoverPreview.ts, pdf-viewer/webview/main.ts
+ * @depends webview/logic/{textLines,referenceList}.ts, webview/ui/pageText.ts
+ * @dependents webview/ui/hoverPreview.ts, webview/reader.ts
  */
 import { entryAtY, entryByNumber, findReferencesStart, matchAuthorYear, splitReferenceEntries, type AuthorYearQuery, type ReferenceEntry } from "../logic/referenceList.js";
 import type { TextLine } from "../logic/textLines.js";
@@ -36,7 +36,7 @@ export class CitationResolver {
 
   /**
    * Finds the References section in the background so the first citation hover does not pay for it.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   warmUp(): void {
@@ -44,7 +44,7 @@ export class CitationResolver {
   }
 
   /**
-   * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+   * @usedBy webview/ui/hoverPreview.ts
    * @returns true when a destination lands inside the References section.
    */
   async isInReferences(pageNumber: number, y: number | null, x: number | null): Promise<boolean> {
@@ -59,7 +59,7 @@ export class CitationResolver {
   }
 
   /**
-   * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+   * @usedBy webview/ui/hoverPreview.ts
    * @returns the reference text at a destination, or null when the layout gives no reliable entry boundaries.
    */
   async entryAt(pageNumber: number, y: number, x: number | null): Promise<string | null> {
@@ -70,7 +70,7 @@ export class CitationResolver {
 
   /**
    * Numeric lookup for PDFs whose citations are plain text. Scans the pages from the heading onward.
-   * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+   * @usedBy webview/ui/hoverPreview.ts
    * @returns the entry text and its page, or null.
    */
   async entryNumbered(n: number): Promise<ResolvedEntry | null> {
@@ -86,7 +86,7 @@ export class CitationResolver {
 
   /**
    * Lookup for author–year citations ("(SILVA; COSTA, 2020)", "Souza et al. (2019)") in PDFs whose citations are plain text.
-   * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+   * @usedBy webview/ui/hoverPreview.ts
    * @returns the matching entries with their page (several when the list has several candidates), or [].
    */
   async entriesByAuthorYear(query: AuthorYearQuery): Promise<ResolvedEntry[]> {

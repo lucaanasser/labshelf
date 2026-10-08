@@ -2,7 +2,7 @@
  * Per-paper reading position persisted in the sidecar, plus the defensive normalizer applied to anything read from disk or received from the webview.
  *
  * @depends none
- * @dependents storage/data/paperDataStore.ts, pdf-viewer/shared/protocol.ts, pdf-viewer/PdfViewerPanel.ts, pdf-viewer/webview/**
+ * @dependents storage/data/paperDataStore.ts, shared/protocol.ts, pdf-viewer/PdfViewerPanel.ts, webview/**
  */
 
 export type SidebarTab = "thumbnails" | "outline" | "annotations";
@@ -73,7 +73,7 @@ export function normalizeReadingState(raw: unknown): ReadingState | undefined {
 
 /**
  * Clamps a stored page to the document actually opened, which may have been replaced since the state was saved.
- * @usedBy pdf-viewer/webview/ui
+ * @usedBy webview/ui
  * @returns a page number within [1, totalPages].
  */
 export function clampPage(page: number, totalPages: number): number {

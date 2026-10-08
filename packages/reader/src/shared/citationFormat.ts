@@ -1,8 +1,8 @@
 /**
  * Formats a quoted passage together with a citation of the paper it came from, in the style chosen by `labshelf.reader.citationStyle`.
  *
- * @depends pdf-viewer/shared/protocol.ts (types only), @labshelf/core (types only)
- * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/shared/annotationsMarkdown.ts
+ * @depends shared/protocol.ts (types only), @labshelf/core (types only)
+ * @dependents vscode pdf-viewer/PdfViewerPanel.ts, shared/annotationsMarkdown.ts
  */
 import type { PaperRecord } from "@labshelf/core";
 import type { CitationStyle } from "./protocol.js";
@@ -11,7 +11,7 @@ export type CitablePaper = Pick<PaperRecord, "citeKey" | "title" | "authors" | "
 
 /**
  * Text-layer selections carry hard line breaks and hyphenation from the PDF layout; a quote should read as running prose.
- * @usedBy formatQuoteWithCitation, pdf-viewer/shared/annotationsMarkdown.ts
+ * @usedBy formatQuoteWithCitation, shared/annotationsMarkdown.ts
  * @returns the quote with hyphenation joined and whitespace collapsed.
  */
 export function cleanQuote(text: string): string {
@@ -30,7 +30,7 @@ function surname(author: string): string {
 
 /**
  * Short author-year label such as "Silva et al., 2021".
- * @usedBy formatQuoteWithCitation, pdf-viewer/shared/annotationsMarkdown.ts
+ * @usedBy formatQuoteWithCitation, shared/annotationsMarkdown.ts
  * @returns the label; falls back to the cite key when no author is known.
  */
 export function authorYearLabel(paper: CitablePaper): string {

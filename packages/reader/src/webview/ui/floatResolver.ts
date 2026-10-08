@@ -2,8 +2,8 @@
  * Finds the figure, table or equation a textual reference ("Fig. 3", "Tabela 2", "Eq. (5)") points at, from captions in
  * the page text. This is what makes float previews work in PDFs without link annotations, scans with an OCR layer included.
  *
- * @depends pdf-viewer/webview/logic/captions.ts, pdf-viewer/webview/ui/pageText.ts
- * @dependents pdf-viewer/webview/ui/hoverPreview.ts, pdf-viewer/webview/main.ts
+ * @depends webview/logic/captions.ts, webview/ui/pageText.ts
+ * @dependents webview/ui/hoverPreview.ts, webview/reader.ts
  */
 import { findCaptionLines, floatRegion, pickCaption, type PdfRegion } from "../logic/captions.js";
 import type { FloatKind } from "../logic/inTextRefs.js";
@@ -33,7 +33,7 @@ export class FloatResolver {
 
   /**
    * Builds the caption index in the background so the first hover does not pay for it.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   warmUp(): void {
@@ -41,7 +41,7 @@ export class FloatResolver {
   }
 
   /**
-   * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+   * @usedBy webview/ui/hoverPreview.ts
    * @returns where the float is, or null when no caption with that label exists.
    */
   async find(kind: FloatKind, label: string): Promise<FloatTarget | null> {

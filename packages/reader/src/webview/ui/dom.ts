@@ -2,12 +2,12 @@
  * Tiny DOM helpers for the reader webview; no framework, the UI is a handful of overlays around pdf.js.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/*
+ * @dependents webview/ui/*
  */
 
 /**
  * Looks up a required shell element by id, throwing if the static HTML shell is missing it.
- * @usedBy pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/*
+ * @usedBy webview/reader.ts, webview/ui/*
  * @returns the element, typed as `T`.
  */
 export function byId<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -21,7 +21,7 @@ type Child = Node | string | null | undefined | false;
 
 /**
  * Creates an element. `class`, `title`, `data-*`, `aria-*` etc. are set as attributes; `html` sets trusted markup (icons only).
- * @usedBy pdf-viewer/webview/ui/*
+ * @usedBy webview/ui/*
  * @returns the created element.
  */
 export function h<K extends keyof HTMLElementTagNameMap>(
@@ -44,7 +44,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 
 /**
  * Icon-only button with an accessible name; the tooltip doubles as shortcut documentation.
- * @usedBy pdf-viewer/webview/ui/*
+ * @usedBy webview/ui/*
  * @returns the button element.
  */
 export function iconButton(iconHtml: string, title: string, extraClass = ""): HTMLButtonElement {
@@ -58,7 +58,7 @@ export function iconButton(iconHtml: string, title: string, extraClass = ""): HT
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/keyboard.ts
+ * @usedBy webview/ui/keyboard.ts
  * @returns true when typing into the target should produce text rather than trigger single-key shortcuts.
  */
 export function isTextInput(target: EventTarget | null): boolean {
@@ -72,7 +72,7 @@ export function isTextInput(target: EventTarget | null): boolean {
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/*
+ * @usedBy webview/ui/*
  * @returns `n` limited to [min, max].
  */
 export function clamp(n: number, min: number, max: number): number {

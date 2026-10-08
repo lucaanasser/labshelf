@@ -3,7 +3,7 @@ import {
   FIND_OVERLAY_PX,
   decideMatchScroll,
   freshOrigin,
-} from '../../../../src/pdf-viewer/webview/logic/findScroll';
+} from '../../../src/webview/logic/findScroll';
 
 describe('findScroll', () => {
   describe('decideMatchScroll', () => {

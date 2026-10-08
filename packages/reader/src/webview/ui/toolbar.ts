@@ -1,8 +1,8 @@
 /**
  * Overlay toolbar. It floats above the page (never part of the layout) so showing or hiding it cannot resize the viewer and trigger a re-raster.
  *
- * @depends pdf-viewer/webview/logic/autohide.ts, pdf-viewer/webview/ui/{dom,icons,popover}.ts
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/logic/autohide.ts, webview/ui/{dom,icons,popover}.ts
+ * @dependents webview/reader.ts
  */
 import { initialAutohide, toolbarVisibility, type AutohideEvent, type AutohideState } from "../logic/autohide.js";
 import { byId, h, iconButton } from "./dom.js";
@@ -88,7 +88,7 @@ export class Toolbar {
 
   /**
    * Enables or disables the back/forward buttons.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   setHistoryState(canGoBack: boolean, canGoForward: boolean): void {
@@ -98,7 +98,7 @@ export class Toolbar {
 
   /**
    * Reflects the sidebar's open state on the toggle button.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   setSidebarOpen(open: boolean): void {
@@ -107,7 +107,7 @@ export class Toolbar {
 
   /**
    * Pins the toolbar visible while the find bar is open.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   setFindOpen(open: boolean): void {
@@ -117,7 +117,7 @@ export class Toolbar {
 
   /**
    * Applies the `labshelf.reader.toolbarAutoHide` setting.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   setAutoHide(enabled: boolean): void {

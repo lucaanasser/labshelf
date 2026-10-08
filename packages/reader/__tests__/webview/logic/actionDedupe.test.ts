@@ -2,7 +2,7 @@ import {
   CROSS_SOURCE_WINDOW_MS,
   isDuplicateDelivery,
   type ActionStamp,
-} from '../../../../src/pdf-viewer/webview/logic/actionDedupe';
+} from '../../../src/webview/logic/actionDedupe';
 
 const stamp = (action: string, source: 'key' | 'host', at: number): ActionStamp => ({ action, source, at });
 

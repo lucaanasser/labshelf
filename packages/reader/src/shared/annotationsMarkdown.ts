@@ -1,8 +1,8 @@
 /**
  * Renders a paper's annotations as a Markdown reading-notes document grouped by page.
  *
- * @depends pdf-viewer/shared/citationFormat.ts, @labshelf/core (types only)
- * @dependents pdf-viewer/PdfViewerPanel.ts, extension.ts (labshelf.exportAnnotations)
+ * @depends shared/citationFormat.ts, @labshelf/core (types only)
+ * @dependents vscode pdf-viewer/PdfViewerPanel.ts, extension.ts (labshelf.exportAnnotations)
  */
 import type { Annotation } from "@labshelf/core";
 import { authorYearLabel, cleanQuote, type CitablePaper } from "./citationFormat.js";

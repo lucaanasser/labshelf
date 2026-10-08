@@ -1,4 +1,4 @@
-import { cropRectForPreview, destPoint } from '../../../../src/pdf-viewer/webview/logic/destGeometry';
+import { cropRectForPreview, destPoint } from '../../../src/webview/logic/destGeometry';
 
 describe('destPoint', () => {
   it('reads x/y from an XYZ destination', () => {

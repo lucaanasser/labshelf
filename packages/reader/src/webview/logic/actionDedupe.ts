@@ -4,7 +4,7 @@
  * duplicate; repeats from the same source are genuine (held key, repeated palette command) and must all run.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/keyboard.ts
+ * @dependents webview/ui/keyboard.ts
  */
 
 export type ActionSource = "key" | "host";
@@ -19,7 +19,7 @@ export interface ActionStamp {
 export const CROSS_SOURCE_WINDOW_MS = 250;
 
 /**
- * @usedBy pdf-viewer/webview/ui/keyboard.ts
+ * @usedBy webview/ui/keyboard.ts
  * @returns true when `next` is the same chord arriving a second time through the other route.
  */
 export function isDuplicateDelivery(last: ActionStamp | null, next: ActionStamp): boolean {

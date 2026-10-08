@@ -1,4 +1,4 @@
-import { clampPage, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, normalizeReadingState } from '../../../src/pdf-viewer/shared/readingState';
+import { clampPage, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, normalizeReadingState } from '../../src/shared/readingState';
 
 describe('normalizeReadingState', () => {
   it('accepts a valid state with a preset scaleValue', () => {

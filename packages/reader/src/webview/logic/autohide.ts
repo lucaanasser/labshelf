@@ -2,7 +2,7 @@
  * Decides when the overlay toolbar is visible. Kept as a pure reducer so the feel (thresholds, pinning conditions) is unit-tested rather than tuned by hand in DOM handlers.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/toolbar.ts
+ * @dependents webview/ui/toolbar.ts
  */
 
 export const HIDE_AFTER_DOWN_PX = 24;
@@ -48,7 +48,7 @@ function pinned(i: AutohideInputs): boolean {
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/toolbar.ts
+ * @usedBy webview/ui/toolbar.ts
  * @returns the next state; callers apply `visible` to the DOM only when it changes.
  */
 export function toolbarVisibility(

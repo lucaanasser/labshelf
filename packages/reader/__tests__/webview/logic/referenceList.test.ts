@@ -5,11 +5,11 @@ import {
   entryByNumber,
   findReferencesStart,
   splitReferenceEntries,
-} from '../../../../src/pdf-viewer/webview/logic/referenceList';
-import type { TextLine } from '../../../../src/pdf-viewer/webview/logic/textLines';
+} from '../../../src/webview/logic/referenceList';
+import type { TextLine } from '../../../src/webview/logic/textLines';
 
 function loadFixture(name: string): TextLine[] {
-  const filePath = path.join(__dirname, '../../../fixtures/references', name);
+  const filePath = path.join(__dirname, '../../fixtures/references', name);
   return JSON.parse(fs.readFileSync(filePath, 'utf8')) as TextLine[];
 }
 
@@ -154,7 +154,7 @@ describe('entryByNumber', () => {
 
 describe('reference list in scans and non-English papers', () => {
   const { isReferencesHeading, matchAuthorYear, splitReferenceEntries: split } =
-    require('../../../../src/pdf-viewer/webview/logic/referenceList') as typeof import('../../../../src/pdf-viewer/webview/logic/referenceList');
+    require('../../../src/webview/logic/referenceList') as typeof import('../../../src/webview/logic/referenceList');
   const ln = (text: string, y: number, x = 72) => ({ text, x, xEnd: 540, y, height: 10, column: 0 });
 
   it('recognises the heading across languages, accents lost to OCR, numbering and letter-spacing', () => {

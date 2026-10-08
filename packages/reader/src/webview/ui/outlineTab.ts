@@ -1,8 +1,8 @@
 /**
  * Outline tab: the PDF's table of contents as a collapsible tree whose active entry follows the current page.
  *
- * @depends pdf-viewer/webview/logic/outlineModel.ts, pdf-viewer/webview/ui/{dom,icons,sidebar,context}.ts
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/logic/outlineModel.ts, webview/ui/{dom,icons,sidebar,context}.ts
+ * @dependents webview/reader.ts
  */
 import { activeOutlineIndex, flattenOutline, visibleRows, type OutlineRow, type RawOutlineNode } from "../logic/outlineModel.js";
 import type { ReaderContext } from "./context.js";
@@ -26,7 +26,7 @@ export class OutlineTab implements SidebarPanel {
 
   /**
    * Loads the outline on first show and re-highlights the active entry on later shows.
-   * @usedBy pdf-viewer/webview/ui/sidebar.ts (Sidebar)
+   * @usedBy webview/ui/sidebar.ts (Sidebar)
    * @returns void
    */
   onShow(): void {
@@ -35,7 +35,7 @@ export class OutlineTab implements SidebarPanel {
   }
 
   /**
-   * @usedBy pdf-viewer/webview/ui/sidebar.ts (Sidebar)
+   * @usedBy webview/ui/sidebar.ts (Sidebar)
    * @returns void
    */
   onHide(): void { this.visible = false; }

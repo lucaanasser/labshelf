@@ -1,8 +1,8 @@
 /**
  * Theme picker: the five persisted presets plus session-only custom page colours.
  *
- * @depends pdf-viewer/webview/ui/{dom,popover,theme,hostBridge}.ts, @labshelf/core (types only)
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/ui/{dom,popover,theme,hostBridge}.ts, @labshelf/core (types only)
+ * @dependents webview/reader.ts
  */
 import type { PdfTheme } from "@labshelf/core";
 import { h } from "./dom.js";
@@ -20,7 +20,7 @@ const THEMES: ReadonlyArray<{ value: PdfTheme; label: string }> = [
 
 /**
  * A preset is persisted per paper by the host; custom colours apply to this session only.
- * @usedBy pdf-viewer/webview/main.ts
+ * @usedBy webview/reader.ts
  * @returns void
  */
 export function openThemePopover(anchor: HTMLElement, theme: ThemeController, host: HostBridge): void {

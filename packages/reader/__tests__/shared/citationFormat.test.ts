@@ -1,4 +1,4 @@
-import { authorYearLabel, cleanQuote, formatQuoteWithCitation, type CitablePaper } from '../../../src/pdf-viewer/shared/citationFormat';
+import { authorYearLabel, cleanQuote, formatQuoteWithCitation, type CitablePaper } from '../../src/shared/citationFormat';
 
 function paper(overrides: Partial<CitablePaper> = {}): CitablePaper {
   return { citeKey: 'nasser2024', title: 'A Great Paper', authors: ['Luca Nasser'], year: 2024, ...overrides };

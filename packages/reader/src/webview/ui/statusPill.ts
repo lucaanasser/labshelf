@@ -1,8 +1,8 @@
 /**
  * Floating page/zoom pill at the bottom-right: the only always-visible chrome. The page number is an editable go-to-page field; the zoom label opens the fit menu.
  *
- * @depends pdf-viewer/webview/logic/zoomMath.ts, pdf-viewer/webview/ui/{dom,icons,popover,zoomController,context}.ts
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/logic/zoomMath.ts, webview/ui/{dom,icons,popover,zoomController,context}.ts
+ * @dependents webview/reader.ts
  */
 import { formatZoomLabel } from "../logic/zoomMath.js";
 import type { ReaderContext } from "./context.js";
@@ -58,7 +58,7 @@ export class StatusPill {
 
   /**
    * Focuses the page-number field for a keyboard-driven go-to-page.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   focusPageInput(): void {

@@ -2,8 +2,8 @@
  * Renders part of a page into a small canvas for the hover popup: the band around a link's destination, or an explicit
  * region such as a figure located from its caption.
  *
- * @depends pdf-viewer/webview/logic/destGeometry.ts, pdf-viewer/webview/logic/captions.ts (types only), pdf-viewer/webview/ui/theme.ts, pdfjs-dist (types only)
- * @dependents pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/hoverPreview.ts (types only)
+ * @depends webview/logic/destGeometry.ts, webview/logic/captions.ts (types only), webview/ui/theme.ts, pdfjs-dist (types only)
+ * @dependents webview/reader.ts, webview/ui/hoverPreview.ts (types only)
  */
 import type { PageViewport, RenderTask } from "pdfjs-dist";
 import type { PdfRegion } from "../logic/captions.js";
@@ -40,7 +40,7 @@ export class DestPreview {
 
   /**
    * Cancels any in-flight page render.
-   * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+   * @usedBy webview/ui/hoverPreview.ts
    * @returns void
    */
   cancel(): void {
@@ -50,7 +50,7 @@ export class DestPreview {
 
   /**
    * @param pdfY destination y in PDF space, or null for "top of page".
-   * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+   * @usedBy webview/ui/hoverPreview.ts
    * @returns a canvas sized for the popup, or null when rendering was cancelled.
    */
   async render(pageNumber: number, pdfX: number | null, pdfY: number | null): Promise<HTMLCanvasElement | null> {
@@ -63,7 +63,7 @@ export class DestPreview {
 
   /**
    * @param region rectangle in PDF user space, e.g. a figure plus its caption.
-   * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+   * @usedBy webview/ui/hoverPreview.ts
    * @returns a canvas sized for the popup, or null when rendering was cancelled.
    */
   async renderRegion(pageNumber: number, region: PdfRegion): Promise<HTMLCanvasElement | null> {

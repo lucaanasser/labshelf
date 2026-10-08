@@ -1,8 +1,8 @@
 /**
  * One-at-a-time anchored popover used for the theme picker and the zoom menu.
  *
- * @depends pdf-viewer/webview/ui/dom.ts
- * @dependents pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/themePopover.ts, pdf-viewer/webview/ui/statusPill.ts, pdf-viewer/webview/ui/toolbar.ts
+ * @depends webview/ui/dom.ts
+ * @dependents webview/reader.ts, webview/ui/themePopover.ts, webview/ui/statusPill.ts, webview/ui/toolbar.ts
  */
 import { clamp, h } from "./dom.js";
 
@@ -10,19 +10,19 @@ let current: { el: HTMLElement; anchor: HTMLElement; cleanup: () => void } | nul
 const openListeners: Array<(open: boolean) => void> = [];
 
 /**
- * @usedBy pdf-viewer/webview/ui/toolbar.ts (an open menu pins the auto-hiding toolbar)
+ * @usedBy webview/ui/toolbar.ts (an open menu pins the auto-hiding toolbar)
  * @returns void
  */
 export function onPopoverToggle(fn: (open: boolean) => void): void { openListeners.push(fn); }
 /**
- * @usedBy pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/toolbar.ts
+ * @usedBy webview/reader.ts, webview/ui/toolbar.ts
  * @returns true while a popover is on screen.
  */
 export function isPopoverOpen(): boolean { return current !== null; }
 
 /**
  * Closes the open popover, if any, and restores its anchor's aria-expanded state.
- * @usedBy pdf-viewer/webview/main.ts (Escape), menu items
+ * @usedBy webview/reader.ts (Escape), menu items
  * @returns void
  */
 export function closePopover(): void {
@@ -37,7 +37,7 @@ export function closePopover(): void {
 
 /**
  * Opens `content` next to `anchor`; clicking the same anchor again closes it.
- * @usedBy pdf-viewer/webview/ui/*
+ * @usedBy webview/ui/*
  * @returns void
  */
 export function togglePopover(anchor: HTMLElement, content: HTMLElement, placement: "below" | "above"): void {
@@ -74,7 +74,7 @@ export interface MenuItem {
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/statusPill.ts
+ * @usedBy webview/ui/statusPill.ts
  * @returns a menu element whose items close the popover before running.
  */
 export function buildMenu(items: readonly MenuItem[]): HTMLElement {

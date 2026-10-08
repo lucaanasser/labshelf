@@ -4,7 +4,7 @@
  * text arrives one word per text run, so detection works on a whole visual line re-joined from its runs.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/hoverPreview.ts
+ * @dependents webview/ui/hoverPreview.ts
  */
 
 export type FloatKind = "figure" | "table" | "equation";
@@ -32,7 +32,7 @@ export interface JoinedLine {
 /**
  * Concatenates the text runs of one visual line (already sorted left to right). A space is inserted only across a real
  * horizontal gap, so a born-digital run split mid-word stays one word while OCR's per-word runs become a sentence again.
- * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+ * @usedBy webview/ui/hoverPreview.ts
  * @returns the joined text and where each part starts in it.
  */
 export function joinLineParts(parts: readonly LinePart[]): JoinedLine {
@@ -195,7 +195,7 @@ const FLOAT = new RegExp(
 );
 
 /**
- * @usedBy findInTextRefs, pdf-viewer/webview/logic/captions.ts
+ * @usedBy findInTextRefs, webview/logic/captions.ts
  * @returns the kind of float a label word ("Fig.", "Tabela", "Eq") denotes.
  */
 export function floatKindOf(word: string): FloatKind {
@@ -208,7 +208,7 @@ export function floatKindOf(word: string): FloatKind {
 /* ── public API ───────────────────────────────────────────────── */
 
 /**
- * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+ * @usedBy webview/ui/hoverPreview.ts
  * @returns every reference found in a line of text, with its character range.
  */
 export function findInTextRefs(text: string): InTextRef[] {
@@ -225,7 +225,7 @@ export function findInTextRefs(text: string): InTextRef[] {
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+ * @usedBy webview/ui/hoverPreview.ts
  * @returns the narrowest reference covering a character offset, or null.
  */
 export function refAtOffset(refs: readonly InTextRef[], offset: number): InTextRef | null {

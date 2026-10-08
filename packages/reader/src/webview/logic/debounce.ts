@@ -2,7 +2,7 @@
  * Trailing debouncer with an explicit flush, used for reading-state saves that must not be lost when the panel hides.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/readingStateReporter.ts, pdf-viewer/webview/ui/zoomController.ts
+ * @dependents webview/ui/readingStateReporter.ts, webview/ui/zoomController.ts
  */
 
 export interface Timers {
@@ -24,7 +24,7 @@ export interface Debouncer<A extends unknown[]> {
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui
+ * @usedBy webview/ui
  * @returns a debouncer that invokes `fn` with the latest arguments after `ms` of quiet.
  */
 export function createDebouncer<A extends unknown[]>(

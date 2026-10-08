@@ -6,8 +6,8 @@
  *    re-joined from its text runs and searched for a numeric citation, an author–year citation or a figure/table/
  *    equation reference, which are resolved from the reference list and from captions found in the page text.
  *
- * @depends pdf-viewer/webview/logic/{destGeometry,inTextRefs}.ts, pdf-viewer/webview/ui/{citationResolver,floatResolver,destPreview,dom,icons,context}.ts
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/logic/{destGeometry,inTextRefs}.ts, webview/ui/{citationResolver,floatResolver,destPreview,dom,icons,context}.ts
+ * @dependents webview/reader.ts
  */
 import { destPoint } from "../logic/destGeometry.js";
 import { findInTextRefs, joinLineParts, refAtOffset, type FloatKind, type InTextRef, type JoinedLine, type LinePart } from "../logic/inTextRefs.js";
@@ -96,7 +96,7 @@ export class HoverPreview {
 
   /**
    * Cancels any pending open, hides the popup and discards in-flight preview work.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   close(): void {

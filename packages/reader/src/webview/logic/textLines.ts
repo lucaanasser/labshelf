@@ -3,7 +3,7 @@
  * the OCR debris they leave behind.
  *
  * @depends none
- * @dependents pdf-viewer/webview/logic/referenceList.ts, pdf-viewer/webview/logic/captions.ts, pdf-viewer/webview/ui/citationResolver.ts, pdf-viewer/webview/ui/pageText.ts
+ * @dependents webview/logic/referenceList.ts, webview/logic/captions.ts, webview/ui/citationResolver.ts, webview/ui/pageText.ts
  */
 
 /** A pdf.js TextItem reduced to geometry: x/y are `transform[4]`/`transform[5]` (PDF space, origin bottom-left). */
@@ -32,7 +32,7 @@ const BINS = 100;
 
 /**
  * @param transform pdf.js text transform `[a, b, c, d, e, f]`.
- * @usedBy pdf-viewer/webview/ui/pageText.ts
+ * @usedBy webview/ui/pageText.ts
  * @returns the quarter turn a run is set at: 0 upright, 1 reading bottom-to-top, 2 upside down, 3 reading top-to-bottom.
  */
 export function runOrientation(transform: readonly number[]): number {
@@ -55,7 +55,7 @@ const MARKER_SHAPED = /^(?:[[(]\s*[\p{L}\d]{1,3}\s*[\])]?|[\p{L}\d]{1,3}[.)\]])$
  *  - the debris OCR makes of such a stamp: one- to three-character tokens ("&", "5", "[=") stranded in the outer
  *    margin. Glued to the start of each line they defeat every line-anchored test downstream — "& REFERENCES" is not
  *    a heading, "5 [1] A. Author" not a numbered entry, "p FIG. 1. An example" not a caption.
- * @usedBy pdf-viewer/webview/ui/pageText.ts
+ * @usedBy webview/ui/pageText.ts
  * @returns the items that belong to the page's running text, in their original order.
  */
 export function readableItems(items: readonly TextItemBox[], pageWidth: number): TextItemBox[] {
@@ -123,7 +123,7 @@ function joinLine(parts: TextItemBox[]): string {
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/citationResolver.ts
+ * @usedBy webview/ui/citationResolver.ts
  * @returns lines in reading order: left column top-to-bottom, then right column.
  */
 export function groupItemsIntoLines(items: readonly TextItemBox[], pageWidth: number): TextLine[] {

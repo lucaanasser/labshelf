@@ -6,7 +6,7 @@ import {
   refAtOffset,
   type InTextRef,
   type LinePart,
-} from '../../../../src/pdf-viewer/webview/logic/inTextRefs';
+} from '../../../src/webview/logic/inTextRefs';
 
 const at = (text: string, needle: string): InTextRef | null =>
   refAtOffset(findInTextRefs(text), text.indexOf(needle) + Math.floor(needle.length / 2));

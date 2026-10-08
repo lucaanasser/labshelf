@@ -1,8 +1,8 @@
 /**
  * Back/forward navigation. Installed into PDFLinkService through its duck-typed `setHistory()`, so every internal link, outline click and named destination records the place the reader left.
  *
- * @depends pdf-viewer/webview/logic/historyStack.ts, pdf-viewer/webview/ui/context.ts (types only)
- * @dependents pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/findBar.ts (types only)
+ * @depends webview/logic/historyStack.ts, webview/ui/context.ts (types only)
+ * @dependents webview/reader.ts, webview/ui/findBar.ts (types only)
  */
 import { HistoryStack, type ViewLocation } from "../logic/historyStack.js";
 import type { PdfLocation, ReaderContext } from "./context.js";
@@ -29,7 +29,7 @@ export class NavHistory {
 
   /**
    * Registers a callback invoked whenever the back/forward availability changes.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   onChange(fn: () => void): void { this.listeners.push(fn); }
@@ -38,7 +38,7 @@ export class NavHistory {
 
   /**
    * Call before any programmatic jump that does not go through the link service (go-to-page, thumbnails, annotations, far find hits).
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   recordDeparture(): void {
@@ -47,7 +47,7 @@ export class NavHistory {
 
   /**
    * Records an explicit departure point, for jumps only recognised after they happened.
-   * @usedBy pdf-viewer/webview/ui/findBar.ts
+   * @usedBy webview/ui/findBar.ts
    * @returns void
    */
   visit(from: ViewLocation): void {
@@ -57,7 +57,7 @@ export class NavHistory {
 
   /**
    * Jumps to the previous departure point, if any.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   back(): void {
@@ -67,7 +67,7 @@ export class NavHistory {
 
   /**
    * Jumps to the next forward target, if any.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   forward(): void {
@@ -78,7 +78,7 @@ export class NavHistory {
   /**
    * pdf.js refreshes its location one animation frame after a scroll. Two jumps inside that frame (chained commands,
    * key repeat) would record the first jump's departure point twice and lose the second; update() recomputes it now.
-   * @usedBy pdf-viewer/webview/ui/findBar.ts, NavHistory (internal: recordDeparture, back, forward)
+   * @usedBy webview/ui/findBar.ts, NavHistory (internal: recordDeparture, back, forward)
    * @returns the reader's current view location.
    */
   current(): ViewLocation {

@@ -8,7 +8,7 @@ import {
   MIN_SCALE,
   nextZoomStep,
   wheelToScaleFactor,
-} from '../../../../src/pdf-viewer/webview/logic/zoomMath';
+} from '../../../src/webview/logic/zoomMath';
 
 describe('clampScale', () => {
   it('clamps below the minimum and above the maximum', () => {

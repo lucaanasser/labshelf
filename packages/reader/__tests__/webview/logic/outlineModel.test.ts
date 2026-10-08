@@ -3,7 +3,7 @@ import {
   flattenOutline,
   visibleRows,
   type RawOutlineNode,
-} from '../../../../src/pdf-viewer/webview/logic/outlineModel';
+} from '../../../src/webview/logic/outlineModel';
 
 describe('flattenOutline', () => {
   it('lists items in document order with depth, parentId and hasChildren', () => {

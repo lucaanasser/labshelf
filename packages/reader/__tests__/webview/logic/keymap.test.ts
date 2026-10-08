@@ -1,4 +1,4 @@
-import { ACTIONS_BLOCKED_WHILE_TYPING, cheatsheetRows, resolveKey, type KeyContext, type KeyInput } from '../../../../src/pdf-viewer/webview/logic/keymap';
+import { ACTIONS_BLOCKED_WHILE_TYPING, cheatsheetRows, resolveKey, type KeyContext, type KeyInput } from '../../../src/webview/logic/keymap';
 
 function ctx(overrides: Partial<KeyContext> = {}): KeyContext {
   return { vimKeys: false, isMac: false, inTextInput: false, pendingPrefix: null, ...overrides };

@@ -1,8 +1,8 @@
 /**
  * Loads pdf.js and the paper's bytes as fast as the webview allows, and records the open timeline.
  *
- * @depends pdf-viewer/shared/protocol.ts, pdf-viewer/webview/ui/context.ts (types only), pdfjs-dist (runtime, by dynamic import of webview URIs)
- * @dependents pdf-viewer/webview/main.ts
+ * @depends shared/protocol.ts, webview/ui/context.ts (types only), pdfjs-dist (runtime, by dynamic import of asset URLs)
+ * @dependents webview/reader.ts, browser reader/index.ts
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { PerfTimeline, ReaderAssets } from "../../shared/protocol.js";
@@ -19,40 +19,60 @@ export class PerfMarks {
 
   /**
    * Records the current time under `name`.
-   * @usedBy pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/pdfLoader.ts (loadPdf)
+   * @usedBy webview/reader.ts, webview/ui/pdfLoader.ts (loadPdf)
    * @returns void
    */
   mark(name: string): void { this.timeline[name] = Math.round(performance.now()); }
 
   /**
    * Records an explicit value under `name` (e.g. a byte count, not a timestamp).
-   * @usedBy pdf-viewer/webview/ui/pdfLoader.ts (loadPdf)
+   * @usedBy webview/ui/pdfLoader.ts (loadPdf)
    * @returns void
    */
   set(name: string, value: number): void { this.timeline[name] = value; }
 }
 
 /**
- * @usedBy pdf-viewer/webview/main.ts
+ * How a host supplies the paper's bytes and the pdf.js worker. VS Code uses the defaults (fetch of webview URIs and a
+ * Blob-URL worker); a browser extension page reads IndexedDB and starts the worker from its own URL, because MV3 CSP
+ * (Firefox in particular) refuses blob: workers.
+ */
+export interface PdfSourceHooks {
+  /** Called once at t=0, before pdf.js is imported. Default: fetch(assets.pdfUrl). */
+  readBytes?(): Promise<ArrayBuffer>;
+  /** Called once at t=0; the worker becomes GlobalWorkerOptions.workerPort. Default: Blob URL of the fetched worker source. */
+  createWorker?(workerUrl: string): Worker;
+}
+
+/**
+ * @usedBy webview/reader.ts (startReader)
  * @returns the pdf.js libraries and the opened document.
  */
-export async function loadPdf(assets: ReaderAssets, perf: PerfMarks): Promise<LoadedPdf> {
+export async function loadPdf(assets: ReaderAssets, perf: PerfMarks, hooks: PdfSourceHooks = {}): Promise<LoadedPdf> {
   if (!assets.pdfjsUrl || !assets.viewerUrl) { throw new Error("PDF.js viewer assets are unavailable."); }
 
   // Kick off every download at t=0 so the PDF bytes and the worker source
   // arrive while pdf.js is still being fetched and compiled. The webview host
   // serves neither Accept-Ranges nor Content-Length, so pdf.js would stream
   // the whole file anyway — only later, after the imports had finished.
-  const pdfBytesPromise = fetch(assets.pdfUrl).then((r) => {
+  const readBytes = hooks.readBytes ?? (() => fetch(assets.pdfUrl).then((r) => {
     if (!r.ok) { throw new Error(`Could not read paper.pdf (HTTP ${r.status}).`); }
     return r.arrayBuffer();
-  }).then((buf) => {
+  }));
+  const pdfBytesPromise = readBytes().then((buf) => {
     perf.mark("pdfFetched");
     perf.set("pdfBytes", buf.byteLength);
     return buf;
   });
   pdfBytesPromise.catch(() => { /* surfaced by the await below */ });
-  const workerSrcPromise: Promise<string | null> = assets.workerUrl
+
+  // A host-made worker can start right away; the default waits for its source (and for pdf.js, which owns the global).
+  let ownWorker: Worker | null = null;
+  if (hooks.createWorker && assets.workerUrl) {
+    ownWorker = hooks.createWorker(assets.workerUrl);
+    perf.mark("workerStarted");
+  }
+  const workerSrcPromise: Promise<string | null> = !ownWorker && assets.workerUrl
     ? fetch(assets.workerUrl).then((r) => r.text())
     : Promise.resolve(null);
   workerSrcPromise.catch(() => { /* surfaced by the await below */ });
@@ -62,6 +82,7 @@ export async function loadPdf(assets: ReaderAssets, perf: PerfMarks): Promise<Lo
   // pdf_viewer.mjs reads the core library from this global.
   (globalThis as { pdfjsLib?: PdfjsLib }).pdfjsLib = pdfjsLib;
 
+  if (ownWorker) { pdfjsLib.GlobalWorkerOptions.workerPort = ownWorker; }
   // Boot the worker as soon as its source lands instead of after the viewer import.
   // A webview URI cannot be a module worker directly, hence the Blob URL.
   const workerReady = workerSrcPromise.then((workerSrc) => {
@@ -103,7 +124,7 @@ export async function loadPdf(assets: ReaderAssets, perf: PerfMarks): Promise<Lo
 
 /**
  * An empty paper.pdf means the stored copy is unusable, not that rendering failed — tell the reader how to fix it instead of surfacing pdfjs' wording.
- * @usedBy pdf-viewer/webview/main.ts
+ * @usedBy webview/reader.ts
  * @returns a user-facing error message.
  */
 export function describeLoadError(err: unknown): string {

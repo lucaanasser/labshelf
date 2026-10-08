@@ -1,8 +1,8 @@
 /**
  * Reports the reading position (page, zoom, offset, sidebar) to the host for persistence, debounced while reading and flushed when the panel hides.
  *
- * @depends pdf-viewer/webview/logic/{debounce,zoomMath}.ts, pdf-viewer/shared/readingState.ts, pdf-viewer/webview/ui/{context,sidebar}.ts (types only)
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/logic/{debounce,zoomMath}.ts, shared/readingState.ts, webview/ui/{context,sidebar}.ts (types only)
+ * @dependents webview/reader.ts
  */
 import type { ReadingState } from "../../shared/readingState.js";
 import { createDebouncer } from "../logic/debounce.js";
@@ -30,7 +30,7 @@ export class ReadingStateReporter {
 
   /**
    * Reporting starts only after restore, so the initial page-1 layout never overwrites the stored position.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   start(): void {

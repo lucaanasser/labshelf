@@ -2,7 +2,7 @@
  * Pure zoom arithmetic for the reader: scale clamping, button steps, wheel/pinch deltas and the cursor-anchored origin pdf.js expects.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/zoomController.ts, pdf-viewer/webview/ui/statusPill.ts, pdf-viewer/webview/ui/readingStateReporter.ts
+ * @dependents webview/ui/zoomController.ts, webview/ui/statusPill.ts, webview/ui/readingStateReporter.ts
  */
 
 // Beyond 8x a HiDPI page canvas costs hundreds of megapixels even with pdf.js' detail canvas.
@@ -16,7 +16,7 @@ export const ZOOM_STEPS: readonly number[] = [
 const PRESETS = new Set(["page-width", "page-fit", "page-actual", "auto"]);
 
 /**
- * @usedBy pdf-viewer/webview/ui/zoomController.ts
+ * @usedBy webview/ui/zoomController.ts
  * @returns the scale limited to [MIN_SCALE, MAX_SCALE]; 1 for a non-finite input.
  */
 export function clampScale(scale: number): number {
@@ -26,7 +26,7 @@ export function clampScale(scale: number): number {
 
 /**
  * True for the pdf.js scale values that depend on the container size and so must be re-applied on resize.
- * @usedBy pdf-viewer/webview/ui/zoomController.ts, pdf-viewer/webview/ui/readingStateReporter.ts
+ * @usedBy webview/ui/zoomController.ts, webview/ui/readingStateReporter.ts
  * @returns whether `value` is one of the preset scale names rather than a numeric zoom.
  */
 export function isPresetScale(value: string | null | undefined): boolean {
@@ -35,7 +35,7 @@ export function isPresetScale(value: string | null | undefined): boolean {
 
 /**
  * Next rung of the zoom ladder for the +/- buttons and keys.
- * @usedBy pdf-viewer/webview/ui/zoomController.ts
+ * @usedBy webview/ui/zoomController.ts
  * @returns the neighbouring step, or the clamped current scale at either end.
  */
 export function nextZoomStep(current: number, direction: 1 | -1): number {
@@ -52,7 +52,7 @@ const WHEEL_NOTCH_PX = 50;
 /**
  * Converts one ctrl/cmd+wheel event into a multiplicative scale factor.
  * Trackpad pinches arrive as many small pixel deltas and map smoothly; mouse wheels arrive as coarse notches and map to 10% steps.
- * @usedBy pdf-viewer/webview/ui/zoomController.ts
+ * @usedBy webview/ui/zoomController.ts
  * @returns a factor in [0.5, 2]; 1 means no change.
  */
 export function wheelToScaleFactor(deltaY: number, deltaMode: number): number {
@@ -71,7 +71,7 @@ export function wheelToScaleFactor(deltaY: number, deltaMode: number): number {
 
 /**
  * Limits a factor so `current * factor` stays inside [MIN_SCALE, MAX_SCALE].
- * @usedBy pdf-viewer/webview/ui/zoomController.ts
+ * @usedBy webview/ui/zoomController.ts
  * @returns the (possibly reduced) factor; 1 when already pinned at a bound.
  */
 export function boundedFactor(current: number, factor: number): number {
@@ -87,7 +87,7 @@ export interface Box {
 /**
  * pdf.js' `updateScale({origin})` subtracts `[container.offsetLeft, container.offsetTop]`, which are relative to the offsetParent, not the viewport.
  * A raw clientX/clientY would therefore drift by the sidebar width; this rebases the pointer into that space.
- * @usedBy pdf-viewer/webview/ui/zoomController.ts
+ * @usedBy webview/ui/zoomController.ts
  * @returns `[x, y]` to pass as `origin`.
  */
 export function anchorOrigin(
@@ -103,7 +103,7 @@ export function anchorOrigin(
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/statusPill.ts
+ * @usedBy webview/ui/statusPill.ts
  * @returns the scale as a whole percentage, e.g. "125%".
  */
 export function formatZoomLabel(scale: number): string {

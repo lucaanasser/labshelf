@@ -1,4 +1,4 @@
-import { createDebouncer, type Timers } from '../../../../src/pdf-viewer/webview/logic/debounce';
+import { createDebouncer, type Timers } from '../../../src/webview/logic/debounce';
 
 /** In-memory Timers implementation so tests do not depend on real wall-clock time. */
 function fakeTimers(): Timers & { run(handle: unknown): void; pendingHandles(): unknown[] } {

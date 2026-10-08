@@ -2,8 +2,8 @@
  * Lazy, cached text extraction per page: reading-order lines plus the column split. Shared by the citation and float
  * resolvers so a page is extracted and analysed once.
  *
- * @depends pdf-viewer/webview/logic/textLines.ts, pdf-viewer/webview/ui/context.ts (types only)
- * @dependents pdf-viewer/webview/ui/citationResolver.ts, pdf-viewer/webview/ui/floatResolver.ts, pdf-viewer/webview/main.ts
+ * @depends webview/logic/textLines.ts, webview/ui/context.ts (types only)
+ * @dependents webview/ui/citationResolver.ts, webview/ui/floatResolver.ts, webview/reader.ts
  */
 import { detectColumns, groupItemsIntoLines, readableItems, runOrientation, type TextItemBox, type TextLine } from "../logic/textLines.js";
 import type { ReaderContext } from "./context.js";
@@ -23,7 +23,7 @@ export class PageTextCache {
   get numPages(): number { return this.ctx.pdfDocument.numPages; }
 
   /**
-   * @usedBy pdf-viewer/webview/ui/citationResolver.ts, pdf-viewer/webview/ui/floatResolver.ts
+   * @usedBy webview/ui/citationResolver.ts, webview/ui/floatResolver.ts
    * @returns the page's text lines in reading order; extraction runs once per page.
    */
   get(pageNumber: number): Promise<PageText> {

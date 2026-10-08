@@ -3,8 +3,8 @@
  * carry no link annotations (scans made searchable by OCR, papers typeset without hyperlinks).
  * A caption is a line that STARTS with the label; the float itself is the text-free band next to it.
  *
- * @depends pdf-viewer/webview/logic/textLines.ts, pdf-viewer/webview/logic/inTextRefs.ts
- * @dependents pdf-viewer/webview/ui/floatResolver.ts
+ * @depends webview/logic/textLines.ts, webview/logic/inTextRefs.ts
+ * @dependents webview/ui/floatResolver.ts
  */
 import { FIGURE_WORD, FLOAT_LABEL, floatKindOf, type FloatKind } from "./inTextRefs.js";
 import type { TextLine } from "./textLines.js";
@@ -26,7 +26,7 @@ const CAPTION_REST = /^\s*(?:[.:\-–—)]|$|\p{Lu})/u;
 const EQUATION_TAIL = new RegExp(`\\((${FLOAT_LABEL})\\)\\s*$`);
 
 /**
- * @usedBy pdf-viewer/webview/ui/floatResolver.ts
+ * @usedBy webview/ui/floatResolver.ts
  * @returns every caption and numbered equation on a page, in reading order.
  */
 export function findCaptionLines(lines: readonly TextLine[], pageWidth: number, columnSplit: number | null): CaptionHit[] {
@@ -88,7 +88,7 @@ const EQUATION_PAD_RATIO = 0.07;
  * Tables sit below their caption by convention. A figure sits on whichever side of its caption has the larger band free
  * of body text (journals caption below the figure, ABNT theses above it); narrow lines inside that band are axis labels
  * and legends OCR picked up from the figure itself, so they do not end the band.
- * @usedBy pdf-viewer/webview/ui/floatResolver.ts
+ * @usedBy webview/ui/floatResolver.ts
  * @returns the region in PDF user space, clamped to the page.
  */
 export function floatRegion(
@@ -169,7 +169,7 @@ export function floatRegion(
 
 /**
  * Chooses the caption a reference points at: the exact label, else the label without its sub-figure letter ("3a" → "3").
- * @usedBy pdf-viewer/webview/ui/floatResolver.ts
+ * @usedBy webview/ui/floatResolver.ts
  * @returns the index into `hits`, or -1.
  */
 export function pickCaption(hits: ReadonlyArray<Pick<CaptionHit, "kind" | "label">>, kind: FloatKind, label: string): number {

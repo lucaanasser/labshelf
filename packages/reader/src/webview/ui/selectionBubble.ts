@@ -1,8 +1,8 @@
 /**
  * Floating bubble over a text selection: five highlight colours and "copy with citation".
  *
- * @depends pdf-viewer/webview/ui/{dom,icons,context}.ts, @labshelf/core (types only)
- * @dependents pdf-viewer/webview/main.ts
+ * @depends webview/ui/{dom,icons,context}.ts, @labshelf/core (types only)
+ * @dependents webview/reader.ts
  */
 import type { AnnotationColor } from "@labshelf/core";
 import type { ReaderContext } from "./context.js";
@@ -68,7 +68,7 @@ export class SelectionBubble {
 
   /**
    * Sends the current selection to the host to be copied with a citation.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   copyWithCitation(): void {
@@ -80,7 +80,7 @@ export class SelectionBubble {
 
   /**
    * Hides the bubble.
-   * @usedBy pdf-viewer/webview/main.ts, SelectionBubble (internal: highlight, showForSelection, copyWithCitation)
+   * @usedBy webview/reader.ts, SelectionBubble (internal: highlight, showForSelection, copyWithCitation)
    * @returns void
    */
   hide(): void {

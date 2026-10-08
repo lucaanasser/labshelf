@@ -3,7 +3,7 @@
  * underneath the reader's overlay toolbar and find bar, and it re-scrolls even when the next hit is already in view.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/viewerSetup.ts
+ * @dependents webview/ui/viewerSetup.ts
  */
 
 /** Toolbar + find bar + breathing room, in CSS px. */
@@ -27,7 +27,7 @@ export interface FindOrigin {
 }
 
 /**
- * @usedBy pdf-viewer/webview/ui/viewerSetup.ts
+ * @usedBy webview/ui/viewerSetup.ts
  * @returns the origin if it is still fresh, else null.
  */
 export function freshOrigin(origin: FindOrigin | null, now: number): FindOrigin | null {
@@ -39,7 +39,7 @@ export type MatchScrollDecision =
   | { kind: "place"; top: number };
 
 /**
- * @usedBy pdf-viewer/webview/ui/viewerSetup.ts
+ * @usedBy webview/ui/viewerSetup.ts
  * @returns "stay" when the hit was already comfortably readable (stepping through hits on one screen should not move the page), otherwise the offset from the container top at which to place the hit.
  */
 export function decideMatchScroll(before: MatchBox | null, containerHeight: number): MatchScrollDecision {

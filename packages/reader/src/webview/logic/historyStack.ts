@@ -2,7 +2,7 @@
  * Browser-style back/forward stack of reading positions. pdf.js' own PDFHistory rides on window.history and the URL hash, neither of which is usable inside a VS Code webview.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/navHistory.ts
+ * @dependents webview/ui/navHistory.ts
  */
 
 export interface ViewLocation {
@@ -28,7 +28,7 @@ export function isNearLocation(a: ViewLocation, b: ViewLocation): boolean {
 
 /**
  * The stack stores departure points. `visit(from)` is called right before a jump; `back(current)` swaps the current position onto the forward side so the round trip is lossless.
- * @usedBy pdf-viewer/webview/ui/navHistory.ts
+ * @usedBy webview/ui/navHistory.ts
  */
 export class HistoryStack {
   private backStack: ViewLocation[] = [];
@@ -36,7 +36,7 @@ export class HistoryStack {
 
   /**
    * Records the position being left by a jump; any forward branch is discarded, as in a browser.
-   * @usedBy pdf-viewer/webview/ui/navHistory.ts (NavHistory.visit)
+   * @usedBy webview/ui/navHistory.ts (NavHistory.visit)
    * @returns void
    */
   visit(from: ViewLocation): void {
@@ -49,7 +49,7 @@ export class HistoryStack {
 
   /**
    * Pops the most recent departure point and pushes `current` onto the forward stack so the trip can be replayed.
-   * @usedBy pdf-viewer/webview/ui/navHistory.ts (NavHistory.back)
+   * @usedBy webview/ui/navHistory.ts (NavHistory.back)
    * @returns the location to jump to, or null when the back stack is empty.
    */
   back(current: ViewLocation): ViewLocation | null {
@@ -61,7 +61,7 @@ export class HistoryStack {
 
   /**
    * Pops the most recent forward target and pushes `current` back onto the back stack.
-   * @usedBy pdf-viewer/webview/ui/navHistory.ts (NavHistory.forward)
+   * @usedBy webview/ui/navHistory.ts (NavHistory.forward)
    * @returns the location to jump to, or null when the forward stack is empty.
    */
   forward(current: ViewLocation): ViewLocation | null {

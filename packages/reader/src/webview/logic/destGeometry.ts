@@ -2,7 +2,7 @@
  * Parses pdf.js explicit destinations and computes the crop rectangle for hover previews.
  *
  * @depends none
- * @dependents pdf-viewer/webview/ui/hoverPreview.ts, pdf-viewer/webview/ui/destPreview.ts
+ * @dependents webview/ui/hoverPreview.ts, webview/ui/destPreview.ts
  */
 
 export interface DestPoint {
@@ -16,7 +16,7 @@ const num = (v: unknown): number | null => (typeof v === "number" && Number.isFi
 
 /**
  * Reads the target point out of an explicit destination array `[pageRef, {name}, ...args]`.
- * @usedBy pdf-viewer/webview/ui/hoverPreview.ts
+ * @usedBy webview/ui/hoverPreview.ts
  * @returns the point, or null when `dest` is not a well-formed explicit destination.
  */
 export function destPoint(dest: unknown): DestPoint | null {
@@ -60,7 +60,7 @@ export interface CropOptions {
 
 /**
  * Crop window, in viewport pixels (origin top-left), around a destination's y. Full page width: figures, tables and equations span it unpredictably.
- * @usedBy pdf-viewer/webview/ui/destPreview.ts
+ * @usedBy webview/ui/destPreview.ts
  * @returns a rect clamped inside the page.
  */
 export function cropRectForPreview(

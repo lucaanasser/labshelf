@@ -1,8 +1,8 @@
 /**
  * The reader's single left sidebar: a tab strip (Thumbnails / Outline / Annotations), a drag-resizable width, and open/tab/width state reported for persistence.
  *
- * @depends pdf-viewer/shared/readingState.ts, pdf-viewer/webview/ui/{dom,icons}.ts
- * @dependents pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/readingStateReporter.ts (types only), pdf-viewer/webview/ui/{outlineTab,thumbnailsTab,annotationsTab}.ts (types only)
+ * @depends shared/readingState.ts, webview/ui/{dom,icons}.ts
+ * @dependents webview/reader.ts, webview/ui/readingStateReporter.ts (types only), webview/ui/{outlineTab,thumbnailsTab,annotationsTab}.ts (types only)
  */
 import { MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, type SidebarState, type SidebarTab } from "../../shared/readingState.js";
 import { byId, clamp, h } from "./dom.js";
@@ -54,7 +54,7 @@ export class Sidebar {
 
   /**
    * Registers a callback invoked whenever the open/tab/width state changes.
-   * @usedBy pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/readingStateReporter.ts
+   * @usedBy webview/reader.ts, webview/ui/readingStateReporter.ts
    * @returns void
    */
   onChange(fn: (state: SidebarState) => void): void { this.listeners.push(fn); }
@@ -63,7 +63,7 @@ export class Sidebar {
 
   /**
    * Applies persisted state without echoing it back as a change.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   restore(state: SidebarState): void {
@@ -74,7 +74,7 @@ export class Sidebar {
 
   /**
    * Opens the sidebar if closed, closes it if open.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   toggle(): void { this.setOpen(!this.open, true); }

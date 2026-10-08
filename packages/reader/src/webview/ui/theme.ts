@@ -1,8 +1,8 @@
 /**
  * Applies the reader theme to the chrome (CSS variables keyed on data-pdf-theme) and to the page pixels (pdf.js pageColors).
  *
- * @depends pdf-viewer/shared/themePresets.ts, pdf-viewer/shared/protocol.ts, @labshelf/core (types only), pdfjs-dist (types only)
- * @dependents pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/themePopover.ts, pdf-viewer/webview/ui/thumbnailsTab.ts, pdf-viewer/webview/ui/destPreview.ts
+ * @depends shared/themePresets.ts, shared/protocol.ts, @labshelf/core (types only), pdfjs-dist (types only)
+ * @dependents webview/reader.ts, webview/ui/themePopover.ts, webview/ui/thumbnailsTab.ts, webview/ui/destPreview.ts
  */
 import type { PdfTheme } from "@labshelf/core";
 import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
@@ -33,7 +33,7 @@ export class ThemeController {
 
   /**
    * Supplies the PDFViewer instance once it exists, so later theme changes can push pageColors into it.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   attach(pdfViewer: PDFViewer): void {
@@ -45,14 +45,14 @@ export class ThemeController {
 
   /**
    * Fires after the page colours actually changed, so thumbnails and previews can re-render.
-   * @usedBy pdf-viewer/webview/ui/thumbnailsTab.ts, pdf-viewer/webview/ui/destPreview.ts
+   * @usedBy webview/ui/thumbnailsTab.ts, webview/ui/destPreview.ts
    * @returns void
    */
   onPageColorsChange(fn: () => void): void { this.listeners.push(fn); }
 
   /**
    * Applies a theme preference/effective pair: updates the chrome's data attribute and the page preset colours.
-   * @usedBy pdf-viewer/webview/main.ts
+   * @usedBy webview/reader.ts
    * @returns void
    */
   apply(preference: PdfTheme | undefined, effective: EffectiveTheme | undefined): void {
@@ -66,7 +66,7 @@ export class ThemeController {
 
   /**
    * Pushes explicit background/text colours into the container and, once changed, into pdf.js' pageColors.
-   * @usedBy pdf-viewer/webview/ui/themePopover.ts
+   * @usedBy webview/ui/themePopover.ts
    * @returns void
    */
   applyPageColors(bg: string, text: string): void {

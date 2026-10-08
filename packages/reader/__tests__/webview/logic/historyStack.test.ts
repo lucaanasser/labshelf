@@ -1,4 +1,4 @@
-import { HISTORY_CAP, HistoryStack, type ViewLocation } from '../../../../src/pdf-viewer/webview/logic/historyStack';
+import { HISTORY_CAP, HistoryStack, type ViewLocation } from '../../../src/webview/logic/historyStack';
 
 function loc(pageNumber: number, top = 0): ViewLocation {
   return { pageNumber, top };

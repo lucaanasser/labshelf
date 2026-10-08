@@ -1,8 +1,8 @@
 /**
  * Wires pdf.js' EventBus, link service, find controller and PDFViewer around the shell's #viewerContainer.
  *
- * @depends pdf-viewer/shared/themePresets.ts, pdf-viewer/webview/logic/findScroll.ts, pdf-viewer/webview/ui/context.ts (types only), pdfjs-dist (types only)
- * @dependents pdf-viewer/webview/main.ts
+ * @depends shared/themePresets.ts, webview/logic/findScroll.ts, webview/ui/context.ts (types only), pdfjs-dist (types only)
+ * @dependents webview/reader.ts
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { EventBus, PDFFindController, PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
@@ -20,7 +20,7 @@ export interface ViewerParts {
 }
 
 /**
- * @usedBy pdf-viewer/webview/main.ts
+ * @usedBy webview/reader.ts
  * @returns the constructed viewer parts with the document already attached.
  */
 export function createViewer(

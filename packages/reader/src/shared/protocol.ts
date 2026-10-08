@@ -2,8 +2,8 @@
  * Typed message protocol and boot parameters shared by the reader's extension-host side and its bundled webview.
  * DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
  *
- * @depends pdf-viewer/shared/readingState.ts, @labshelf/core (types only)
- * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/renderer/PdfRenderer.ts, pdf-viewer/readerPrefs.ts, pdf-viewer/shared/themePresets.ts, pdf-viewer/shared/citationFormat.ts, pdf-viewer/webview/**, extension.ts (types only)
+ * @depends shared/readingState.ts, @labshelf/core (types only)
+ * @dependents vscode pdf-viewer/PdfViewerPanel.ts, pdf-viewer/renderer/PdfRenderer.ts, pdf-viewer/readerPrefs.ts, shared/themePresets.ts, shared/citationFormat.ts, webview/**, extension.ts (types only)
  */
 import type { Annotation, AnnotationColor, PdfTheme } from "@labshelf/core";
 import type { ReadingState } from "./readingState.js";

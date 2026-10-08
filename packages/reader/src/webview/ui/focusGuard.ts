@@ -8,14 +8,14 @@
  * The focus itself is kept; only its scrolling side effect is removed.
  *
  * @depends none
- * @dependents pdf-viewer/webview/main.ts
+ * @dependents webview/reader.ts
  */
 
 let installed = false;
 
 /**
  * Idempotent; must run before pdf.js renders its first text layer.
- * @usedBy pdf-viewer/webview/main.ts
+ * @usedBy webview/reader.ts
  * @returns void
  */
 export function installTextLayerFocusGuard(): void {

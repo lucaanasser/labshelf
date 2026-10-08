@@ -1,4 +1,4 @@
-import { detectColumns, groupItemsIntoLines, readableItems, runOrientation, type TextItemBox } from '../../../../src/pdf-viewer/webview/logic/textLines';
+import { detectColumns, groupItemsIntoLines, readableItems, runOrientation, type TextItemBox } from '../../../src/webview/logic/textLines';
 
 function item(str: string, x: number, y: number, width: number, height = 10): TextItemBox {
   return { str, x, y, width, height };

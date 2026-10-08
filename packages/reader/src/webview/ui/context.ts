@@ -1,8 +1,8 @@
 /**
  * Shared handles every reader UI module works against once the document is open.
  *
- * @depends pdf-viewer/shared/protocol.ts, pdf-viewer/webview/ui/hostBridge.ts (types only), pdfjs-dist (types only)
- * @dependents pdf-viewer/webview/main.ts, pdf-viewer/webview/ui/*
+ * @depends shared/protocol.ts, webview/ui/hostBridge.ts (types only), pdfjs-dist (types only)
+ * @dependents webview/reader.ts, webview/ui/*
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { EventBus, PDFFindController, PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
