@@ -23,13 +23,6 @@ import {
 import { ExternalChangeWatcher, findMissingPapers } from "./storage/data/externalChangeWatcher.js";
 import { LibraryTreeDataProvider, LibraryDragAndDropController } from "./ui/library/index.js";
 import type { LibraryNode } from "./ui/library/index.js";
-import {
-  WritingTreeDataProvider,
-  ReadingTreeDataProvider,
-  InsightsTreeDataProvider,
-  AssistTreeDataProvider,
-  AgentsTreeDataProvider,
-} from "./ui/sidebar/index.js";
 import { ListWebviewPanel } from "./ui/list/index.js";
 import { SettingsWebviewPanel } from "./ui/settings/index.js";
 import { PdfViewerPanel } from "./pdf-viewer/PdfViewerPanel.js";
@@ -49,18 +42,12 @@ import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
 import { PaperDataStore } from "./storage/data/paperDataStore.js";
 import { LibraryIndexer } from "./storage/data/libraryIndexer.js";
 import { reindexLibrary } from "./storage/data/reindexLibrary.js";
-import { migrateSidecarsFromDb } from "./storage/data/migrateSidecars.js";
 import { SyncController } from "./sync/adapter/syncController.js";
 import { findSimilarPapers } from "./ai/service/similarPapers.js";
 
 const READER_COMMANDS: readonly ReaderCommandId[] = [
   "zoomIn", "zoomOut", "zoomReset", "find", "historyBack", "historyForward", "toggleSidebar",
 ];
-
-// A "failed" text-layer verdict whose reason is a missing file: left behind by
-// an older build that checked PDF-less papers. Once the PDF shows up, the paper
-// is re-checked so the bogus verdict is replaced by a real one.
-const STALE_PDF_FAILURE = /nonexistent|ENOENT|EntryNotFound|FileNotFound|no such file/i;
 
 /** Activates the extension, initializing services if a library is already configured. @usedBy vscode runtime. @returns void */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -262,17 +249,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     void ListWebviewPanel.currentPanel?.refresh();
   };
 
-  // Mocked sidebar sections — visual scaffolding only, mirrors design/16-vscode-sidebar.html.
-  // Drive lives in the settings webpanel now, not in its own tree.
-  // showCollapseAll gives each view the standard VS Code "Collapse Folders" title button.
-  context.subscriptions.push(
-    vscode.window.createTreeView("labshelf.writing", { treeDataProvider: new WritingTreeDataProvider(), showCollapseAll: true }),
-    vscode.window.createTreeView("labshelf.reading", { treeDataProvider: new ReadingTreeDataProvider(), showCollapseAll: true }),
-    vscode.window.createTreeView("labshelf.insights", { treeDataProvider: new InsightsTreeDataProvider(), showCollapseAll: true }),
-    vscode.window.createTreeView("labshelf.assist", { treeDataProvider: new AssistTreeDataProvider(), showCollapseAll: true }),
-    vscode.window.createTreeView("labshelf.agents", { treeDataProvider: new AgentsTreeDataProvider(), showCollapseAll: true }),
-  );
-
   // Collapses tree items inside every LabShelf view at once — same effect as
   // clicking each view's individual "collapse all" button. VS Code has no API to
   // close the section panels themselves, so this is the closest equivalent.
@@ -280,11 +256,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("labshelf.collapseAllSections", async () => {
       const viewIds = [
         "labshelf.library",
-        "labshelf.writing",
-        "labshelf.reading",
-        "labshelf.insights",
-        "labshelf.assist",
-        "labshelf.agents",
       ];
       for (const id of viewIds) {
         await vscode.commands.executeCommand(`workbench.actions.treeView.${id}.collapseAll`);
@@ -628,21 +599,13 @@ async function buildServices(
     createTextLayerBuilder(ocrEngine),
   );
   const paperDataStore = new PaperDataStore(paths.researchRoot(), fileSystemService);
-  const indexer = new LibraryIndexer(paths, fileSystemService, database, paperDataStore);
-  await migrateSidecarsFromDb(database, paperDataStore, await database.listPapers());
+  const indexer = new LibraryIndexer(paths, fileSystemService, database);
   await indexer.rebuild();
   // Papers imported before text layers were tracked are classified once, in the
   // background and without OCR; the verdict is saved in metadata.yaml. Papers
-  // saved without a PDF have nothing to read and are left out. A paper whose PDF
-  // only just arrived may still carry a stale "file missing" verdict from an
-  // older build, so it is re-checked once its PDF is present.
+  // saved without a PDF have nothing to read and are left out.
   const indexed = await database.listPapers();
-  const toCheck = indexed.filter(
-    (paper) =>
-      paper.hasPdf !== false &&
-      (!paper.textLayer ||
-        (paper.textLayer.state === "failed" && STALE_PDF_FAILURE.test(paper.textLayer.reason ?? ""))),
-  );
+  const toCheck = indexed.filter((paper) => paper.hasPdf !== false && !paper.textLayer);
   if (toCheck.length > 0) {
     void queueTextLayers(paperService, toCheck, { mode: "check", logger });
   }

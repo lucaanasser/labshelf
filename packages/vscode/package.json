@@ -250,7 +250,7 @@
     "viewsWelcome": [
       {
         "view": "labshelf.library",
-        "contents": "Loading your library\u2026",
+        "contents": "Loading your library…",
         "when": "!labshelf.libraryLoaded"
       },
       {
