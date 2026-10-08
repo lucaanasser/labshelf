@@ -2131,20 +2131,6 @@
   {
     "type": "dependency",
     "from": "packages/core/src/sync/core/libraryFolderNamer.ts",
-    "to": "packages/core/src/library/paperMetadata.ts",
-    "unresolvedTo": "../../library/paperMetadata.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/sync/core/libraryFolderNamer.ts",
     "to": "packages/core/src/sync/provider/remoteProvider.ts",
     "unresolvedTo": "../provider/remoteProvider.js",
     "dependencyTypes": [
@@ -2393,76 +2379,6 @@
   {
     "type": "dependency",
     "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/library/libraryPaths.ts",
-    "unresolvedTo": "../library/libraryPaths.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/library/libraryStore.ts",
-    "unresolvedTo": "../library/libraryStore.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/library/libraryWatcher.ts",
-    "unresolvedTo": "../library/libraryWatcher.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/library/paperService.ts",
-    "unresolvedTo": "../library/paperService.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/library/sidecars.ts",
-    "unresolvedTo": "../library/sidecars.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
     "to": "packages/terminal/src/platform/dirs.ts",
     "unresolvedTo": "../platform/dirs.js",
     "dependencyTypes": [
@@ -2608,34 +2524,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
-    "to": "packages/terminal/src/library/libraryScanner.ts",
-    "unresolvedTo": "../library/libraryScanner.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
-    "to": "packages/terminal/src/library/libraryStore.ts",
-    "unresolvedTo": "../library/libraryStore.js",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -2899,20 +2787,6 @@
   {
     "type": "dependency",
     "from": "packages/terminal/src/main.ts",
-    "to": "packages/terminal/src/library/libraryPaths.ts",
-    "unresolvedTo": "./library/libraryPaths.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/main.ts",
     "to": "packages/terminal/src/platform/dirs.ts",
     "unresolvedTo": "./platform/dirs.js",
     "dependencyTypes": [
@@ -3026,49 +2900,6 @@
   {
     "type": "dependency",
     "from": "packages/terminal/src/sync/syncService.ts",
-    "to": "packages/terminal/src/library/libraryPaths.ts",
-    "unresolvedTo": "../library/libraryPaths.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/sync/syncService.ts",
-    "to": "packages/terminal/src/library/libraryScanner.ts",
-    "unresolvedTo": "../library/libraryScanner.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/sync/syncService.ts",
-    "to": "packages/terminal/src/library/libraryStore.ts",
-    "unresolvedTo": "../library/libraryStore.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/sync/syncService.ts",
     "to": "packages/terminal/src/platform/nodeFileSystem.ts",
     "unresolvedTo": "../platform/nodeFileSystem.js",
     "dependencyTypes": [
@@ -3131,77 +2962,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/library/fuzzy.ts",
-    "unresolvedTo": "../library/fuzzy.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/library/libraryScanner.ts",
-    "unresolvedTo": "../library/libraryScanner.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/library/libraryStore.ts",
-    "unresolvedTo": "../library/libraryStore.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/library/paperService.ts",
-    "unresolvedTo": "../library/paperService.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/app.ts",
-    "to": "packages/terminal/src/library/search.ts",
-    "unresolvedTo": "../library/search.js",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -3342,21 +3102,6 @@
   {
     "type": "dependency",
     "from": "packages/terminal/src/ui/preview.ts",
-    "to": "packages/terminal/src/library/libraryScanner.ts",
-    "unresolvedTo": "../library/libraryScanner.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/preview.ts",
     "to": "packages/terminal/src/tui/screen.ts",
     "unresolvedTo": "../tui/screen.js",
     "dependencyTypes": [
@@ -3376,21 +3121,6 @@
     "unresolvedTo": "../tui/text.js",
     "dependencyTypes": [
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/ui/render.ts",
-    "to": "packages/terminal/src/library/libraryScanner.ts",
-    "unresolvedTo": "../library/libraryScanner.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {
@@ -3898,21 +3628,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/core/logger.ts",
-    "to": "packages/vscode/src/storage/paths/libraryPaths.ts",
-    "unresolvedTo": "../storage/paths/libraryPaths.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/vscode/src/core/paperService.ts",
     "to": "packages/vscode/src/pdf/searchablePdfBuilder.ts",
     "unresolvedTo": "../pdf/searchablePdfBuilder.js",
@@ -3933,21 +3648,6 @@
     "unresolvedTo": "../storage/fileSystemService.js",
     "dependencyTypes": [
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/core/paperService.ts",
-    "to": "packages/vscode/src/storage/paths/libraryPaths.ts",
-    "unresolvedTo": "../storage/paths/libraryPaths.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {
@@ -4252,34 +3952,6 @@
   {
     "type": "dependency",
     "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/storage/paths/libraryLocation.ts",
-    "unresolvedTo": "./storage/paths/libraryLocation.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/storage/paths/libraryPaths.ts",
-    "unresolvedTo": "./storage/paths/libraryPaths.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
     "to": "packages/vscode/src/storage/vscodeFileSystem.ts",
     "unresolvedTo": "./storage/vscodeFileSystem.js",
     "dependencyTypes": [
@@ -4353,51 +4025,6 @@
     "from": "packages/vscode/src/pdf-viewer/ThemeManager.ts",
     "to": "packages/vscode/src/storage/data/paperDataStore.ts",
     "unresolvedTo": "../storage/data/paperDataStore.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/storage/data/externalChangeWatcher.ts",
-    "to": "packages/vscode/src/storage/paths/libraryPaths.ts",
-    "unresolvedTo": "../paths/libraryPaths.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/storage/data/libraryIndexer.ts",
-    "to": "packages/vscode/src/storage/paths/libraryPaths.ts",
-    "unresolvedTo": "../paths/libraryPaths.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/sync/adapter/syncController.ts",
-    "to": "packages/vscode/src/storage/paths/libraryPaths.ts",
-    "unresolvedTo": "../../storage/paths/libraryPaths.js",
     "dependencyTypes": [
       "local",
       "type-only",

@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 
-import type { PaperRecord } from '@labshelf/core';
+import { libraryLayout, type PaperRecord } from '@labshelf/core';
 import { ExternalChangeWatcher, findMissingPapers } from '../../src/storage/data/externalChangeWatcher';
-import { LibraryPaths } from '../../src/storage/paths/libraryPaths';
 
 const watchers = (vscode as unknown as { _fileWatchers: Array<{ pattern: { base: vscode.Uri; pattern: string }; _fire(kind: string, uri: vscode.Uri): void; dispose: jest.Mock }> })._fileWatchers;
 
@@ -21,7 +20,7 @@ afterEach(() => {
 
 describe('ExternalChangeWatcher', () => {
   it('watches the papers folder and the sidecars', () => {
-    const watcher = new ExternalChangeWatcher(new LibraryPaths(vscode.Uri.file('/lib')), jest.fn());
+    const watcher = new ExternalChangeWatcher(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), jest.fn());
     expect(watchers.map((w) => [w.pattern.base.fsPath, w.pattern.pattern])).toEqual([
       ['/lib/papers', '**'],
       ['/lib/.research/papers', '**/data.json'],
@@ -32,7 +31,7 @@ describe('ExternalChangeWatcher', () => {
 
   it('coalesces a burst of file events into one callback', () => {
     const onChange = jest.fn();
-    const watcher = new ExternalChangeWatcher(new LibraryPaths(vscode.Uri.file('/lib')), onChange, 500);
+    const watcher = new ExternalChangeWatcher(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), onChange, 500);
     for (let i = 0; i < 20; i++) {
       watchers[0]!._fire('create', vscode.Uri.file(`/lib/papers/ml/p${i}/metadata.yaml`));
     }
@@ -46,7 +45,7 @@ describe('ExternalChangeWatcher', () => {
 
   it('ignores the hidden temp files of atomic writes', () => {
     const onChange = jest.fn();
-    const watcher = new ExternalChangeWatcher(new LibraryPaths(vscode.Uri.file('/lib')), onChange, 10);
+    const watcher = new ExternalChangeWatcher(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), onChange, 10);
     watchers[0]!._fire('create', vscode.Uri.file('/lib/papers/p/.metadata.yaml.123.tmp'));
     watchers[0]!._fire('change', vscode.Uri.file('/lib/papers/.DS_Store'));
     jest.advanceTimersByTime(50);
@@ -56,7 +55,7 @@ describe('ExternalChangeWatcher', () => {
 
   it('stops calling back after dispose', () => {
     const onChange = jest.fn();
-    const watcher = new ExternalChangeWatcher(new LibraryPaths(vscode.Uri.file('/lib')), onChange, 10);
+    const watcher = new ExternalChangeWatcher(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), onChange, 10);
     watchers[0]!._fire('delete', vscode.Uri.file('/lib/papers/p/metadata.yaml'));
     watcher.dispose();
     jest.advanceTimersByTime(50);

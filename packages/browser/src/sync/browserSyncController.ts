@@ -12,21 +12,12 @@
  *          @labshelf/core SyncEngine, SyncManifest, createGoogleDriveProvider
  * @dependents background/index
  */
-import {
-  SyncEngine,
-  SyncManifest,
-  createGoogleDriveProvider,
-} from "@labshelf/core";
+import { SyncEngine, SyncManifest, createGoogleDriveProvider, SYNC_PROVIDER_ID, BROWSER_SYNC_ROOTS } from "@labshelf/core";
 import type { SyncResult } from "@labshelf/core";
 import { BrowserDriveAuth } from "./auth/browserDriveAuth";
 import { IndexedDbFileSystem } from "../storage/indexedDbFileSystem";
 import { IdbManifestFileSystem } from "../storage/idbManifestFileSystem";
 import { rebuildFromFiles } from "../storage/paperRecordStore";
-
-const PROVIDER_ID = "google-drive";
-
-// Local roots: relative paths within the IDB file store.
-const ROOTS = { library: "papers", appdata: "appdata" } as const;
 
 export interface SyncStatus {
   connected: boolean;
@@ -85,12 +76,12 @@ export class BrowserSyncController {
   private async runEngine(): Promise<SyncResult> {
     const provider = createGoogleDriveProvider(this.auth);
     const manifestFs = new IdbManifestFileSystem();
-    const manifest = await SyncManifest.load(manifestFs, PROVIDER_ID, PROVIDER_ID);
+    const manifest = await SyncManifest.load(manifestFs, SYNC_PROVIDER_ID, SYNC_PROVIDER_ID);
     const engine = new SyncEngine({
       provider,
       fs: this.fs,
       manifest,
-      roots: ROOTS,
+      roots: BROWSER_SYNC_ROOTS,
     });
     return engine.run();
   }

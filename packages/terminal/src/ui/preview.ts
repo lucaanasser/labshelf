@@ -8,7 +8,7 @@
  */
 import { type Annotation, type PaperRecord, cleanQuote, type PaperData } from "@labshelf/core";
 
-import type { CollectionNode, LibrarySnapshot, PaperEntry } from "../library/libraryScanner.js";
+import type { CollectionNode, LibrarySnapshot, PaperEntry } from "../library/index.js";
 import type { Style } from "../tui/screen.js";
 import { wrap } from "../tui/text.js";
 import { formatBytes, shortAuthors, venueLine } from "./format.js";

@@ -1,7 +1,7 @@
 /**
  * Orchestrates paper import, metadata persistence, status updates, and deletion.
  *
- * @depends @labshelf/core, storage/fileSystemService, storage/paths/libraryPaths
+ * @depends @labshelf/core, storage/fileSystemService
  * @dependents commands/registerCommands.ts, extension.ts, pdf-viewer/PdfViewerPanel.ts, ui/list/listWebviewPanel.ts
  */
 import * as path from "node:path";
@@ -15,9 +15,11 @@ import {
   FolderService,
   isPaperStatus,
   isUnderDir,
+  paperFiles,
   parsePaperMetadata,
 } from "@labshelf/core";
 import type {
+  LibraryLayout,
   PaperRecord,
   BatchImportResult,
   IResearchDatabase,
@@ -26,7 +28,6 @@ import type {
   TextLayerInfo,
 } from "@labshelf/core";
 import { FileSystemService } from "../storage/fileSystemService.js";
-import type { ILibraryPaths } from "../storage/paths/libraryPaths.js";
 import type { PdfTextLayerBuilder, TextLayerHooks, TextLayerOutcome } from "../pdf/searchablePdfBuilder.js";
 
 /** What happened when a paper was checked for, and possibly given, a text layer. */
@@ -61,7 +62,7 @@ export class PaperService {
     private readonly fsService: FileSystemService,
     private readonly database: IResearchDatabase,
     private readonly eventBus: EventBus,
-    private readonly paths: ILibraryPaths,
+    private readonly paths: LibraryLayout<vscode.Uri>,
     private readonly pdfImportParser: PdfImportParser,
     private readonly bibTeXService: BibTeXService,
     // Classifies PDFs and, when OCR is on, gives scans a text layer.
@@ -86,7 +87,7 @@ export class PaperService {
     const targetFolder = vscode.Uri.joinPath(parentDir, paperId);
     await this.fsService.ensureDirectory(targetFolder);
 
-    const targetPdf = vscode.Uri.joinPath(targetFolder, "paper.pdf");
+    const targetPdf = paperFiles(targetFolder, vscode.Uri.joinPath).pdf;
     // Guard against a PDF backend that transfers (detaches) the buffer it parses:
     // writing a detached array would store an unreadable zero-byte paper.pdf.
     if (pdfBytes.byteLength === 0) {
@@ -176,7 +177,7 @@ export class PaperService {
       return undefined;
     }
 
-    const pdfUri = vscode.Uri.file(path.join(paper.path, "paper.pdf"));
+    const pdfUri = vscode.Uri.file(paperFiles(paper.path, path.join).pdf);
     let pdfBytes: Uint8Array;
     try {
       pdfBytes = await vscode.workspace.fs.readFile(pdfUri);
@@ -237,7 +238,7 @@ export class PaperService {
     if (!current) {
       return { status: "unavailable", reason: "the paper was removed while it was being read" };
     }
-    const pdfUri = vscode.Uri.file(path.join(current.path, "paper.pdf"));
+    const pdfUri = vscode.Uri.file(paperFiles(current.path, path.join).pdf);
     // Written beside the original and renamed over it, so an interrupted write
     // can never leave the library with half a paper.
     const pendingUri = vscode.Uri.file(path.join(current.path, "paper.searchable.tmp"));
@@ -310,12 +311,12 @@ export class PaperService {
   ): Promise<void> {
     const { tags: _tags, note: _note, ...rest } = paper;
     const status = options.ownsStatus ? paper.status : (await this._statusOnDisk(paper)) ?? paper.status;
-    await this.bibTeXService.writePaperArtifacts(paper.path, { ...rest, status, ...owned }, `${paper.path}${path.sep}paper.pdf`);
+    await this.bibTeXService.writePaperArtifacts(paper.path, { ...rest, status, ...owned }, paperFiles(paper.path, path.join).pdf);
   }
 
   private async _statusOnDisk(paper: PaperRecord): Promise<PaperRecord["status"] | undefined> {
     try {
-      const status = parsePaperMetadata(await this.fsService.readText(vscode.Uri.file(path.join(paper.path, "metadata.yaml"))))?.["status"];
+      const status = parsePaperMetadata(await this.fsService.readText(vscode.Uri.file(paperFiles(paper.path, path.join).metadata)))?.["status"];
       return isPaperStatus(status) ? status : undefined;
     } catch {
       return undefined;
@@ -327,7 +328,7 @@ export class PaperService {
   }
 
   private async _readPdf(paper: PaperRecord): Promise<Uint8Array> {
-    return vscode.workspace.fs.readFile(vscode.Uri.file(path.join(paper.path, "paper.pdf")));
+    return vscode.workspace.fs.readFile(vscode.Uri.file(paperFiles(paper.path, path.join).pdf));
   }
 
   // Authoritative presence check at action time. Uses vscode.workspace.fs
@@ -336,7 +337,7 @@ export class PaperService {
   // flag, so a symlink to a file reports File|SymbolicLink — test the bit.
   private async _pdfExists(paper: PaperRecord): Promise<boolean> {
     try {
-      const stat = await vscode.workspace.fs.stat(vscode.Uri.file(path.join(paper.path, "paper.pdf")));
+      const stat = await vscode.workspace.fs.stat(vscode.Uri.file(paperFiles(paper.path, path.join).pdf));
       return (stat.type & vscode.FileType.File) !== 0;
     } catch {
       return false;
@@ -396,7 +397,7 @@ export class PaperService {
     if (!paper || paper.hasPdf === false || !(await this._pdfExists(paper))) {
       return null;
     }
-    return vscode.Uri.file(path.join(paper.path, "paper.pdf"));
+    return vscode.Uri.file(paperFiles(paper.path, path.join).pdf);
   }
 
   /**

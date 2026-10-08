@@ -16,12 +16,10 @@
  * @depends syncManifest, provider/remoteProvider, library/paperMetadata, treeScan (RemoteFolderNamer)
  * @dependents syncEngine
  */
-import { parsePaperMetadata } from "../../library/paperMetadata.js";
+import { METADATA_FILE, parsePaperMetadata } from "../../library/index.js";
 import type { RemoteProvider } from "../provider/remoteProvider.js";
 import type { SyncManifest } from "./syncManifest.js";
 import type { FolderNaming, RemoteFolderNamer } from "./treeScan.js";
-
-const METADATA_FILE = "metadata.yaml";
 
 export interface LibraryFolderNamerDeps {
   provider: RemoteProvider;

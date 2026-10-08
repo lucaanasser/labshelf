@@ -2,6 +2,7 @@
  * Loads pdf.js and the paper's bytes as fast as the webview allows, and records the open timeline.
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
+import { PDF_FILE } from "../../../library/index.js";
 import type { PerfTimeline, ReaderAssets } from "../../index.js";
 import type { PdfjsLib, ViewerLib } from "./context.js";
 
@@ -50,7 +51,7 @@ export async function loadPdf(assets: ReaderAssets, perf: PerfMarks, hooks: PdfS
   // serves neither Accept-Ranges nor Content-Length, so pdf.js would stream
   // the whole file anyway — only later, after the imports had finished.
   const readBytes = hooks.readBytes ?? (() => fetch(assets.pdfUrl).then((r) => {
-    if (!r.ok) { throw new Error(`Could not read paper.pdf (HTTP ${r.status}).`); }
+    if (!r.ok) { throw new Error(`Could not read ${PDF_FILE} (HTTP ${r.status}).`); }
     return r.arrayBuffer();
   }));
   const pdfBytesPromise = readBytes().then((buf) => {

@@ -54,7 +54,7 @@ describe("scanLibrary: collections", () => {
 
   it("ignores loose files directly under papers/ and inside collections", async () => {
     const lib = await createTempLibrary([{ id: "a", collection: "ML" }]);
-    await fs.writeFile(path.join(lib.paths.papersRoot(), "README.md"), "notes");
+    await fs.writeFile(path.join(lib.paths.layout.papersRoot(), "README.md"), "notes");
     await fs.writeFile(path.join(lib.paths.collectionDir("ML"), "loose.pdf"), fakePdfBytes());
     const snap = await scanLibrary(lib.paths);
     expect([...snap.collections.keys()].sort()).toEqual(["", "ML"]);
@@ -83,7 +83,7 @@ describe("scanLibrary: collections", () => {
 
   it("does not scan .research/ (sidecars are not papers)", async () => {
     const lib = await createTempLibrary([{ id: "p1", sidecar: { annotations: [], theme: "auto" } }]);
-    await fs.writeFile(path.join(lib.paths.paperDataRoot(), "p1", "metadata.yaml"), "title: not a paper\n");
+    await fs.writeFile(path.join(lib.paths.layout.paperDataRoot(), "p1", "metadata.yaml"), "title: not a paper\n");
     const snap = await scanLibrary(lib.paths);
     expect([...snap.papers.keys()]).toEqual(["p1"]);
   });
@@ -206,7 +206,7 @@ describe("scanLibrary: orphans, duplicates and broken files", () => {
     const orphan = path.join(lib.paths.collectionDir("ML"), "loose");
     await fs.mkdir(orphan, { recursive: true });
     await fs.writeFile(path.join(orphan, "paper.pdf"), fakePdfBytes());
-    const rootOrphan = path.join(lib.paths.papersRoot(), "rootloose");
+    const rootOrphan = path.join(lib.paths.layout.papersRoot(), "rootloose");
     await fs.mkdir(rootOrphan);
     await fs.writeFile(path.join(rootOrphan, "paper.pdf"), fakePdfBytes());
 
@@ -271,7 +271,7 @@ describe("readPaperFolder", () => {
   it("returns undefined when metadata.yaml is missing or not a mapping", async () => {
     const lib = await createTempLibrary([{ id: "bad", rawMetadata: "- x\n" }]);
     expect(await readPaperFolder(lib.paths, lib.paperDir("bad"))).toBeUndefined();
-    expect(await readPaperFolder(lib.paths, path.join(lib.paths.papersRoot(), "nowhere"))).toBeUndefined();
+    expect(await readPaperFolder(lib.paths, path.join(lib.paths.layout.papersRoot(), "nowhere"))).toBeUndefined();
   });
 });
 

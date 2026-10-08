@@ -9,7 +9,7 @@
  * @dependents capture/captureService, background/index
  */
 import type { IFileSystem, PaperRecord, ResolvedMetadata } from "@labshelf/core";
-import { BibTeXService } from "@labshelf/core";
+import { BibTeXService, PDF_FILE, PAPERS_DIR } from "@labshelf/core";
 import { IndexedDbFileSystem } from "../storage/indexedDbFileSystem";
 import { listAllRecords, upsertRecord } from "../storage/paperRecordStore";
 
@@ -84,7 +84,7 @@ export async function addPaper(
   pdfBytes: Uint8Array | undefined,
   meta: ResolvedMetadata,
   fallbackTitle: string,
-  targetFolder: string = "papers",
+  targetFolder: string = PAPERS_DIR,
   extras: PaperExtras = {},
 ): Promise<PaperRecord> {
   const idb = new IndexedDbFileSystem();
@@ -123,8 +123,8 @@ export async function addPaper(
     ...(note ? { note } : {}),
   };
 
-  if (pdfBytes) await idb.writeFile(`${folderPath}/paper.pdf`, pdfBytes);
-  await new BibTeXService(new IdbTextAdapter(idb)).writePaperArtifacts(folderPath, paper, "paper.pdf");
+  if (pdfBytes) await idb.writeFile(`${folderPath}/${PDF_FILE}`, pdfBytes);
+  await new BibTeXService(new IdbTextAdapter(idb)).writePaperArtifacts(folderPath, paper, PDF_FILE);
   await upsertRecord(paper, folderPath);
 
   return paper;
@@ -148,11 +148,11 @@ export async function attachPdfToPaper(
     throw new Error(`Paper "${paperId}" is no longer in the library.`);
   }
   const idb = new IndexedDbFileSystem();
-  const pdfPath = `${record.path}/paper.pdf`;
+  const pdfPath = `${record.path}/${PDF_FILE}`;
   if (await idb.stat(pdfPath)) {
     return { record, written: false };
   }
   await idb.writeFile(pdfPath, bytes);
-  await new BibTeXService(new IdbTextAdapter(idb)).writePaperArtifacts(record.path, record, "paper.pdf");
+  await new BibTeXService(new IdbTextAdapter(idb)).writePaperArtifacts(record.path, record, PDF_FILE);
   return { record, written: true };
 }

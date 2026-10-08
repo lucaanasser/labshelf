@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 
-import { EventBus } from '@labshelf/core';
+import { EventBus, libraryLayout } from '@labshelf/core';
 import { FakeRemoteProvider } from '@labshelf/core/test-support/sync-fakes';
 
 const provider = new FakeRemoteProvider();
@@ -25,14 +25,13 @@ jest.mock('@labshelf/core', () => ({
 }));
 
 import { SyncController } from '../../src/sync/adapter/syncController';
-import { LibraryPaths } from '../../src/storage/paths/libraryPaths';
 
 function context(): vscode.ExtensionContext {
   return { subscriptions: [], secrets: { get: async () => undefined } } as unknown as vscode.ExtensionContext;
 }
 
 function makeController(root: string): SyncController {
-  return new SyncController(context(), new LibraryPaths(vscode.Uri.file(root)), new EventBus(), async () => new Map());
+  return new SyncController(context(), libraryLayout(vscode.Uri.file(root), vscode.Uri.joinPath), new EventBus(), async () => new Map());
 }
 
 function lockFile(root: string): string {
@@ -82,7 +81,7 @@ describe('SyncController and the cross-app sync lock', () => {
       const listSpy = jest.spyOn(provider, 'list');
       const controller = makeController(root);
 
-      controller.setPaths(new LibraryPaths(vscode.Uri.file(other)));
+      controller.setPaths(libraryLayout(vscode.Uri.file(other), vscode.Uri.joinPath));
       await controller.sync('manual');
 
       expect(listSpy).toHaveBeenCalled();

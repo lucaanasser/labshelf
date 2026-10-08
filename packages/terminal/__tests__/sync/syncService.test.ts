@@ -105,8 +105,8 @@ function lockInfo(overrides: Partial<SyncLockInfo> = {}): SyncLockInfo {
 }
 
 async function writeLock(d: Device, content: SyncLockInfo | string): Promise<void> {
-  await fs.mkdir(d.lib.paths.syncDir(), { recursive: true });
-  await fs.writeFile(d.lib.paths.lockPath(), typeof content === "string" ? content : JSON.stringify(content, null, 2));
+  await fs.mkdir(d.lib.paths.layout.syncDir(), { recursive: true });
+  await fs.writeFile(d.lib.paths.layout.lockPath(), typeof content === "string" ? content : JSON.stringify(content, null, 2));
 }
 
 async function readJson<T>(file: string): Promise<T> {
@@ -161,7 +161,7 @@ describe("SyncService.init and status", () => {
       providerId: "google-drive", app: "vscode", host: "laptop", startedAt: "2025-05-01T10:00:00.000Z", finishedAt: "2025-05-01T10:00:05.000Z",
       uploaded: 1, downloaded: 2, deletedLocal: 0, deletedRemote: 0, conflicts: [],
     };
-    await fs.writeFile(lib.paths.lastRunPath(), JSON.stringify(record));
+    await fs.writeFile(lib.paths.layout.lastRunPath(), JSON.stringify(record));
     const store = new LibraryStore(lib.paths);
     const service = new SyncService({
       paths: lib.paths, auth: new CliDriveAuth(CLIENT, new MemoryTokenStore(VALID_TOKENS())), store,
@@ -173,7 +173,7 @@ describe("SyncService.init and status", () => {
 
   it("ignores a corrupt last-run file", async () => {
     const lib = await createTempLibrary();
-    await fs.writeFile(lib.paths.lastRunPath(), "{ broken");
+    await fs.writeFile(lib.paths.layout.lastRunPath(), "{ broken");
     const service = new SyncService({
       paths: lib.paths, auth: new CliDriveAuth(CLIENT, new MemoryTokenStore(VALID_TOKENS())),
       logger: { log: async () => undefined, error: async () => undefined },
@@ -188,7 +188,7 @@ describe("SyncService.init and status", () => {
       providerId: "google-drive", app: "vscode", host: "laptop", startedAt: "2025-05-01T10:00:00.000Z", finishedAt: "2025-05-01T10:00:05.000Z",
       uploaded: 0, downloaded: 0, deletedLocal: 0, deletedRemote: 0, conflicts: [],
     };
-    await fs.writeFile(d.lib.paths.lastRunPath(), JSON.stringify(record));
+    await fs.writeFile(d.lib.paths.layout.lastRunPath(), JSON.stringify(record));
 
     await d.service.refreshLastRun();
     await d.service.refreshLastRun();
@@ -211,14 +211,14 @@ describe("SyncService.syncNow: uploading from this device", () => {
     expect(remote.folderPaths("appdata")).toEqual([ID]);
     expect(remote.filePaths("appdata")).toEqual([`${ID}/data.json`]);
     expect(remote.readText("library", `ML/${TITLE}/metadata.yaml`)).toBe(await fs.readFile(path.join(d.lib.paperDir(ID, "ML"), "metadata.yaml"), "utf8"));
-    expect(remote.readText("appdata", `${ID}/data.json`)).toBe(await fs.readFile(d.lib.paths.paperDataPath(ID), "utf8"));
+    expect(remote.readText("appdata", `${ID}/data.json`)).toBe(await fs.readFile(d.lib.paths.layout.paperDataPath(ID), "utf8"));
   });
 
   it("writes the shared manifest keyed by local (id-named) paths, as the VS Code extension does", async () => {
     const d = await device({ papers: [PAPER] });
     await d.service.syncNow();
 
-    const manifest = await readJson<{ providerId: string; namespaces: Record<string, Record<string, { remoteId: string; contentHash: string; modifiedTime: string }>> }>(d.lib.paths.manifestPath());
+    const manifest = await readJson<{ providerId: string; namespaces: Record<string, Record<string, { remoteId: string; contentHash: string; modifiedTime: string }>> }>(d.lib.paths.layout.manifestPath());
     expect(manifest.providerId).toBe("google-drive");
     expect(Object.keys(manifest.namespaces["library"]!).sort()).toEqual([
       `ML/${ID}/bib.bib`, `ML/${ID}/metadata.yaml`, `ML/${ID}/paper.pdf`,
@@ -236,7 +236,7 @@ describe("SyncService.syncNow: uploading from this device", () => {
     const before = Date.now();
     const outcome = expectSynced(await d.service.syncNow());
 
-    const onDisk = await readJson<SyncRunRecord>(d.lib.paths.lastRunPath());
+    const onDisk = await readJson<SyncRunRecord>(d.lib.paths.layout.lastRunPath());
     expect(onDisk).toEqual(outcome.record);
     expect(onDisk).toMatchObject({ providerId: "google-drive", app: "terminal", host: "host-a", uploaded: 4, conflicts: [] });
     expect(Date.parse(onDisk.finishedAt)).toBeGreaterThanOrEqual(before - 1000);
@@ -250,7 +250,7 @@ describe("SyncService.syncNow: uploading from this device", () => {
     let during: SyncLockInfo | undefined;
     let stateDuring: string | undefined;
     remote.onResolveRoot = async () => {
-      during ??= await readJson<SyncLockInfo>(d.lib.paths.lockPath());
+      during ??= await readJson<SyncLockInfo>(d.lib.paths.layout.lockPath());
       stateDuring ??= d.service.status().state;
     };
 
@@ -260,8 +260,8 @@ describe("SyncService.syncNow: uploading from this device", () => {
     expect(during!.token).toEqual(expect.any(String));
     expect(Date.parse(during!.heartbeatAt)).not.toBeNaN();
     expect(stateDuring).toBe("syncing");
-    expect(await pathExists(d.lib.paths.lockPath())).toBe(false);
-    expect(await listFiles(d.lib.paths.syncDir())).toEqual(["google-drive.last.json", "google-drive.state.json"]);
+    expect(await pathExists(d.lib.paths.layout.lockPath())).toBe(false);
+    expect(await listFiles(d.lib.paths.layout.syncDir())).toEqual(["google-drive.last.json", "google-drive.state.json"]);
   });
 
   it("reports syncing then idle to status listeners", async () => {
@@ -273,10 +273,10 @@ describe("SyncService.syncNow: uploading from this device", () => {
 
   it("leaves the local library and temp folder untouched and logs the run", async () => {
     const d = await device({ papers: [PAPER] });
-    const before = await listFiles(d.lib.paths.papersRoot());
+    const before = await listFiles(d.lib.paths.layout.papersRoot());
     await d.service.syncNow();
-    expect(await listFiles(d.lib.paths.papersRoot())).toEqual(before);
-    expect(await listFiles(d.lib.paths.tmpDir())).toEqual([]);
+    expect(await listFiles(d.lib.paths.layout.papersRoot())).toEqual(before);
+    expect(await listFiles(d.lib.paths.layout.tmpDir())).toEqual([]);
     expect(d.logs.map((l) => l.message)).toContain("Sync finished");
   });
 
@@ -334,14 +334,14 @@ describe("SyncService.syncNow: two devices (the terminal on another computer, or
     expect(outcome.record).toMatchObject({ app: "terminal", host: "host-b", downloaded: 4, uploaded: 0 });
     // Id-named, in the same collection - not "Attention Is All You Need".
     const folder = b.lib.paperDir(ID, "ML");
-    expect(await listFiles(b.lib.paths.papersRoot())).toEqual([`ML/${ID}/bib.bib`, `ML/${ID}/metadata.yaml`, `ML/${ID}/paper.pdf`]);
+    expect(await listFiles(b.lib.paths.layout.papersRoot())).toEqual([`ML/${ID}/bib.bib`, `ML/${ID}/metadata.yaml`, `ML/${ID}/paper.pdf`]);
     expect(await pathExists(path.join(b.lib.paths.collectionDir("ML"), TITLE))).toBe(false);
     for (const name of ["metadata.yaml", "paper.pdf", "bib.bib"]) {
       expect(await fs.readFile(path.join(folder, name))).toEqual(await fs.readFile(path.join(a.lib.paperDir(ID, "ML"), name)));
     }
     // The sidecar lands where this device (and VS Code) reads it.
-    expect(await fs.readFile(b.lib.paths.paperDataPath(ID), "utf8")).toBe(await fs.readFile(a.lib.paths.paperDataPath(ID), "utf8"));
-    expect(await listFiles(b.lib.paths.paperDataRoot())).toEqual([`${ID}/data.json`]);
+    expect(await fs.readFile(b.lib.paths.layout.paperDataPath(ID), "utf8")).toBe(await fs.readFile(a.lib.paths.layout.paperDataPath(ID), "utf8"));
+    expect(await listFiles(b.lib.paths.layout.paperDataRoot())).toEqual([`${ID}/data.json`]);
   });
 
   it("shows the downloaded paper in the library without a manual reload", async () => {
@@ -402,7 +402,7 @@ describe("SyncService.syncNow: two devices (the terminal on another computer, or
     // ...A syncs and sees both highlights.
     const outcome = expectSynced(await a.service.syncNow());
     expect(outcome.record.downloaded).toBe(1);
-    const onA = await readJson<{ annotations: Array<{ content: string }>; theme: string }>(a.lib.paths.paperDataPath(ID));
+    const onA = await readJson<{ annotations: Array<{ content: string }>; theme: string }>(a.lib.paths.layout.paperDataPath(ID));
     expect(onA.annotations.map((x) => x.content).sort()).toEqual(["positional encodings", "self-attention replaces recurrence"]);
     expect(onA.theme).toBe("dark");
   });
@@ -444,7 +444,7 @@ describe("SyncService.syncNow: two devices (the terminal on another computer, or
     // B syncs: same folder, new title, nothing deleted, nothing created under the new title.
     const fromB = expectSynced(await b.service.syncNow());
     expect(fromB.record).toMatchObject({ downloaded: 1, uploaded: 0, deletedLocal: 0, deletedRemote: 0 });
-    expect(await listFiles(b.lib.paths.papersRoot())).toEqual([`ML/${ID}/bib.bib`, `ML/${ID}/metadata.yaml`, `ML/${ID}/paper.pdf`]);
+    expect(await listFiles(b.lib.paths.layout.papersRoot())).toEqual([`ML/${ID}/bib.bib`, `ML/${ID}/metadata.yaml`, `ML/${ID}/paper.pdf`]);
     expect(b.store.paper(ID)!.record.title).toBe(newTitle);
     expect(b.store.snapshot.papers.size).toBe(1);
     expect(b.store.snapshot.duplicates).toEqual([]);
@@ -462,7 +462,7 @@ describe("SyncService.syncNow: two devices (the terminal on another computer, or
     const b = await device({ remote, host: "host-b" });
     await b.service.syncNow();
 
-    expect(await listFiles(b.lib.paths.papersRoot())).toEqual([`ML/${ID}/bib.bib`, `ML/${ID}/metadata.yaml`, `ML/${ID}/paper.pdf`]);
+    expect(await listFiles(b.lib.paths.layout.papersRoot())).toEqual([`ML/${ID}/bib.bib`, `ML/${ID}/metadata.yaml`, `ML/${ID}/paper.pdf`]);
     expect(b.store.paper(ID)!.record.title).toBe("A Completely Different Title");
   });
 
@@ -473,7 +473,7 @@ describe("SyncService.syncNow: two devices (the terminal on another computer, or
     await a.service.syncNow();
     const b = await device({ remote, host: "host-b" });
     await b.service.syncNow();
-    expect(await listFiles(b.lib.paths.papersRoot())).toEqual(["Legacy Paper/metadata.yaml"]);
+    expect(await listFiles(b.lib.paths.layout.papersRoot())).toEqual(["Legacy Paper/metadata.yaml"]);
     expect([...b.store.snapshot.papers.keys()]).toEqual(["Legacy Paper"]);
   });
 
@@ -483,7 +483,7 @@ describe("SyncService.syncNow: two devices (the terminal on another computer, or
     await a.service.syncNow();
     const b = await device({ remote, host: "host-b" });
     await b.service.syncNow();
-    expect(await listFiles(b.lib.paths.papersRoot())).toEqual(["Evil Title/metadata.yaml"]);
+    expect(await listFiles(b.lib.paths.layout.papersRoot())).toEqual(["Evil Title/metadata.yaml"]);
     expect(await pathExists(path.join(path.dirname(b.lib.root), "escape"))).toBe(false);
   });
 
@@ -526,7 +526,7 @@ describe("SyncService.syncNow: two devices (the terminal on another computer, or
     expect(names).toHaveLength(2);
     expect(names.some((n) => /^metadata \(conflict \d{4}-\d{2}-\d{2}\)\.yaml$/.test(n))).toBe(true);
     expect((await readYaml(fileB))["note"]).toBe("note from B");
-    expect(await readJson<SyncRunRecord>(b.lib.paths.lastRunPath())).toMatchObject({ conflicts: [`ML/${ID}/metadata.yaml`] });
+    expect(await readJson<SyncRunRecord>(b.lib.paths.layout.lastRunPath())).toMatchObject({ conflicts: [`ML/${ID}/metadata.yaml`] });
   });
 });
 
@@ -545,10 +545,10 @@ describe("SyncService.syncNow: the cross-app lock", () => {
     expect(d.service.status().holder).toMatchObject({ app: "vscode" });
     expect(remote.uploads).toEqual([]);
     expect(d.factory).not.toHaveBeenCalled();
-    expect(await pathExists(d.lib.paths.manifestPath())).toBe(false);
-    expect(await pathExists(d.lib.paths.lastRunPath())).toBe(false);
+    expect(await pathExists(d.lib.paths.layout.manifestPath())).toBe(false);
+    expect(await pathExists(d.lib.paths.layout.lastRunPath())).toBe(false);
     // The other app's lock is untouched.
-    expect(await readJson<SyncLockInfo>(d.lib.paths.lockPath())).toMatchObject({ app: "vscode", token: "vscode-token" });
+    expect(await readJson<SyncLockInfo>(d.lib.paths.layout.lockPath())).toMatchObject({ app: "vscode", token: "vscode-token" });
     expect(d.logs.map((l) => l.message)).toContain("Sync skipped: another app is syncing this library");
   });
 
@@ -559,7 +559,7 @@ describe("SyncService.syncNow: the cross-app lock", () => {
     expect(d.service.status().state).toBe("waiting");
     await d.service.refreshLastRun();
     expect(d.service.status().state).toBe("waiting");
-    await fs.rm(d.lib.paths.lockPath());
+    await fs.rm(d.lib.paths.layout.lockPath());
     await d.service.refreshLastRun();
     expect(d.service.status().state).toBe("idle");
     expect(d.service.status().holder).toBeUndefined();
@@ -577,7 +577,7 @@ describe("SyncService.syncNow: the cross-app lock", () => {
     await writeLock(d, lockInfo({ app: "vscode", host: "host-a", pid: dead }));
 
     expect(expectSynced(await d.service.syncNow()).record.app).toBe("terminal");
-    expect(await pathExists(d.lib.paths.lockPath())).toBe(false);
+    expect(await pathExists(d.lib.paths.layout.lockPath())).toBe(false);
   });
 
   it("takes over a stale lock (heartbeat older than two minutes) from another host", async () => {
@@ -588,7 +588,7 @@ describe("SyncService.syncNow: the cross-app lock", () => {
     const outcome = expectSynced(await d.service.syncNow());
 
     expect(outcome.record.uploaded).toBe(4);
-    expect(await pathExists(d.lib.paths.lockPath())).toBe(false);
+    expect(await pathExists(d.lib.paths.layout.lockPath())).toBe(false);
   });
 
   it("treats a lock that is just under the staleness limit as still held", async () => {
@@ -601,14 +601,14 @@ describe("SyncService.syncNow: the cross-app lock", () => {
     const d = await device({ papers: [PAPER] });
     await writeLock(d, "{ half a json");
     expectSynced(await d.service.syncNow());
-    expect(await pathExists(d.lib.paths.lockPath())).toBe(false);
+    expect(await pathExists(d.lib.paths.layout.lockPath())).toBe(false);
   });
 
   it("works again once the other app releases the lock", async () => {
     const d = await device({ papers: [PAPER] });
     await writeLock(d, lockInfo());
     expect((await d.service.syncNow()).kind).toBe("busy");
-    await fs.rm(d.lib.paths.lockPath());
+    await fs.rm(d.lib.paths.layout.lockPath());
     expectSynced(await d.service.syncNow());
     expect(d.service.status().state).toBe("idle");
     expect(d.service.status().holder).toBeUndefined();
@@ -619,7 +619,7 @@ describe("SyncService.syncNow: the cross-app lock", () => {
     const d = await device({ papers: [PAPER], remote });
     remote.failWith(new Error("Drive is down"));
     expect((await d.service.syncNow()).kind).toBe("failed");
-    expect(await pathExists(d.lib.paths.lockPath())).toBe(false);
+    expect(await pathExists(d.lib.paths.layout.lockPath())).toBe(false);
   });
 });
 
@@ -630,7 +630,7 @@ describe("SyncService.syncNow: preconditions and failures", () => {
     const outcome = await d.service.syncNow();
     expect(outcome).toEqual({ kind: "skipped", reason: "no Google OAuth client configured" });
     expect(d.service.status().state).toBe("unconfigured");
-    expect(await pathExists(d.lib.paths.lockPath())).toBe(false);
+    expect(await pathExists(d.lib.paths.layout.lockPath())).toBe(false);
     expect(d.factory).not.toHaveBeenCalled();
   });
 
@@ -640,7 +640,7 @@ describe("SyncService.syncNow: preconditions and failures", () => {
     expect(outcome).toEqual({ kind: "skipped", reason: "not signed in to Google Drive" });
     expect(d.service.status().state).toBe("disconnected");
     expect(d.factory).not.toHaveBeenCalled();
-    expect(await pathExists(d.lib.paths.syncDir() + "/google-drive.state.json")).toBe(false);
+    expect(await pathExists(d.lib.paths.layout.syncDir() + "/google-drive.state.json")).toBe(false);
   });
 
   it("reports a provider error as failed, in the error state, and recovers on the next run", async () => {
@@ -653,7 +653,7 @@ describe("SyncService.syncNow: preconditions and failures", () => {
     expect(outcome).toEqual({ kind: "failed", error: "Drive is down", reauth: false });
     expect(d.service.status()).toMatchObject({ state: "error", lastError: "Drive is down" });
     expect(d.logs.some((l) => l.level === "ERROR" && l.message === "Sync failed")).toBe(true);
-    expect(await pathExists(d.lib.paths.lastRunPath())).toBe(false);
+    expect(await pathExists(d.lib.paths.layout.lastRunPath())).toBe(false);
 
     remote.failWith(undefined);
     expectSynced(await d.service.syncNow());
@@ -712,8 +712,8 @@ describe("SyncService.periodicTick", () => {
       providerId: "google-drive", app, host: "elsewhere", startedAt: finished, finishedAt: finished,
       uploaded: 0, downloaded: 0, deletedLocal: 0, deletedRemote: 0, conflicts: [],
     };
-    await fs.mkdir(d.lib.paths.syncDir(), { recursive: true });
-    await fs.writeFile(d.lib.paths.lastRunPath(), JSON.stringify(record));
+    await fs.mkdir(d.lib.paths.layout.syncDir(), { recursive: true });
+    await fs.writeFile(d.lib.paths.layout.lastRunPath(), JSON.stringify(record));
   }
 
   it("runs when nothing has ever synced", async () => {
@@ -781,7 +781,7 @@ describe("SyncService timers", () => {
     const outcome = await d.service.syncNow("test");
     expect(outcome.kind).toBe("synced");
     expect(d.factory).toHaveBeenCalledTimes(1);
-    expect(await pathExists(d.lib.paths.lastRunPath())).toBe(true);
+    expect(await pathExists(d.lib.paths.layout.lastRunPath())).toBe(true);
   });
 
   it("notifyLocalChange does nothing unless the service is idle (signed in and configured)", async () => {

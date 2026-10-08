@@ -7,6 +7,8 @@
  */
 import * as vscode from "vscode";
 
+import { libraryLayout } from "@labshelf/core";
+
 import type { FileSystemService } from "../fileSystemService.js";
 import { readSharedLibraryRoot, writeSharedLibraryRoot } from "./sharedConfig.js";
 
@@ -66,11 +68,9 @@ export async function mirrorLibraryRoot(uri: vscode.Uri): Promise<void> {
  * @returns void
  */
 export async function ensureLibraryStructure(root: vscode.Uri, fsService: FileSystemService): Promise<void> {
-  await fsService.ensureDirectory(vscode.Uri.joinPath(root, ".research"));
-  await fsService.ensureDirectory(vscode.Uri.joinPath(root, ".research", "logs"));
-  await fsService.ensureDirectory(vscode.Uri.joinPath(root, ".research", "papers"));
-  await fsService.ensureDirectory(vscode.Uri.joinPath(root, ".research", "sync"));
-  await fsService.ensureDirectory(vscode.Uri.joinPath(root, "papers"));
+  for (const dir of libraryLayout(root, vscode.Uri.joinPath).requiredDirs()) {
+    await fsService.ensureDirectory(dir);
+  }
 }
 
 /**

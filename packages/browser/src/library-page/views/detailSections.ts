@@ -14,7 +14,7 @@ import { icon } from "../../ui/icons";
 import { attachmentsHeading } from "../../ui/pdfCopy";
 import { STATUSES, STATUS_LABEL, folderLabel } from "../state/derive";
 import type { ListPaper } from "../state/derive";
-import type { PaperStatus } from "@labshelf/core";
+import { PDF_FILE, type PaperStatus } from "@labshelf/core";
 
 export const ABSTRACT_TRUNCATE_AT = 320;
 
@@ -59,7 +59,7 @@ export function actionRow(single: boolean, hasPdf = true, busy = false): string 
 /** Attachment section body: the single paper.pdf item, or the "No PDF" empty state. */
 function attachBody(hasPdf: boolean, busy: boolean): string {
   if (hasPdf) {
-    return `<div class="attach-item" data-action="open-pdf"><span class="sec-icon">${icon("file")}</span><span>paper.pdf</span></div>`;
+    return `<div class="attach-item" data-action="open-pdf"><span class="sec-icon">${icon("file")}</span><span>${PDF_FILE}</span></div>`;
   }
   if (busy) {
     return `<div class="attach-busy"><span class="spin">${icon("sync")}</span><span>Searching for the PDF…</span></div>`;

@@ -9,12 +9,11 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import type { PaperRecord, PaperStatus } from "@labshelf/core";
+import { libraryLayout, paperFiles, type PaperRecord, type PaperStatus } from "@labshelf/core";
 
 import { configPath, type SharedConfig } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
-import { papersUnder, type PaperEntry } from "../library/libraryScanner.js";
-import { paperComparator, type SortSpec } from "../library/libraryStore.js";
+import { papersUnder, type PaperEntry, paperComparator, type SortSpec } from "../library/index.js";
 import { configDir } from "../platform/dirs.js";
 import { copyToClipboard, hasCommand, openExternal } from "../platform/system.js";
 import { resolveOAuthClient } from "../sync/driveAuth.js";
@@ -187,7 +186,7 @@ export async function runLibraryCommand(ctx: AppContext, args: ParsedArgs, io: O
         io.err(`No PDF on this device for ${entry.record.id}${link ? ` (${link})` : ""}`);
         return 1;
       }
-      openExternal(path.join(entry.record.path, "paper.pdf"), process.env["LABSHELF_PDF_VIEWER"] || ctx.config.terminal?.pdfViewer);
+      openExternal(paperFiles(entry.record.path, path.join).pdf, process.env["LABSHELF_PDF_VIEWER"] || ctx.config.terminal?.pdfViewer);
       return 0;
     }
     case "status": {
@@ -245,7 +244,7 @@ function showText(entry: PaperEntry, highlights: number, page: number | undefine
     ["doi", r.doi],
     ["url", r.url],
     ["in", entry.collection || "(library root)"],
-    ["pdf", r.hasPdf === false ? "not on this device" : `${path.join(r.path, "paper.pdf")} (${formatBytes(entry.pdfBytes ?? 0)})`],
+    ["pdf", r.hasPdf === false ? "not on this device" : `${paperFiles(r.path, path.join).pdf} (${formatBytes(entry.pdfBytes ?? 0)})`],
     ["notes", highlights ? `${highlights} highlight(s)` : undefined],
     ["read", page ? `stopped at page ${page}` : undefined],
   ];
@@ -314,12 +313,13 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
     line(false, "library", "not configured — run `labshelf init <path>` (use the folder VS Code uses)");
     essentialMissing = true;
   } else {
-    const exists = await fs.stat(path.join(root, "papers")).then((s) => s.isDirectory(), () => false);
+    const layout = libraryLayout(root, path.join);
+    const exists = await fs.stat(layout.papersRoot()).then((s) => s.isDirectory(), () => false);
     line(exists, "library", `${root} (from ${rootSource})`);
     if (!exists) { essentialMissing = true; }
-    const lock = await fs.readFile(path.join(root, ".research", "sync", "google-drive.lock"), "utf8").catch(() => undefined);
+    const lock = await fs.readFile(layout.lockPath(), "utf8").catch(() => undefined);
     if (lock) { line("warn", "sync lock", `held: ${lock.replace(/\s+/g, " ").slice(0, 120)}`); }
-    const last = await fs.readFile(path.join(root, ".research", "sync", "google-drive.last.json"), "utf8").then((t) => JSON.parse(t) as { finishedAt?: string; app?: string }, () => undefined);
+    const last = await fs.readFile(layout.lastRunPath(), "utf8").then((t) => JSON.parse(t) as { finishedAt?: string; app?: string }, () => undefined);
     line(last ? true : "warn", "last sync", last?.finishedAt ? `${relativeTime(last.finishedAt)} by ${last.app}` : "never (by an app that records it)");
   }
   const client = resolveOAuthClient();

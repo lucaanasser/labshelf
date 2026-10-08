@@ -1,5 +1,5 @@
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
-import { PDF_THEMES, THEME_PRESETS, presetFor, toPageColors } from '@labshelf/core';
+import { libraryLayout, PDF_THEMES, THEME_PRESETS, presetFor, toPageColors } from '@labshelf/core';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 
@@ -19,7 +19,7 @@ function makeFakeStore(): PaperDataStore {
     return v;
   });
   jest.spyOn(fs, 'exists').mockImplementation(async (uri: any) => files.has(uri.fsPath));
-  return new PaperDataStore(vscode.Uri.file('/lib/.research'), fs);
+  return new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs);
 }
 
 describe('ThemeManager', () => {

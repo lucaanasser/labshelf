@@ -24,6 +24,7 @@ import { showDialog } from "../ui/dialog";
 import { noPdfDialogCopy } from "../ui/pdfCopy";
 import { folderName, metaLine, parseTags } from "./format";
 import { pdfLineText, pdfSourceLabel } from "../ui/pdfCopy";
+import { PAPERS_DIR } from "@labshelf/core";
 
 type PopupState = "loading" | "form" | "library" | "empty" | "saving" | "saved";
 
@@ -36,7 +37,7 @@ async function send<T = unknown>(message: RuntimeMessage): Promise<T> {
 const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
 let tabId = -1;
-let folders: FoldersData = { folders: [{ path: "papers", label: "Library", depth: 0 }], lastFolder: "papers" };
+let folders: FoldersData = { folders: [{ path: PAPERS_DIR, label: "Library", depth: 0 }], lastFolder: PAPERS_DIR };
 let saved: SavedPaperData | undefined;
 let pdfStatus: PdfStatusData | undefined;
 

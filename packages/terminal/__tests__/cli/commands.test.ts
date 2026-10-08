@@ -509,7 +509,7 @@ describe("mv", () => {
     const s = await session();
     expect(await s.run("mv", "devlin2019bert", "papers")).toBe(0);
     expect(s.ctx.store.paper("devlin2019bert")!.collection).toBe("");
-    expect(await pathExists(path.join(s.lib.paths.papersRoot(), "devlin2019bert", "metadata.yaml"))).toBe(true);
+    expect(await pathExists(path.join(s.lib.paths.layout.papersRoot(), "devlin2019bert", "metadata.yaml"))).toBe(true);
   });
 
   it("exits 1 and reports a name clash on stderr, leaving the paper where it was", async () => {
@@ -557,17 +557,17 @@ describe("sync and auth (offline paths only)", () => {
   it("sync reports VS Code as the holder while it syncs this library, without touching Drive", async () => {
     await signIn();
     const info = { app: "vscode", pid: 424242, host: "another-computer", token: "t", acquiredAt: new Date().toISOString(), heartbeatAt: new Date().toISOString() };
-    const s = await session(PAPERS, { prepare: async (lib) => { await fs.writeFile(lib.paths.lockPath(), JSON.stringify(info)); } });
+    const s = await session(PAPERS, { prepare: async (lib) => { await fs.writeFile(lib.paths.layout.lockPath(), JSON.stringify(info)); } });
     expect(await s.run("sync")).toBe(1);
     expect(s.errText()).toBe("VS Code is syncing this library right now.");
     expect(s.ctx.sync.status().state).toBe("waiting");
-    expect(JSON.parse(await fs.readFile(s.lib.paths.lockPath(), "utf8"))).toMatchObject({ app: "vscode", token: "t" });
+    expect(JSON.parse(await fs.readFile(s.lib.paths.layout.lockPath(), "utf8"))).toMatchObject({ app: "vscode", token: "t" });
   });
 
   it("sync names another LabShelf app when that is the holder", async () => {
     await signIn();
     const info = { app: "browser", pid: 424242, host: "another-computer", token: "t", acquiredAt: new Date().toISOString(), heartbeatAt: new Date().toISOString() };
-    const s = await session(PAPERS, { prepare: async (lib) => { await fs.writeFile(lib.paths.lockPath(), JSON.stringify(info)); } });
+    const s = await session(PAPERS, { prepare: async (lib) => { await fs.writeFile(lib.paths.layout.lockPath(), JSON.stringify(info)); } });
     expect(await s.run("sync")).toBe(1);
     expect(s.errText()).toBe("Another LabShelf app is syncing this library right now.");
   });
@@ -577,7 +577,7 @@ describe("sync and auth (offline paths only)", () => {
       providerId: "google-drive", app: "vscode", host: "laptop", startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
       uploaded: 1, downloaded: 0, deletedLocal: 0, deletedRemote: 0, conflicts: [],
     };
-    const out = await session(PAPERS, { prepare: async (lib) => { await fs.writeFile(lib.paths.lastRunPath(), JSON.stringify(lastRun)); } });
+    const out = await session(PAPERS, { prepare: async (lib) => { await fs.writeFile(lib.paths.layout.lastRunPath(), JSON.stringify(lastRun)); } });
     expect(await out.run("auth", "status")).toBe(0);
     expect(out.out).toEqual(["drive:     signed out", "last sync: just now by vscode on laptop"]);
 
@@ -662,8 +662,8 @@ describe("runDoctor", () => {
 
   it("warns about a held sync lock and shows the last sync", async () => {
     const lib = await createTempLibrary();
-    await fs.writeFile(lib.paths.lockPath(), JSON.stringify({ app: "vscode", pid: 1 }));
-    await fs.writeFile(lib.paths.lastRunPath(), JSON.stringify({ app: "vscode", finishedAt: new Date().toISOString() }));
+    await fs.writeFile(lib.paths.layout.lockPath(), JSON.stringify({ app: "vscode", pid: 1 }));
+    await fs.writeFile(lib.paths.layout.lastRunPath(), JSON.stringify({ app: "vscode", finishedAt: new Date().toISOString() }));
     const { io, text } = capture();
     expect(await runDoctor(lib.root, "config", { version: 1 }, io)).toBe(0);
     expect(text()).toMatch(/^warn\s+sync lock\s+held: .*"app":"vscode"/m);

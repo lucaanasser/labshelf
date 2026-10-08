@@ -1,10 +1,11 @@
-/** Orchestrates the sync lifecycle — auth, engine wiring, debounced auto-sync on library events, periodic polling, and status bar feedback. Shares the library with the terminal app: both hold the core SyncLock while syncing, name Drive folders with the same core rule, and record each run in the shared last-run file. @depends vscode, @labshelf/core, googleDriveAuth, vscodeLocalFileSystem, nodeLockStore, libraryPaths. @dependents extension */
+/** Orchestrates the sync lifecycle — auth, engine wiring, debounced auto-sync on library events, periodic polling, and status bar feedback. Shares the library with the terminal app: both hold the core SyncLock while syncing, name Drive folders with the same core rule, and record each run in the shared last-run file. */
 import * as os from "node:os";
-import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILibraryPaths } from "../../storage/paths/libraryPaths.js";
 import {
+  SYNC_PROVIDER_ID,
+  syncRoots,
+  type LibraryLayout,
   buildLibraryFolderNames,
   createGoogleDriveProvider,
   readSyncRunRecord,
@@ -25,7 +26,6 @@ import { VscodeLocalFileSystem } from "./vscodeLocalFileSystem.js";
 import { isProcessAlive, NodeLockStore } from "./nodeLockStore.js";
 
 const DEBOUNCE_MS = 30_000;
-const PROVIDER_ID = "google-drive";
 const APP_ID = "vscode";
 
 /** Where a sync request came from: a manual one reports a busy lock, an automatic one stays quiet. */
@@ -49,7 +49,7 @@ export class SyncController implements vscode.Disposable {
 
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private paths: ILibraryPaths,
+    private paths: LibraryLayout<vscode.Uri>,
     eventBus: EventBus,
     /** Returns a paperId → title map used to name Drive folders. */
     private readonly getPaperTitles?: () => Promise<Map<string, string>>,
@@ -72,7 +72,7 @@ export class SyncController implements vscode.Disposable {
   }
 
   /** Points the controller at another library, so the lock, manifest and synced folders follow a reconfigured root. */
-  setPaths(paths: ILibraryPaths): void {
+  setPaths(paths: LibraryLayout<vscode.Uri>): void {
     this.paths = paths;
   }
 
@@ -160,11 +160,11 @@ export class SyncController implements vscode.Disposable {
   }
 
   private lockPath(): string {
-    return path.join(this.paths.syncDir().fsPath, `${PROVIDER_ID}.lock`);
+    return this.paths.lockPath().fsPath;
   }
 
   private lastRunPath(): string {
-    return path.join(this.paths.syncDir().fsPath, `${PROVIDER_ID}.last.json`);
+    return this.paths.lastRunPath().fsPath;
   }
 
   // Records the run for the other apps on this library; a failure here must not fail the sync itself.
@@ -194,17 +194,15 @@ export class SyncController implements vscode.Disposable {
   // Instantiates the provider, manifest, and engine, then runs a full sync.
   private async runEngine(): Promise<SyncResult> {
     const provider = createGoogleDriveProvider(this.auth);
-    const manifestPath = path.join(this.paths.syncDir().fsPath, `${PROVIDER_ID}.state.json`);
-    const manifest = await SyncManifest.load(this.localFs, manifestPath, PROVIDER_ID);
+    const manifestPath = this.paths.manifestPath().fsPath;
+    const manifest = await SyncManifest.load(this.localFs, manifestPath, SYNC_PROVIDER_ID);
     const folderNames = await this.buildFolderNames();
+    const roots = syncRoots(this.paths);
     const engine = new SyncEngine({
       provider,
       fs: this.localFs,
       manifest,
-      roots: {
-        library: this.paths.papersRoot().fsPath,
-        appdata: this.paths.paperDataRoot().fsPath,
-      },
+      roots: { library: roots.library.fsPath, appdata: roots.appdata.fsPath },
       ...(folderNames !== undefined ? { libraryFolderNames: folderNames } : {}),
     });
     return engine.run();

@@ -36,6 +36,7 @@ import type { SyncTrigger } from "./autoSyncScheduler";
 import { installIdleSyncTrigger } from "./syncOnIdle";
 import { SyncDebouncer } from "./eventDebouncer";
 import { installBadgeUpdater } from "./badgeUpdater";
+import { PDF_FILE } from "@labshelf/core";
 
 const log = new BrowserLogger("background");
 const auth = new BrowserDriveAuth();
@@ -230,7 +231,7 @@ function ref(id: string, path: string, hasPdf: boolean): LibraryRef {
 
 /** Whether `<path>/paper.pdf` exists (one stat; library.lookup uses a bulk scan). */
 async function pdfExists(path: string): Promise<boolean> {
-  return (await new IndexedDbFileSystem().stat(`${path}/paper.pdf`)) !== undefined;
+  return (await new IndexedDbFileSystem().stat(`${path}/${PDF_FILE}`)) !== undefined;
 }
 
 async function draftView(d: CaptureDraft): Promise<DraftView> {

@@ -16,7 +16,7 @@
  * @dependents library-page/index
  */
 import type { IFileSystem, PaperRecord, PaperStatus } from "@labshelf/core";
-import { BibTeXService, FolderService } from "@labshelf/core";
+import { BibTeXService, FolderService, PDF_FILE } from "@labshelf/core";
 import { attachPdfToPaper, isPdfBytes } from "../../capture";
 import { openReader } from "../../reader/readerTabs";
 import type { AttachPdfData, IfNoPdf, PdfMiss, SaveOutcome, TabSummary } from "../../platform/runtimeMessages";
@@ -82,7 +82,7 @@ async function handleAction(store: LibraryStore, ids: string[], action: PaperAct
 async function openPdf(store: LibraryStore, paper: PaperRecord): Promise<void> {
   // A key can exist with zero or corrupt bytes, so verify the header before
   // opening the reader; double-click / Enter also reach here for PDF-less rows.
-  const pdfPath = `${paper.path}/paper.pdf`;
+  const pdfPath = `${paper.path}/${PDF_FILE}`;
   const bytes = (await fs.stat(pdfPath)) ? await fs.readFile(pdfPath).catch(() => undefined) : undefined;
   if (!bytes || !isPdfBytes(bytes)) {
     const choice = await showDialog({
@@ -207,7 +207,7 @@ async function setStatus(store: LibraryStore, ids: string[], status: PaperStatus
   for (const paper of changed) {
     const next: PaperRecord = { ...paper, status };
     await upsertRecord(next, next.path);
-    await bib.writePaperArtifacts(next.path, next, "paper.pdf");
+    await bib.writePaperArtifacts(next.path, next, PDF_FILE);
   }
   await refreshLibrary(store);
   scheduleSyncSoon("paper.status");

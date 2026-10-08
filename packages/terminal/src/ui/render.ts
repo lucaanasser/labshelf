@@ -5,7 +5,7 @@
  * @depends tui/screen, tui/text, ui/theme, ui/preview, library/libraryStore
  * @dependents ui/app
  */
-import type { PaperEntry } from "../library/libraryScanner.js";
+import type { PaperEntry } from "../library/index.js";
 import type { Screen, Style } from "../tui/screen.js";
 import { mergeStyle } from "../tui/screen.js";
 import { stringWidth, truncate } from "../tui/text.js";

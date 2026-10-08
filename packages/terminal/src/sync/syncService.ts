@@ -28,12 +28,12 @@ import {
   type SyncLockInfo,
   type SyncResult,
   type SyncRunRecord,
+  SYNC_PROVIDER_ID,
+  syncRoots,
 } from "@labshelf/core";
 
 import { isProcessAlive, NodeLocalFileSystem, NodeLockStore } from "../platform/nodeFileSystem.js";
-import { LibraryPaths, SYNC_PROVIDER_ID } from "../library/libraryPaths.js";
-import { scanLibrary } from "../library/libraryScanner.js";
-import type { LibraryStore } from "../library/libraryStore.js";
+import { type LibraryRoot, scanLibrary, type LibraryStore } from "../library/index.js";
 import { ReauthRequiredError, type CliDriveAuth, type LoginOptions } from "./driveAuth.js";
 
 export const APP_ID = "terminal";
@@ -57,7 +57,7 @@ export type SyncOutcome =
   | { kind: "failed"; error: string; reauth: boolean };
 
 export interface SyncServiceDeps {
-  paths: LibraryPaths;
+  paths: LibraryRoot;
   auth: CliDriveAuth;
   store?: LibraryStore;
   logger: ILogger;
@@ -86,7 +86,7 @@ export class SyncService {
   private readonly host: string;
 
   constructor(private readonly deps: SyncServiceDeps) {
-    this.localFs = new NodeLocalFileSystem(deps.paths.tmpDir());
+    this.localFs = new NodeLocalFileSystem(deps.paths.layout.tmpDir());
     this.host = deps.host ?? os.hostname();
   }
 
@@ -123,7 +123,7 @@ export class SyncService {
    */
   async init(): Promise<SyncStatus> {
     await this.deps.auth.load();
-    const lastRun = await readSyncRunRecord(this.localFs, this.deps.paths.lastRunPath());
+    const lastRun = await readSyncRunRecord(this.localFs, this.deps.paths.layout.lastRunPath());
     this.set({ state: this.baseState(), ...(lastRun ? { lastRun } : {}) });
     return this.current;
   }
@@ -134,10 +134,10 @@ export class SyncService {
    * @returns void
    */
   async refreshLastRun(): Promise<void> {
-    const lastRun = await readSyncRunRecord(this.localFs, this.deps.paths.lastRunPath());
+    const lastRun = await readSyncRunRecord(this.localFs, this.deps.paths.layout.lastRunPath());
     if (lastRun && lastRun.finishedAt !== this.current.lastRun?.finishedAt) { this.set({ lastRun }); }
     // "Waiting for VS Code" lasts only as long as its lock does.
-    if (this.current.state === "waiting" && (await new NodeLockStore().read(this.deps.paths.lockPath())) === undefined) {
+    if (this.current.state === "waiting" && (await new NodeLockStore().read(this.deps.paths.layout.lockPath())) === undefined) {
       this.set({ state: this.baseState() }, ["holder"]);
     }
   }
@@ -163,7 +163,7 @@ export class SyncService {
       return { kind: "skipped", reason: "not signed in to Google Drive" };
     }
     const { paths } = this.deps;
-    const lock = new SyncLock(new NodeLockStore(), paths.lockPath(), { app: APP_ID, pid: process.pid, host: this.host }, {
+    const lock = new SyncLock(new NodeLockStore(), paths.layout.lockPath(), { app: APP_ID, pid: process.pid, host: this.host }, {
       isProcessAlive,
       ...(this.deps.now ? { now: this.deps.now } : {}),
     });
@@ -179,7 +179,7 @@ export class SyncService {
       }
       const result = attempt.value;
       const record = summarizeSyncResult(result, APP_ID, this.host);
-      await writeSyncRunRecord(this.localFs, paths.lastRunPath(), record);
+      await writeSyncRunRecord(this.localFs, paths.layout.lastRunPath(), record);
       this.set({ state: "idle", lastRun: record }, ["holder"]);
       await this.deps.logger.log("INFO", "terminal/sync", "Sync finished", { reason, ...record });
       if (libraryChanged(result)) { await this.deps.store?.reload(); }
@@ -198,13 +198,13 @@ export class SyncService {
     // Titles straight from disk, not from a possibly stale view: Drive folder names are derived from them.
     const snapshot = await scanLibrary(paths);
     const folderNames = buildLibraryFolderNames([...snapshot.papers.values()].map((e) => [e.record.id, e.record.title] as const));
-    const manifest = await SyncManifest.load(this.localFs, paths.manifestPath(), SYNC_PROVIDER_ID);
+    const manifest = await SyncManifest.load(this.localFs, paths.layout.manifestPath(), SYNC_PROVIDER_ID);
     const provider = this.deps.providerFactory ? this.deps.providerFactory(auth) : createGoogleDriveProvider(auth);
     const engine = new SyncEngine({
       provider,
       fs: this.localFs,
       manifest,
-      roots: { library: paths.papersRoot(), appdata: paths.paperDataRoot() },
+      roots: syncRoots(paths.layout),
       libraryFolderNames: folderNames,
       ...(this.deps.now ? { clock: this.deps.now } : {}),
     });

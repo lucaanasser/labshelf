@@ -7,15 +7,15 @@
  * paper.pdf is neither a paper nor a collection (VS Code does not index it either); dot-folders are hidden; anything
  * else under papers/ is a collection.
  *
- * @depends @labshelf/core (paperRecordFromMetadata), library/libraryPaths
+ * @depends @labshelf/core (paperRecordFromMetadata), library/libraryRoot
  * @dependents library/libraryStore, cli/commands
  */
 import { promises as fs, type Dirent } from "node:fs";
 import * as path from "node:path";
 
-import { paperRecordFromMetadata, parsePaperMetadata, type PaperRecord } from "@labshelf/core";
+import { METADATA_FILE, PDF_FILE, paperRecordFromMetadata, parsePaperMetadata, type PaperRecord } from "@labshelf/core";
 
-import { LibraryPaths, METADATA_NAME, PDF_NAME } from "./libraryPaths.js";
+import type { LibraryRoot } from "./libraryRoot.js";
 
 export interface PaperEntry {
   record: PaperRecord;
@@ -82,8 +82,8 @@ async function isFileEntry(dir: string, entry: Dirent): Promise<boolean> {
  * @usedBy scanLibrary, library/paperService (fresh read before a write)
  * @returns the entry, or undefined when metadata.yaml is missing or not a mapping
  */
-export async function readPaperFolder(paths: LibraryPaths, folder: string): Promise<PaperEntry | undefined> {
-  const metadataPath = path.join(folder, METADATA_NAME);
+export async function readPaperFolder(paths: LibraryRoot, folder: string): Promise<PaperEntry | undefined> {
+  const metadataPath = path.join(folder, METADATA_FILE);
   let text: string;
   let modifiedMs: number;
   try {
@@ -97,7 +97,7 @@ export async function readPaperFolder(paths: LibraryPaths, folder: string): Prom
   if (!meta) { return undefined; }
   let pdfBytes: number | undefined;
   try {
-    const pdf = await fs.stat(path.join(folder, PDF_NAME));
+    const pdf = await fs.stat(path.join(folder, PDF_FILE));
     if (pdf.isFile()) { pdfBytes = pdf.size; }
   } catch {
     pdfBytes = undefined;
@@ -116,7 +116,7 @@ export async function readPaperFolder(paths: LibraryPaths, folder: string): Prom
  * @usedBy library/libraryStore, cli/commands
  * @returns the snapshot
  */
-export async function scanLibrary(paths: LibraryPaths): Promise<LibrarySnapshot> {
+export async function scanLibrary(paths: LibraryRoot): Promise<LibrarySnapshot> {
   const limit = limiter(MAX_PARALLEL_READS);
   const papers = new Map<string, PaperEntry>();
   const collections = new Map<string, CollectionNode>();
@@ -146,12 +146,12 @@ export async function scanLibrary(paths: LibraryPaths): Promise<LibrarySnapshot>
       } catch {
         return;
       }
-      const hasMetadata = await anyFile(childDir, childEntries, METADATA_NAME);
+      const hasMetadata = await anyFile(childDir, childEntries, METADATA_FILE);
       if (hasMetadata) {
         found.push({ folder: childDir, entry: await limit(() => readPaperFolder(paths, childDir)) });
         return;
       }
-      if (await anyFile(childDir, childEntries, PDF_NAME)) {
+      if (await anyFile(childDir, childEntries, PDF_FILE)) {
         orphans.push(childDir);
         return;
       }
@@ -161,7 +161,7 @@ export async function scanLibrary(paths: LibraryPaths): Promise<LibrarySnapshot>
     }));
   }
 
-  await walk(paths.papersRoot(), "");
+  await walk(paths.layout.papersRoot(), "");
 
   // Deterministic winner for duplicate ids: the first folder in path order.
   found.sort((a, b) => a.folder.localeCompare(b.folder));

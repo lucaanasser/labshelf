@@ -6,13 +6,12 @@
  * Also owns the reconciliation the indexer does not do: papers whose folder disappeared from disk are dropped from the
  * index (the indexer only upserts).
  *
- * @depends vscode, @labshelf/core (types), storage/paths/libraryPaths
+ * @depends vscode, @labshelf/core (types)
  * @dependents extension.ts
  */
 import * as vscode from "vscode";
 
-import type { PaperRecord } from "@labshelf/core";
-import type { ILibraryPaths } from "../paths/libraryPaths.js";
+import { SIDECAR_FILE, type LibraryLayout, type PaperRecord } from "@labshelf/core";
 
 const DEBOUNCE_MS = 1_000;
 
@@ -20,10 +19,10 @@ export class ExternalChangeWatcher implements vscode.Disposable {
   private readonly watchers: vscode.FileSystemWatcher[] = [];
   private timer: ReturnType<typeof setTimeout> | undefined;
 
-  constructor(paths: ILibraryPaths, private readonly onChange: () => void, private readonly debounceMs = DEBOUNCE_MS) {
+  constructor(paths: LibraryLayout<vscode.Uri>, private readonly onChange: () => void, private readonly debounceMs = DEBOUNCE_MS) {
     const patterns = [
       new vscode.RelativePattern(paths.papersRoot(), "**"),
-      new vscode.RelativePattern(paths.paperDataRoot(), "**/data.json"),
+      new vscode.RelativePattern(paths.paperDataRoot(), `**/${SIDECAR_FILE}`),
     ];
     for (const pattern of patterns) {
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);

@@ -10,9 +10,8 @@
 import * as vscode from 'vscode';
 import { PaperService } from '../../src/core/paperService';
 import { NodePdfOpener } from '../../src/pdf/nodePdfOpener';
-import type { IResearchDatabase, EventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
+import type { LibraryLayout, IResearchDatabase, EventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
 import type { FileSystemService } from '../../src/storage/fileSystemService';
-import type { ILibraryPaths } from '../../src/storage/paths/libraryPaths';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pdfjsMock = require('../../__mocks__/pdfjs-dist-legacy.js');
@@ -69,7 +68,7 @@ describe('PaperService.addPaperFromUri byte safety', () => {
     };
     const mockEventBus: Partial<EventBus> = { emit: jest.fn(), on: jest.fn() };
     const mockFsService: Partial<FileSystemService> = { ensureDirectory: jest.fn(async () => {}) };
-    const mockPaths: Partial<ILibraryPaths> = {
+    const mockPaths: Partial<LibraryLayout<vscode.Uri>> = {
       papersRoot: jest.fn(() => vscode.Uri.file('/workspace/papers')),
     };
     const mockBibTeX: Partial<BibTeXService> = { writePaperArtifacts: jest.fn(async () => {}) };
@@ -78,7 +77,7 @@ describe('PaperService.addPaperFromUri byte safety', () => {
       mockFsService as FileSystemService,
       mockDb as IResearchDatabase,
       mockEventBus as EventBus,
-      mockPaths as ILibraryPaths,
+      mockPaths as LibraryLayout<vscode.Uri>,
       { parse } as PdfImportParser,
       mockBibTeX as BibTeXService,
     );

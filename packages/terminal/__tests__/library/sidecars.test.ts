@@ -83,7 +83,7 @@ describe("SidecarReader.load", () => {
 
   it("picks up an external edit (another app rewrote the sidecar)", async () => {
     const lib = await createTempLibrary([{ id: "p1", sidecar: { annotations: [annotation("a1", 1, "2025-01-01T00:00:00.000Z")], theme: "auto" } }]);
-    const file = lib.paths.paperDataPath("p1");
+    const file = lib.paths.layout.paperDataPath("p1");
     await setMtime(file, new Date("2024-01-01T00:00:00Z"));
     const reader = new SidecarReader(lib.paths);
     const first = await reader.load("p1");
@@ -109,7 +109,7 @@ describe("SidecarReader.load", () => {
     await lib.writeSidecar("p1", { annotations: [annotation("a1", 1, "2025-01-01T00:00:00.000Z")], theme: "auto" });
     expect((await reader.load("p1")).annotations).toHaveLength(1);
 
-    await fs.rm(lib.paths.paperDataPath("p1"));
+    await fs.rm(lib.paths.layout.paperDataPath("p1"));
     expect((await reader.load("p1")).annotations).toEqual([]);
   });
 });
@@ -155,8 +155,8 @@ describe("NodeSidecarPort", () => {
     await port.write("p1", "first");
     await port.write("p1", "second");
     expect(await port.read("p1")).toBe("second");
-    expect(await listFiles(lib.paths.paperDataRoot())).toEqual(["p1/data.json"]);
-    expect(await listFiles(lib.paths.tmpDir())).toEqual([]);
+    expect(await listFiles(lib.paths.layout.paperDataRoot())).toEqual(["p1/data.json"]);
+    expect(await listFiles(lib.paths.layout.tmpDir())).toEqual([]);
   });
 
   it("produces sidecars the shared reader code reads back (the format VS Code and the browser use)", async () => {
@@ -166,7 +166,7 @@ describe("NodeSidecarPort", () => {
     await store.setTheme("p1", "dark");
     await store.setReadingState("p1", { page: 3, scaleValue: "page-width", updatedAt: "2025-01-01T00:00:00.000Z" });
 
-    const raw = await fs.readFile(lib.paths.paperDataPath("p1"), "utf8");
+    const raw = await fs.readFile(lib.paths.layout.paperDataPath("p1"), "utf8");
     const normalized = normalizePaperData(JSON.parse(raw) as unknown);
     expect(normalized.theme).toBe("dark");
     expect(normalized.annotations).toEqual([highlight]);
@@ -187,7 +187,7 @@ describe("NodeSidecarPort", () => {
     const store = new PaperDataStore(new NodeSidecarPort(lib.paths));
     await store.setReadingState("p1", { page: 5, scaleValue: "1", updatedAt: "2025-01-02T00:00:00.000Z" });
 
-    const data = normalizePaperData(JSON.parse(await fs.readFile(lib.paths.paperDataPath("p1"), "utf8")) as unknown);
+    const data = normalizePaperData(JSON.parse(await fs.readFile(lib.paths.layout.paperDataPath("p1"), "utf8")) as unknown);
     expect(data.theme).toBe("sepia");
     expect(data.annotations.map((a) => a.id)).toEqual(["from-vscode"]);
     expect(data.reading?.page).toBe(5);

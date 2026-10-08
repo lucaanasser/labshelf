@@ -1,6 +1,6 @@
 /**
  * Row and empty-state builders for the paper list. A row is the VS Code list
- * panel's `.paper-row`: a twistie and a "paper.pdf" child row only when the
+ * panel's `.paper-row`: a twistie and a PDF child row only when the
  * paper has a PDF (otherwise a hidden twistie cell keeps the grid aligned and a
  * muted file-minus type icon marks "No PDF attached"), the title with a
  * location chip when the paper sits in a subfolder, creator, year, publication,
@@ -15,6 +15,7 @@ import { emit } from "../events";
 import { STATUS_LABEL, fmtCreator, nextStatus } from "../state/derive";
 import type { ListPaper } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
+import { PDF_FILE } from "@labshelf/core";
 
 export interface RowHandlers {
   onClick: (id: string, e: MouseEvent) => void;
@@ -53,7 +54,7 @@ export function buildPaperRow(p: ListPaper, toks: string[], store: LibraryStore,
     `</div>` +
     (p.hasPdf
       ? `<div class="paper-children">` +
-          `<div class="child-row"><div></div><div class="paper-type-icon">${icon("file")}</div><div>paper.pdf</div><div></div><div></div><div class="col-pub"></div><div></div></div>` +
+          `<div class="child-row"><div></div><div class="paper-type-icon">${icon("file")}</div><div>${PDF_FILE}</div><div></div><div></div><div class="col-pub"></div><div></div></div>` +
         `</div>`
       : "");
 

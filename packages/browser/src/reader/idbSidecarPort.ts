@@ -3,18 +3,15 @@
  * sync "appdata" namespace root in this browser, which VS Code maps to <library>/.research/papers, so annotations,
  * reader theme and reading position written here reach the VS Code reader and back.
  */
-import type { SidecarPort } from "@labshelf/core";
+import { APPDATA_DIR, SIDECAR_FILE, type SidecarPort } from "@labshelf/core";
 import type { IndexedDbFileSystem } from "../storage/indexedDbFileSystem";
-
-/** Must match BrowserSyncController ROOTS.appdata. */
-export const APPDATA_ROOT = "appdata";
 
 /**
  * @usedBy createIdbSidecarPort, reader/index
  * @returns the IndexedDB path of a paper's sidecar.
  */
 export function sidecarPath(paperId: string): string {
-  return `${APPDATA_ROOT}/${paperId}/data.json`;
+  return `${APPDATA_DIR}/${paperId}/${SIDECAR_FILE}`;
 }
 
 /**

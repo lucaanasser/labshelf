@@ -8,7 +8,7 @@
  */
 import type { PaperRecord } from "@labshelf/core";
 
-import { LibraryPaths } from "./libraryPaths.js";
+import { LibraryRoot } from "./libraryRoot.js";
 import {
   collator,
   papersUnder,
@@ -86,7 +86,7 @@ export class LibraryStore {
   private reloading: Promise<LibrarySnapshot> | undefined;
   private reloadAgain = false;
 
-  constructor(readonly paths: LibraryPaths, initial?: LibrarySnapshot) {
+  constructor(readonly paths: LibraryRoot, initial?: LibrarySnapshot) {
     this.current = initial ?? {
       root: paths.root,
       papers: new Map(),

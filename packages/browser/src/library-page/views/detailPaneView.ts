@@ -14,6 +14,7 @@ import { listPapersUnder } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { loadPrefs, savePrefs } from "../state/uiPrefs";
 import { multiDetailHtml, paperDetailHtml } from "./detailSections";
+import { PAPERS_DIR } from "@labshelf/core";
 
 interface Ctx {
   store: LibraryStore;
@@ -46,7 +47,7 @@ function render(ctx: Ctx): void {
     return;
   }
   if (ids.length > 1) { ctx.pane.innerHTML = multiDetailHtml(ids.length); return; }
-  const paper = listPapersUnder(s.papers, "papers", s.pdfDirs).find((p) => p.id === ids[0]);
+  const paper = listPapersUnder(s.papers, PAPERS_DIR, s.pdfDirs).find((p) => p.id === ids[0]);
   if (!paper) { ctx.pane.innerHTML = ""; return; }
   const scroll = ctx.pane.scrollTop;
   ctx.pane.innerHTML = paperDetailHtml(paper, { collapsed: ctx.collapsed, abstractOpen: ctx.abstractOpen, openFolder: s.folder, pdfBusy: s.pdfBusy.has(paper.id) });

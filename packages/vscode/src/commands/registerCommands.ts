@@ -6,7 +6,7 @@ import type { WorkspaceLogger } from "../core/logger.js";
 import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
 import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import { type IResearchDatabase, type PaperRecord, type PaperStatus, type BatchImportResult, isSafeExternalUrl } from "@labshelf/core";
+import { type IResearchDatabase, type PaperRecord, type PaperStatus, type BatchImportResult, isSafeExternalUrl, paperFiles } from "@labshelf/core";
 import { fetchMetadataForPaper, offerMetadataFetch, resolveMissingMetadata } from "./fetchMetadata.js";
 import { announceImport, importWithProgress } from "./importProgress.js";
 import { queueTextLayers } from "./textLayerQueue.js";
@@ -321,7 +321,7 @@ async function openPaperPdf(paper: PaperRecord): Promise<void> {
 
 // Escape hatch: hands paper.pdf to VS Code's default handler (or the OS viewer) instead of the LabShelf reader.
 async function openPaperPdfExternal(paper: PaperRecord): Promise<void> {
-  const pdf = vscode.Uri.joinPath(vscode.Uri.file(paper.path), "paper.pdf");
+  const pdf = paperFiles(vscode.Uri.file(paper.path), vscode.Uri.joinPath).pdf;
   await vscode.commands.executeCommand("vscode.open", pdf);
 }
 

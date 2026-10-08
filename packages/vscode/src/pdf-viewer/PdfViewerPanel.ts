@@ -13,6 +13,7 @@ import {
   formatAnnotationsMarkdown,
   formatQuoteWithCitation,
   isSafeExternalUrl,
+  paperFiles,
   isPdfTheme,
   isWebviewMessage,
   normalizeReadingState,
@@ -109,7 +110,7 @@ export class PdfViewerPanel {
     }
 
     const paperDirUri = vscode.Uri.file(paper.path);
-    const pdfUri = vscode.Uri.joinPath(paperDirUri, "paper.pdf");
+    const pdfUri = paperFiles(paperDirUri, vscode.Uri.joinPath).pdf;
     const pdfjsDir = getPdfjsDirectory();
     const resourceRoots: vscode.Uri[] = [getReaderBundleDirectory(deps.extensionUri), paperDirUri];
     if (pdfjsDir) { resourceRoots.push(pdfjsDir); }

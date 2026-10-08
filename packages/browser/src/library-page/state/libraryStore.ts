@@ -16,6 +16,7 @@
 import type { PaperRecord, PaperStatus } from "@labshelf/core";
 import type { FolderNode } from "../../storage";
 import type { SyncStatusData } from "../../platform/runtimeMessages";
+import { PAPERS_DIR } from "@labshelf/core";
 
 export type StatusFilter = "all" | PaperStatus;
 export type SortKey = "title" | "creator" | "year" | "publication" | "status";
@@ -49,7 +50,7 @@ type Selector<T> = (state: LibraryState) => T;
 export const INITIAL_STATE: LibraryState = {
   folders: [],
   papers: [],
-  folder: "papers",
+  folder: PAPERS_DIR,
   query: "",
   status: "all",
   sortKey: "title",

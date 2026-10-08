@@ -3,14 +3,14 @@
  * manager — show up in the TUI within a fraction of a second. Uses recursive fs.watch (macOS, Windows, Linux on Node
  * 20+) and falls back to polling the papers folder when recursive watching is unavailable.
  *
- * @depends library/libraryPaths
+ * @depends library/libraryRoot
  * @dependents app/context
  */
 import { watch, type FSWatcher } from "node:fs";
 
 import type { ILogger } from "@labshelf/core";
 
-import { LibraryPaths } from "./libraryPaths.js";
+import { LibraryRoot } from "./libraryRoot.js";
 
 const DEBOUNCE_MS = 250;
 const POLL_MS = 5_000;
@@ -28,7 +28,7 @@ export class LibraryWatcher {
   private poll: ReturnType<typeof setInterval> | undefined;
 
   constructor(
-    private readonly paths: LibraryPaths,
+    private readonly paths: LibraryRoot,
     private readonly onChange: () => void,
     private readonly logger?: ILogger,
   ) {}
@@ -39,7 +39,7 @@ export class LibraryWatcher {
    * @returns void
    */
   start(): void {
-    for (const dir of [this.paths.papersRoot(), this.paths.paperDataRoot()]) {
+    for (const dir of [this.paths.layout.papersRoot(), this.paths.layout.paperDataRoot()]) {
       try {
         const watcher = watch(dir, { recursive: true, persistent: false }, (_event, file) => {
           if (!isNoise(typeof file === "string" ? file : null)) { this.schedule(); }

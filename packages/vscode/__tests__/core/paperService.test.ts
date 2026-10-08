@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import { PaperService } from '../../src/core/paperService';
-import type { IResearchDatabase, EventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
+import type { LibraryLayout, IResearchDatabase, EventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
 import type { FileSystemService } from '../../src/storage/fileSystemService';
-import type { ILibraryPaths } from '../../src/storage/paths/libraryPaths';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,7 +48,7 @@ function makeService(overrides: {
     writeText: jest.fn(async () => {}),
   };
 
-  const mockPaths: Partial<ILibraryPaths> = {
+  const mockPaths: Partial<LibraryLayout<vscode.Uri>> = {
     papersRoot: jest.fn(() => makeUri('/workspace/papers')),
   };
 
@@ -77,7 +76,7 @@ function makeService(overrides: {
     mockFsService as FileSystemService,
     mockDb as IResearchDatabase,
     mockEventBus as EventBus,
-    mockPaths as ILibraryPaths,
+    mockPaths as LibraryLayout<vscode.Uri>,
     mockParser as PdfImportParser,
     mockBibTeX as BibTeXService,
     overrides.textLayerBuilder as any,

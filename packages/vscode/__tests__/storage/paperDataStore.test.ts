@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { libraryLayout } from '@labshelf/core';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 
@@ -21,7 +22,7 @@ function makeFakeFs(): FileSystemService {
 }
 
 function makeStore(): PaperDataStore {
-  return new PaperDataStore(vscode.Uri.file('/lib/.research'), makeFakeFs());
+  return new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), makeFakeFs());
 }
 
 describe('PaperDataStore', () => {
@@ -168,7 +169,7 @@ describe('PaperDataStore', () => {
 
     it('does not write a reading key for papers that were never read', async () => {
       const fs = makeFakeFs();
-      const store = new PaperDataStore(vscode.Uri.file('/lib/.research'), fs);
+      const store = new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs);
       await store.setTheme('paper-1', 'dark');
       const written = (fs.writeText as jest.Mock).mock.calls.at(-1)![1] as string;
       expect(JSON.parse(written)).toEqual({ annotations: [], theme: 'dark' });
@@ -176,14 +177,14 @@ describe('PaperDataStore', () => {
 
     it('loads a legacy sidecar that has no reading key', async () => {
       const fs = makeFakeFs();
-      const store = new PaperDataStore(vscode.Uri.file('/lib/.research'), fs);
+      const store = new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs);
       await fs.writeText(vscode.Uri.file('/lib/.research/papers/paper-1/data.json'), JSON.stringify({ annotations: [], theme: 'dark' }));
       expect(await store.load('paper-1')).toEqual({ annotations: [], theme: 'dark' });
     });
 
     it('drops a corrupt reading value instead of failing the load', async () => {
       const fs = makeFakeFs();
-      const store = new PaperDataStore(vscode.Uri.file('/lib/.research'), fs);
+      const store = new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs);
       await fs.writeText(
         vscode.Uri.file('/lib/.research/papers/paper-1/data.json'),
         JSON.stringify({ annotations: [], theme: 'sepia', reading: { page: 'seven', scaleValue: 12 } }),
@@ -203,7 +204,7 @@ describe('PaperDataStore', () => {
         await new Promise((resolve) => setTimeout(resolve, 5));
         return realWrite(uri, content);
       });
-      return { fs, store: new PaperDataStore(vscode.Uri.file('/lib/.research'), fs) };
+      return { fs, store: new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs) };
     }
 
     it('keeps every concurrent mutation of the same paper', async () => {

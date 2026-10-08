@@ -5,7 +5,7 @@
  * @depends idb/db, @labshelf/core PaperRecord, yaml
  * @dependents library-page views (Phase 6), capture flow (Phase 5), storage/index
  */
-import { isPaperStatus, type PaperRecord } from "@labshelf/core";
+import { isPaperStatus, type PaperRecord, METADATA_FILE, PAPERS_DIR } from "@labshelf/core";
 import YAML from "yaml";
 import { getDb } from "./idb/db";
 
@@ -92,13 +92,13 @@ export function recordFromYaml(yamlText: string, folderPath: string): PaperRecor
  */
 export async function rebuildFromFiles(): Promise<void> {
   const db = await getDb();
-  const keys = (await db.getAllKeys("files", IDBKeyRange.bound("papers/", "papers/\uffff", false, true))) as string[];
+  const keys = (await db.getAllKeys("files", IDBKeyRange.bound(`${PAPERS_DIR}/`, `${PAPERS_DIR}/\uffff`, false, true))) as string[];
   const decoder = new TextDecoder();
   const records: PaperRecord[] = [];
   for (const key of keys) {
-    if (!key.endsWith("/metadata.yaml")) continue;
+    if (!key.endsWith(`/${METADATA_FILE}`)) continue;
     const row = await db.get("files", key);
-    const folderPath = key.slice(0, -"/metadata.yaml".length);
+    const folderPath = key.slice(0, -`/${METADATA_FILE}`.length);
     const record = row ? recordFromYaml(decoder.decode(row.bytes), folderPath) : undefined;
     if (record) records.push(record);
   }

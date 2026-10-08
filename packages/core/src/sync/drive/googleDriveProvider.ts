@@ -10,6 +10,7 @@ import type {
   RemoteFile,
   RemoteNamespace,
 } from "../provider/remoteProvider.js";
+import { SYNC_PROVIDER_ID } from "../../library/index.js";
 import type { IAuthProvider } from "../provider/authProvider.js";
 import type { DriveFile } from "./googleDriveClient.js";
 import { DriveClient } from "./googleDriveClient.js";
@@ -34,7 +35,7 @@ function toRemoteFile(f: DriveFile): RemoteFile {
 
 /** Google Drive implementation of RemoteProvider. */
 export class GoogleDriveProvider implements RemoteProvider {
-  readonly id = "google-drive";
+  readonly id = SYNC_PROVIDER_ID;
   readonly displayName = "Google Drive";
 
   // Folders that live in the hidden appDataFolder space. Drive only returns their children when the

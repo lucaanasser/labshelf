@@ -12,11 +12,7 @@ import { BibTeXService, PdfImportParser } from "@labshelf/core";
 
 import type { SharedConfig } from "./config.js";
 import { FileLogger } from "./logger.js";
-import { LibraryPaths, ensureLibraryStructure } from "../library/libraryPaths.js";
-import { LibraryStore } from "../library/libraryStore.js";
-import { LibraryWatcher } from "../library/libraryWatcher.js";
-import { TerminalPaperService } from "../library/paperService.js";
-import { SidecarReader } from "../library/sidecars.js";
+import { LibraryRoot, ensureLibraryStructure, LibraryStore, LibraryWatcher, TerminalPaperService, SidecarReader } from "../library/index.js";
 import { cacheDir } from "../platform/dirs.js";
 import { NodeFileSystem } from "../platform/nodeFileSystem.js";
 import { moveToTrash, openExternal } from "../platform/system.js";
@@ -27,7 +23,7 @@ import { createTokenStore } from "../sync/tokenStore.js";
 import { detectImageProtocol, type ImageProtocol } from "../tui/graphics.js";
 
 export interface AppContext {
-  paths: LibraryPaths;
+  paths: LibraryRoot;
   config: SharedConfig;
   logger: FileLogger;
   store: LibraryStore;
@@ -59,9 +55,9 @@ export interface OpenOptions {
  */
 export async function openLibrary(root: string, options: OpenOptions): Promise<AppContext> {
   const env = options.env ?? process.env;
-  const paths = new LibraryPaths(root);
+  const paths = new LibraryRoot(root);
   await ensureLibraryStructure(paths);
-  const logger = new FileLogger(paths.terminalLogPath());
+  const logger = new FileLogger(paths.layout.terminalLogPath());
   const store = new LibraryStore(paths);
   await store.reload();
 
@@ -76,7 +72,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const papers = new TerminalPaperService({
     paths,
     store,
-    bibtex: new BibTeXService(new NodeFileSystem(paths.tmpDir())),
+    bibtex: new BibTeXService(new NodeFileSystem(paths.layout.tmpDir())),
     logger,
     pdfParser: async () => {
       if (!parser) {

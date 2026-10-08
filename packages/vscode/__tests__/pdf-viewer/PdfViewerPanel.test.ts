@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { EventBus, EVENTS } from '@labshelf/core';
+import { EventBus, EVENTS, libraryLayout } from '@labshelf/core';
 import { PdfViewerPanel, type PdfViewerDeps } from '../../src/pdf-viewer/PdfViewerPanel';
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
@@ -27,7 +27,7 @@ function makeFakeStore(): PaperDataStore {
     return v;
   });
   jest.spyOn(fsService, 'exists').mockImplementation(async (uri: any) => files.has(uri.fsPath));
-  return new PaperDataStore(vscode.Uri.file('/lib/.research'), fsService);
+  return new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fsService);
 }
 
 function makePaper(overrides: Record<string, unknown> = {}) {

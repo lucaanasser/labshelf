@@ -16,15 +16,11 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { type PaperRecord, type PaperStatus, formatAnnotationsMarkdown, type PaperData } from "@labshelf/core";
+import { type PaperRecord, type PaperStatus, formatAnnotationsMarkdown, paperFiles, type PaperData } from "@labshelf/core";
 
 import type { SortKey } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
-import { rankFuzzy } from "../library/fuzzy.js";
-import { papersUnder, type PaperEntry } from "../library/libraryScanner.js";
-import { paperComparator, type SortSpec } from "../library/libraryStore.js";
-import type { ImportOutcome } from "../library/paperService.js";
-import { matchPaper, parseQuery, searchDoc } from "../library/search.js";
+import { rankFuzzy, papersUnder, type PaperEntry, paperComparator, type SortSpec, type ImportOutcome, matchPaper, parseQuery, searchDoc } from "../library/index.js";
 import { copyToClipboard, openExternal, revealInFileManager, runEditor, trashSupported } from "../platform/system.js";
 import type { SyncOutcome, SyncStatus } from "../sync/syncService.js";
 import { clearImages, drawImage, fitImage, pngSize, type CellRect } from "../tui/graphics.js";
@@ -919,7 +915,7 @@ export class App {
       return;
     }
     const viewer = process.env["LABSHELF_PDF_VIEWER"] || this.ctx.config.terminal?.pdfViewer;
-    openExternal(path.join(paper.record.path, "paper.pdf"), viewer);
+    openExternal(paperFiles(paper.record.path, path.join).pdf, viewer);
     this.notify(`Opened ${truncate(paper.record.title, 60)}`);
   }
 
@@ -1131,7 +1127,7 @@ export class App {
         break;
       }
       case "title": text = records.map((r) => r.title).join("\n"); what = "title"; break;
-      case "path": text = records.map((r) => path.join(r.path, "paper.pdf")).join("\n"); what = "PDF path"; break;
+      case "path": text = records.map((r) => paperFiles(r.path, path.join).pdf).join("\n"); what = "PDF path"; break;
       case "markdown": {
         const parts: string[] = [];
         for (const record of records) {
@@ -1255,7 +1251,7 @@ export class App {
         return this.jumpToFolder(rel === "" ? ALL : rel);
       }
       case "where":
-        return this.notify(`Library: ${this.ctx.paths.root} · log: ${this.ctx.paths.terminalLogPath()}`);
+        return this.notify(`Library: ${this.ctx.paths.root} · log: ${this.ctx.paths.layout.terminalLogPath()}`);
       default:
         this.notify(`Unknown command "${name}" — ? lists the keys`, "warn");
     }
@@ -1482,7 +1478,7 @@ export class App {
   }
 
   private thumbnailFor(paper: PaperEntry, box: CellRect): ImagePlan | undefined {
-    const request = { pdfPath: path.join(paper.record.path, "paper.pdf"), sizeBytes: paper.pdfBytes ?? 0, mtimeMs: paper.modifiedMs };
+    const request = { pdfPath: paperFiles(paper.record.path, path.join).pdf, sizeBytes: paper.pdfBytes ?? 0, mtimeMs: paper.modifiedMs };
     const png = this.ctx.thumbnails.peek(request);
     if (!png) {
       void this.ctx.thumbnails.get(request).then((result) => { if (result) { this.scheduleRender(); } });

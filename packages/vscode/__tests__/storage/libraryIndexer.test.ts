@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import { LibraryIndexer } from '../../src/storage/data/libraryIndexer';
 import { FileSystemService } from '../../src/storage/fileSystemService';
-import { LibraryPaths } from '../../src/storage/paths/libraryPaths';
-import { InMemoryResearchDatabase } from '@labshelf/core';
+import { InMemoryResearchDatabase, libraryLayout, type LibraryLayout } from '@labshelf/core';
 
 // Fake FileSystemService backed by an in-memory map. readDirectory/readText are
 // keyed by fsPath; directories are listed by their declared entries.
@@ -35,7 +34,7 @@ const D = vscode.FileType.Directory;
 describe('LibraryIndexer', () => {
   it('rebuilds papers from metadata.yaml', async () => {
     const root = vscode.Uri.file('/lib');
-    const paths = new LibraryPaths(root);
+    const paths = libraryLayout(root, vscode.Uri.joinPath);
     const fs = makeFakeFs({
       files: {
         '/lib/papers/paper-1/metadata.yaml': 'title: First Paper\nstatus: reading\nyear: 2024\n',
@@ -59,7 +58,7 @@ describe('LibraryIndexer', () => {
 
   it('is idempotent: rebuilding twice does not duplicate data', async () => {
     const root = vscode.Uri.file('/lib');
-    const paths = new LibraryPaths(root);
+    const paths = libraryLayout(root, vscode.Uri.joinPath);
     const fs = makeFakeFs({
       files: { '/lib/papers/paper-1/metadata.yaml': 'title: P\n' },
       dirs: {
@@ -81,7 +80,7 @@ describe('LibraryIndexer', () => {
 
   it('recurses into nested folders to find paper folders', async () => {
     const root = vscode.Uri.file('/lib');
-    const paths = new LibraryPaths(root);
+    const paths = libraryLayout(root, vscode.Uri.joinPath);
     const fs = makeFakeFs({
       files: {
         '/lib/papers/topic/paper-1/metadata.yaml': 'title: Nested\n',
@@ -104,7 +103,7 @@ describe('LibraryIndexer', () => {
 
   it('returns zero counts when there are no papers', async () => {
     const root = vscode.Uri.file('/lib');
-    const paths = new LibraryPaths(root);
+    const paths = libraryLayout(root, vscode.Uri.joinPath);
     const fs = makeFakeFs({ dirs: { '/lib/papers': [] } });
     const db = new InMemoryResearchDatabase();
     await db.initialize();
@@ -116,7 +115,7 @@ describe('LibraryIndexer', () => {
 
 describe('LibraryIndexer — fields that only live in metadata.yaml', () => {
   it('restores the abstract, keywords and text layer verdict', async () => {
-    const paths = new LibraryPaths(vscode.Uri.file('/lib'));
+    const paths = libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath);
     const fs = makeFakeFs({
       files: {
         '/lib/papers/scan/metadata.yaml': [
@@ -152,8 +151,8 @@ describe('LibraryIndexer — fields that only live in metadata.yaml', () => {
 describe('LibraryIndexer — hasPdf derived from the folder listing', () => {
   const SYMLINK = vscode.FileType.SymbolicLink;
 
-  function fsWith(entries: Array<[string, number]>): { paths: LibraryPaths; fs: FileSystemService; db: InMemoryResearchDatabase } {
-    const paths = new LibraryPaths(vscode.Uri.file('/lib'));
+  function fsWith(entries: Array<[string, number]>): { paths: LibraryLayout<vscode.Uri>; fs: FileSystemService; db: InMemoryResearchDatabase } {
+    const paths = libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath);
     const fs = makeFakeFs({
       files: { '/lib/papers/p/metadata.yaml': 'title: P\n' },
       dirs: { '/lib/papers': [['p', D]], '/lib/papers/p': entries as Array<[string, vscode.FileType]> },

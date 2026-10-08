@@ -6,11 +6,12 @@
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { METADATA_FILE, PDF_FILE } from '@labshelf/core';
 import type { LibraryNode } from './folderNavigation.js';
 
 // A directory is treated as a single paper (not a collection) when it contains
 // one of these marker files.
-const PAPER_MARKERS = ['metadata.yaml', 'paper.pdf'];
+const PAPER_MARKERS = [METADATA_FILE, PDF_FILE];
 
 async function isPaperFolder(dirPath: string): Promise<boolean> {
   for (const marker of PAPER_MARKERS) {

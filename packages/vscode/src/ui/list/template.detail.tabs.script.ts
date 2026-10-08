@@ -11,7 +11,7 @@
  * @dependents ui/list/template.script.ts
  */
 
-import { ANNOTATION_COLORS } from '@labshelf/core';
+import { ANNOTATION_COLORS, PDF_FILE } from '@labshelf/core';
 
 /**
  * Returns the tab-body JavaScript source. Like its host script it avoids template literals and backslashes.
@@ -76,7 +76,7 @@ export function detailTabsScriptFragment(): string {
     var ex = view.extras[p.id], st = view.stats[p.id] || {};
     var pdf = ex && ex.pdf;
     var html = kv('PDF', pdf
-      ? '<span class="kv-line"><button class="link-btn" data-action="openPdf" title="' + esc(pdf.relPath) + '">paper.pdf</button><span class="muted-text">' + fmtSize(pdf.size) + '</span>' +
+      ? '<span class="kv-line"><button class="link-btn" data-action="openPdf" title="' + esc(pdf.relPath) + '">${PDF_FILE}</button><span class="muted-text">' + fmtSize(pdf.size) + '</span>' +
         iconBtn('openPdfExternal', 'external', 'Open in the default PDF app') + iconBtn('openFolder', 'folder', 'Reveal in Explorer') + '</span>'
       : (ex ? '<span class="muted-text">Not on this device yet</span>' : '…'));
     html += kv('Text', '<span id="tlField">' + esc(textLayerSummary(p)) + '</span>');

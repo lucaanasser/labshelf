@@ -34,6 +34,7 @@ import { getSettings, updateSettings } from "../platform/settings";
 import { BrowserLogger } from "../platform/logger";
 import { listAllRecords } from "../storage/paperRecordStore";
 import type { IfNoPdf, PdfMiss } from "../platform/runtimeMessages";
+import { PAPERS_DIR } from "@labshelf/core";
 
 const log = new BrowserLogger("capture");
 
@@ -239,10 +240,10 @@ export async function refreshExisting(draft: CaptureDraft): Promise<void> {
  * @usedBy saveDraft, tests
  */
 export function safeFolder(folder: string | undefined): string {
-  if (!folder) return "papers";
+  if (!folder) return PAPERS_DIR;
   const clean = folder.replace(/\/+$/, "");
   const parts = clean.split("/");
-  if (parts[0] !== "papers" || parts.some((p) => p === "" || p === "." || p === "..")) return "papers";
+  if (parts[0] !== PAPERS_DIR || parts.some((p) => p === "" || p === "." || p === "..")) return PAPERS_DIR;
   return clean;
 }
 

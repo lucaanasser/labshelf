@@ -11,11 +11,13 @@
 import * as path from "node:path";
 import { createInterface } from "node:readline/promises";
 
+import { PAPERS_DIR, RESEARCH_DIR } from "@labshelf/core";
+
 import { loadConfig, resolveLibraryRoot, updateConfig, configPath, type SharedConfig } from "./app/config.js";
 import { openLibrary, type AppContext } from "./app/context.js";
 import { parseArgs, stringFlag } from "./cli/args.js";
 import { runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/commands.js";
-import { ensureLibraryStructure, LibraryPaths, looksLikeLibrary } from "./library/libraryPaths.js";
+import { ensureLibraryStructure, LibraryRoot, looksLikeLibrary } from "./library/index.js";
 import { expandHome } from "./platform/dirs.js";
 import { App, type TerminalLike } from "./ui/app.js";
 import { InputDecoder } from "./tui/input.js";
@@ -36,7 +38,7 @@ const io: Output = {
 async function adoptLibrary(raw: string): Promise<string> {
   const root = path.resolve(expandHome(raw));
   const existed = await looksLikeLibrary(root);
-  await ensureLibraryStructure(new LibraryPaths(root));
+  await ensureLibraryStructure(new LibraryRoot(root));
   await updateConfig({ libraryRoot: root });
   io.err(existed ? `Using the library at ${root}` : `Created a new library at ${root}`);
   io.err(`Remembered in ${configPath()} (the VS Code extension reads it too).`);
@@ -47,7 +49,7 @@ async function askForLibrary(): Promise<string | undefined> {
   const rl = createInterface({ input: process.stdin, output: process.stderr });
   try {
     io.err("No LabShelf library is configured yet.");
-    io.err("If you use the VS Code extension, give the same folder (it contains papers/ and .research/),");
+    io.err(`If you use the VS Code extension, give the same folder (it contains ${PAPERS_DIR}/ and ${RESEARCH_DIR}/),`);
     io.err("so both apps — and Drive sync — work on one library.");
     const answer = (await rl.question(`Library folder [${DEFAULT_LIBRARY}]: `)).trim();
     return answer || DEFAULT_LIBRARY;
@@ -62,7 +64,7 @@ async function resolveRoot(flag: string | undefined, config: SharedConfig, inter
   const resolution = resolveLibraryRoot(flag, process.env, config);
   if (resolution.root) {
     if (await looksLikeLibrary(resolution.root)) { return { root: resolution.root, source: resolution.source }; }
-    io.err(`${resolution.root} is not a LabShelf library (no papers/ or .research/ folder).`);
+    io.err(`${resolution.root} is not a LabShelf library (no ${PAPERS_DIR}/ or ${RESEARCH_DIR}/ folder).`);
     if (resolution.source !== "config" || !interactive) {
       io.err("Run `labshelf init <path>` to create one there.");
       return undefined;
@@ -148,11 +150,11 @@ async function main(argv: string[]): Promise<number> {
   const resolved = await resolveRoot(libraryFlag, config, Boolean(process.stdin.isTTY && process.stderr.isTTY));
   if (!resolved) { return 1; }
   if (args.command === "where") {
-    const paths = new LibraryPaths(resolved.root);
+    const paths = new LibraryRoot(resolved.root);
     io.out(`library  ${paths.root}  (from ${resolved.source})`);
     io.out(`config   ${configPath()}`);
-    io.out(`log      ${paths.terminalLogPath()}`);
-    io.out(`manifest ${paths.manifestPath()}`);
+    io.out(`log      ${paths.layout.terminalLogPath()}`);
+    io.out(`manifest ${paths.layout.manifestPath()}`);
     return 0;
   }
 

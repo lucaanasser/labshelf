@@ -12,6 +12,7 @@ import {
   type ReaderBootParams,
   type PaperRecord,
 } from "@labshelf/core";
+import { PDF_FILE } from "@labshelf/core";
 import { startReader, PerfMarks } from "@labshelf/core/dom";
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";
@@ -102,7 +103,7 @@ function scheduleSync(reason: string): void {
 }
 
 async function readPdfBytes(paper: PaperRecord): Promise<ArrayBuffer> {
-  const bytes = await fs.readFile(`${paper.path}/paper.pdf`);
+  const bytes = await fs.readFile(`${paper.path}/${PDF_FILE}`);
   // pdf.js transfers the buffer to its worker; hand it a private copy of exactly the file's bytes.
   return bytes.slice().buffer;
 }
@@ -119,7 +120,7 @@ async function main(): Promise<void> {
     return;
   }
   document.title = paper.title;
-  if (!(await fs.stat(`${paper.path}/paper.pdf`))?.isFile) {
+  if (!(await fs.stat(`${paper.path}/${PDF_FILE}`))?.isFile) {
     showFatal("This paper has no PDF yet — it was saved from a page that did not offer one.");
     return;
   }

@@ -25,10 +25,11 @@ import {
   type PaperStatus,
   type PdfImportParser,
   type ResolvedMetadata,
+  PDF_FILE,
 } from "@labshelf/core";
 
 import { writeFileAtomic } from "../platform/nodeFileSystem.js";
-import { LibraryPaths, PDF_NAME } from "./libraryPaths.js";
+import type { LibraryRoot } from "./libraryRoot.js";
 import { readPaperFolder, type PaperEntry } from "./libraryScanner.js";
 import type { LibraryStore } from "./libraryStore.js";
 
@@ -55,7 +56,7 @@ export interface ImportProgress {
 }
 
 export interface PaperServiceDeps {
-  paths: LibraryPaths;
+  paths: LibraryRoot;
   store: LibraryStore;
   bibtex: BibTeXService;
   logger: ILogger;
@@ -164,7 +165,7 @@ async function exists(target: string): Promise<boolean> {
 export class TerminalPaperService {
   constructor(private readonly deps: PaperServiceDeps) {}
 
-  private get paths(): LibraryPaths { return this.deps.paths; }
+  private get paths(): LibraryRoot { return this.deps.paths; }
 
   private async changed(): Promise<void> {
     await this.deps.store.reload();
@@ -188,7 +189,7 @@ export class TerminalPaperService {
   // leaves the file's own copy (same rule as the VS Code PaperService.writeArtifacts).
   private async writeArtifacts(paper: PaperRecord, owned: Pick<PaperRecord, "tags" | "note"> = {}): Promise<void> {
     const { tags: _tags, note: _note, hasPdf: _hasPdf, ...rest } = paper;
-    await this.deps.bibtex.writePaperArtifacts(paper.path, { ...rest, ...owned }, path.join(paper.path, PDF_NAME));
+    await this.deps.bibtex.writePaperArtifacts(paper.path, { ...rest, ...owned }, path.join(paper.path, PDF_FILE));
   }
 
   /**
@@ -423,7 +424,7 @@ export class TerminalPaperService {
       const id = await this.freeFolder(targetDir, parsed.citeKey || slug(stem) || `paper${Date.now()}`);
       const folder = path.join(targetDir, id);
       await fs.mkdir(folder, { recursive: true });
-      await writeFileAtomic(path.join(folder, PDF_NAME), bytes, this.paths.tmpDir());
+      await writeFileAtomic(path.join(folder, PDF_FILE), bytes, this.paths.layout.tmpDir());
       const paper: PaperRecord = {
         id,
         title: parsed.title,
@@ -479,7 +480,7 @@ export class TerminalPaperService {
       const id = await this.freeFolder(targetDir, makeCiteKey({ ...metadata, title }, title));
       const folder = path.join(targetDir, id);
       await fs.mkdir(folder, { recursive: true });
-      if (pdf) { await writeFileAtomic(path.join(folder, PDF_NAME), pdf, this.paths.tmpDir()); }
+      if (pdf) { await writeFileAtomic(path.join(folder, PDF_FILE), pdf, this.paths.layout.tmpDir()); }
       const paper: PaperRecord = {
         id,
         title,
@@ -491,7 +492,7 @@ export class TerminalPaperService {
         ...(identifier.type === "doi" && !metadata.doi ? { doi: identifier.value } : {}),
         ...(identifier.type === "arxiv" && !metadata.url ? { url: `https://arxiv.org/abs/${identifier.value}` } : {}),
       };
-      const sourceName = identifier.type === "arxiv" ? `${identifier.value}.pdf` : PDF_NAME;
+      const sourceName = identifier.type === "arxiv" ? `${identifier.value}.pdf` : PDF_FILE;
       await this.deps.bibtex.writePaperArtifacts(folder, withoutDerived(paper), sourceName);
       await this.deps.logger.log("INFO", "terminal/paperService", "Paper imported from identifier", {
         id, type: identifier.type, value: identifier.value, withPdf: Boolean(pdf), targetRel,
@@ -559,8 +560,8 @@ export class TerminalPaperService {
     let tmp: string | undefined;
     try {
       const bytes = await this.download(url);
-      await fs.mkdir(this.paths.tmpDir(), { recursive: true });
-      tmp = path.join(this.paths.tmpDir(), `download-${Date.now()}.pdf`);
+      await fs.mkdir(this.paths.layout.tmpDir(), { recursive: true });
+      tmp = path.join(this.paths.layout.tmpDir(), `download-${Date.now()}.pdf`);
       await fs.writeFile(tmp, bytes);
       const name = decodeURIComponent(new URL(url).pathname.split("/").pop() || "download.pdf");
       return await this.importPdf(tmp, targetRel, { sourceName: name.toLowerCase().endsWith(".pdf") ? name : `${name}.pdf` });

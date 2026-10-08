@@ -1,14 +1,13 @@
 /**
  * Writes structured log entries to an append-only on-disk log file and an optional database adapter.
  *
- * @depends core/types, storage/fileSystemService, storage/paths/libraryPaths
+ * @depends core/types, storage/fileSystemService
  * @dependents commands/registerCommands.ts, extension.ts
  */
 import * as vscode from "vscode";
 
-import type { LogEntry } from "@labshelf/core";
+import type { LibraryLayout, LogEntry } from "@labshelf/core";
 import { FileSystemService } from "../storage/fileSystemService.js";
-import type { ILibraryPaths } from "../storage/paths/libraryPaths.js";
 
 export interface LogStore {
   append(entry: LogEntry): Promise<void>;
@@ -17,7 +16,7 @@ export interface LogStore {
 export class WorkspaceLogger {
   constructor(
     private readonly fsService: FileSystemService,
-    private readonly paths: ILibraryPaths,
+    private readonly paths: LibraryLayout<vscode.Uri>,
     private readonly store?: LogStore,
   ) {}
 
@@ -36,7 +35,7 @@ export class WorkspaceLogger {
       ...(stack ? { stack } : {}),
     };
 
-    await this.fsService.ensureDirectory(this.paths.logsRoot());
+    await this.fsService.ensureDirectory(this.paths.logsDir());
     const line = `${JSON.stringify(entry)}\n`;
     let previous = "";
     try {

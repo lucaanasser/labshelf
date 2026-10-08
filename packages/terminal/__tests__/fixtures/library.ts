@@ -8,7 +8,7 @@ import * as path from "node:path";
 
 import { parse, stringify } from "yaml";
 
-import { LibraryPaths, ensureLibraryStructure } from "../../src/library/libraryPaths";
+import { LibraryRoot, ensureLibraryStructure } from "../../src/library/libraryRoot";
 
 const created: string[] = [];
 
@@ -54,7 +54,7 @@ export interface PaperFixture {
 
 export interface TempLibrary {
   root: string;
-  paths: LibraryPaths;
+  paths: LibraryRoot;
   /** Absolute folder of a paper. */
   paperDir(id: string, collection?: string): string;
   addPaper(fixture: PaperFixture): Promise<string>;
@@ -72,7 +72,7 @@ export async function createTempLibrary(
   options: { structure?: boolean } = {},
 ): Promise<TempLibrary> {
   const root = await makeTempDir();
-  const paths = new LibraryPaths(root);
+  const paths = new LibraryRoot(root);
   if (options.structure !== false) { await ensureLibraryStructure(paths); }
 
   const lib: TempLibrary = {
@@ -102,7 +102,7 @@ export async function createTempLibrary(
       return dir;
     },
     async writeSidecar(id, data) {
-      const file = paths.paperDataPath(id);
+      const file = paths.layout.paperDataPath(id);
       await fs.mkdir(path.dirname(file), { recursive: true });
       await fs.writeFile(file, typeof data === "string" ? data : JSON.stringify(data, null, 2));
       return file;

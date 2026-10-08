@@ -8,14 +8,9 @@ import YAML from "yaml";
 
 import type { IFileSystem } from "../../ports/index.js";
 import type { PaperRecord } from "../../model/index.js";
+import { PDF_FILE, joinWith, paperFiles } from "../../library/index.js";
 
-// POSIX-joins path segments with normalized single-slash separators.
-function posixJoin(...parts: string[]): string {
-  return parts.filter(Boolean).join("/").replace(/\/{2,}/g, "/");
-}
-
-// What every paper's PDF is called once it is inside the library.
-const LIBRARY_PDF_NAME = "paper.pdf";
+const posixJoin = joinWith("/");
 
 // Returns the trailing name of a path, accepting both POSIX and Windows separators.
 function baseName(p: string): string {
@@ -33,7 +28,7 @@ const OWNED_KEYS = new Set([
 // nothing; the name the user imported is kept from the existing file.
 function sourceName(existing: Record<string, unknown>, sourceFileName: string): string {
   const given = baseName(sourceFileName);
-  if (given !== LIBRARY_PDF_NAME) {
+  if (given !== PDF_FILE) {
     return given;
   }
   const kept = existing["source"];
@@ -50,8 +45,7 @@ export class BibTeXService {
    * @returns void
    */
   async writePaperArtifacts(paperFolder: string, paper: PaperRecord, sourceFileName: string): Promise<void> {
-    const metadataPath = posixJoin(paperFolder, "metadata.yaml");
-    const bibPath = posixJoin(paperFolder, "bib.bib");
+    const { metadata: metadataPath, bib: bibPath } = paperFiles(paperFolder, posixJoin);
     const existing = await this.readExisting(metadataPath);
 
     const metadata: Record<string, unknown> = {
@@ -98,7 +92,7 @@ export class BibTeXService {
     // the browser writes a reference without paper.pdf when it finds none, so a
     // blind `file = {…/paper.pdf}` would send LaTeX and reference tools to a
     // file that is not there. Decide from the folder, not from the record.
-    const pdfExists = await this.fs.exists(posixJoin(paperFolder, LIBRARY_PDF_NAME));
+    const pdfExists = await this.fs.exists(paperFiles(paperFolder, posixJoin).pdf);
     await this.fs.writeText(metadataPath, YAML.stringify(metadata));
     await this.fs.writeText(bibPath, this.generateBibTeX(paper, { includeFile: pdfExists }));
   }
@@ -142,7 +136,7 @@ export class BibTeXService {
     if (paper.language) { lines.push(`  language = {${this.esc(paper.language)}},`); }
     if (paper.summary) { lines.push(`  note = {${this.esc(paper.summary)}},`); }
     if (options.includeFile !== false) {
-      lines.push(`  file = {${this.esc(posixJoin(paper.path, LIBRARY_PDF_NAME))}},`);
+      lines.push(`  file = {${this.esc(paperFiles(paper.path, posixJoin).pdf)}},`);
     }
     lines.push(`  keywords = {labshelf, imported}`);
     lines.push(`}`);

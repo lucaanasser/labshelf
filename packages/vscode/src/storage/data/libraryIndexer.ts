@@ -4,10 +4,9 @@
 import * as vscode from "vscode";
 import YAML from "yaml";
 
-import type { PaperRecord, IResearchDatabase } from "@labshelf/core";
-import { isPaperStatus, parseTextLayerInfo } from "@labshelf/core";
+import type { LibraryLayout, PaperRecord, IResearchDatabase } from "@labshelf/core";
+import { METADATA_FILE, PDF_FILE, isPaperStatus, parseTextLayerInfo } from "@labshelf/core";
 import { FileSystemService } from "../fileSystemService.js";
-import type { ILibraryPaths } from "../paths/libraryPaths.js";
 
 /**
  * Idempotent indexer that walks the library tree and upserts all papers into SQLite.
@@ -15,7 +14,7 @@ import type { ILibraryPaths } from "../paths/libraryPaths.js";
  */
 export class LibraryIndexer {
   constructor(
-    private readonly paths: ILibraryPaths,
+    private readonly paths: LibraryLayout<vscode.Uri>,
     private readonly fsService: FileSystemService,
     private readonly database: IResearchDatabase,
   ) {}
@@ -45,12 +44,12 @@ export class LibraryIndexer {
   // Recursively walks a directory, collecting papers from folders that contain metadata.yaml.
   private async walk(dir: vscode.Uri, found: PaperRecord[]): Promise<void> {
     const entries = await this.fsService.readDirectory(dir);
-    if (entries.some(([name, type]) => name === "metadata.yaml" && type === vscode.FileType.File)) {
+    if (entries.some(([name, type]) => name === METADATA_FILE && type === vscode.FileType.File)) {
       // The directory listing already tells us whether the PDF is present, so
       // the honest-attachment flag costs no extra syscall. FileType is a bit
       // flag: a symlink to a file reports File|SymbolicLink, so test the bit.
-      const hasPdf = entries.some(([name, type]) => name === "paper.pdf" && (type & vscode.FileType.File) !== 0);
-      const paper = await this.readPaper(dir, vscode.Uri.joinPath(dir, "metadata.yaml"), hasPdf);
+      const hasPdf = entries.some(([name, type]) => name === PDF_FILE && (type & vscode.FileType.File) !== 0);
+      const paper = await this.readPaper(dir, vscode.Uri.joinPath(dir, METADATA_FILE), hasPdf);
       if (paper) {
         found.push(paper);
       }

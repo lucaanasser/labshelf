@@ -11,6 +11,7 @@
  * @dependents library-page controllers, storage/index
  */
 import { getDb } from "./idb/db";
+import { METADATA_FILE, PDF_FILE, PAPERS_DIR } from "@labshelf/core";
 
 export interface FolderNode {
   name: string;
@@ -18,16 +19,13 @@ export interface FolderNode {
   children: FolderNode[];
 }
 
-const PAPER_MARKERS = new Set(["metadata.yaml", "paper.pdf"]);
-
-// What every paper's PDF is called inside its folder (same as core's LIBRARY_PDF_NAME).
-const PAPER_PDF = "paper.pdf";
+const PAPER_MARKERS = new Set([METADATA_FILE, PDF_FILE]);
 
 /**
  * Builds the collection tree under `rootPath` from a single key scan.
  * @usedBy library-page controllers/dataController
  */
-export async function buildFolderTree(rootPath: string = "papers"): Promise<FolderNode[]> {
+export async function buildFolderTree(rootPath: string = PAPERS_DIR): Promise<FolderNode[]> {
   const db = await getDb();
   const prefix = `${rootPath}/`;
   const keys = (await db.getAllKeys("files", IDBKeyRange.bound(prefix, `${prefix}￿`, false, true))) as string[];
@@ -68,7 +66,7 @@ export function collectionTreeFromKeys(keys: string[], rootPath: string): Folder
  */
 export function pdfDirsFromKeys(keys: string[]): Set<string> {
   const out = new Set<string>();
-  const suffix = `/${PAPER_PDF}`;
+  const suffix = `/${PDF_FILE}`;
   for (const key of keys) {
     if (key.endsWith(suffix)) out.add(key.slice(0, -suffix.length));
   }
@@ -80,7 +78,7 @@ export function pdfDirsFromKeys(keys: string[]): Set<string> {
  * the library page's load and refresh cost a single IndexedDB round trip.
  * @usedBy library-page controllers/dataController
  */
-export async function scanLibrary(rootPath: string = "papers"): Promise<{ tree: FolderNode[]; pdfDirs: Set<string> }> {
+export async function scanLibrary(rootPath: string = PAPERS_DIR): Promise<{ tree: FolderNode[]; pdfDirs: Set<string> }> {
   const db = await getDb();
   const prefix = `${rootPath}/`;
   const keys = (await db.getAllKeys("files", IDBKeyRange.bound(prefix, `${prefix}￿`, false, true))) as string[];
@@ -92,7 +90,7 @@ export async function scanLibrary(rootPath: string = "papers"): Promise<{ tree: 
  * draftView (which do not need the tree).
  * @usedBy background/index
  */
-export async function pdfDirs(rootPath: string = "papers"): Promise<Set<string>> {
+export async function pdfDirs(rootPath: string = PAPERS_DIR): Promise<Set<string>> {
   const db = await getDb();
   const prefix = `${rootPath}/`;
   const keys = (await db.getAllKeys("files", IDBKeyRange.bound(prefix, `${prefix}￿`, false, true))) as string[];

@@ -8,22 +8,22 @@ import { promises as fs } from "node:fs";
 import { PaperDataStore, type PaperData, type SidecarPort } from "@labshelf/core";
 
 import { writeFileAtomic } from "../platform/nodeFileSystem.js";
-import { LibraryPaths } from "./libraryPaths.js";
+import { LibraryRoot } from "./libraryRoot.js";
 
 /** SidecarPort over the library's .research/papers folder. */
 export class NodeSidecarPort implements SidecarPort {
-  constructor(private readonly paths: LibraryPaths) {}
+  constructor(private readonly paths: LibraryRoot) {}
 
   async read(paperId: string): Promise<string | null> {
     try {
-      return await fs.readFile(this.paths.paperDataPath(paperId), "utf8");
+      return await fs.readFile(this.paths.layout.paperDataPath(paperId), "utf8");
     } catch {
       return null;
     }
   }
 
   async write(paperId: string, text: string): Promise<void> {
-    await writeFileAtomic(this.paths.paperDataPath(paperId), text, this.paths.tmpDir());
+    await writeFileAtomic(this.paths.layout.paperDataPath(paperId), text, this.paths.layout.tmpDir());
   }
 }
 
@@ -32,7 +32,7 @@ export class SidecarReader {
   private readonly store: PaperDataStore;
   private readonly cache = new Map<string, { mtimeMs: number; data: PaperData }>();
 
-  constructor(private readonly paths: LibraryPaths) {
+  constructor(private readonly paths: LibraryRoot) {
     this.store = new PaperDataStore(new NodeSidecarPort(paths));
   }
 
@@ -43,7 +43,7 @@ export class SidecarReader {
   async load(paperId: string): Promise<PaperData> {
     let mtimeMs = -1;
     try {
-      mtimeMs = (await fs.stat(this.paths.paperDataPath(paperId))).mtimeMs;
+      mtimeMs = (await fs.stat(this.paths.layout.paperDataPath(paperId))).mtimeMs;
     } catch {
       mtimeMs = -1;
     }

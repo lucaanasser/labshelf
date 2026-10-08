@@ -104,7 +104,7 @@ async function harness(papers: PaperFixture[] = [], collections: string[] = []):
   const service = new TerminalPaperService({
     paths: lib.paths,
     store,
-    bibtex: new BibTeXService(new NodeFileSystem(lib.paths.tmpDir())),
+    bibtex: new BibTeXService(new NodeFileSystem(lib.paths.layout.tmpDir())),
     logger,
     pdfParser: parserFactory,
     trash,
@@ -454,7 +454,7 @@ describe("updateFields", () => {
   it("leaves no temporary files behind", async () => {
     const h = await harness([base]);
     await h.service.updateFields("p1", { status: "done" });
-    expect(await listFiles(h.lib.paths.tmpDir())).toEqual([]);
+    expect(await listFiles(h.lib.paths.layout.tmpDir())).toEqual([]);
     expect((await listFiles(h.lib.paperDir("p1", "ML"))).filter((f) => f.endsWith(".tmp"))).toEqual([]);
   });
 
@@ -565,7 +565,7 @@ describe("movePapers", () => {
     expect(await pathExists(h.lib.paperDir("p1", "ML"))).toBe(false);
     expect(h.store.paper("p1")).toMatchObject({ collection: "Bio" });
     // The sidecar is keyed by id, so it needs no move.
-    expect(await pathExists(h.lib.paths.paperDataPath("p1"))).toBe(true);
+    expect(await pathExists(h.lib.paths.layout.paperDataPath("p1"))).toBe(true);
     expect(h.onLocalChange).toHaveBeenCalledTimes(1);
   });
 
@@ -630,7 +630,7 @@ describe("trashPapers", () => {
     expect(h.store.paper("p1")).toBeUndefined();
     expect(h.store.paper("p2")).toBeDefined();
     // Sidecars stay, as in VS Code, so a restored paper keeps its notes.
-    expect(await pathExists(h.lib.paths.paperDataPath("p1"))).toBe(true);
+    expect(await pathExists(h.lib.paths.layout.paperDataPath("p1"))).toBe(true);
     expect(h.onLocalChange).toHaveBeenCalledTimes(1);
   });
 
@@ -675,7 +675,7 @@ describe("collections", () => {
     ])("rejects %j", async (name, message) => {
       const h = await harness();
       await expect(h.service.createCollection("", name)).rejects.toThrow(message);
-      expect(await fs.readdir(h.lib.paths.papersRoot())).toEqual([]);
+      expect(await fs.readdir(h.lib.paths.layout.papersRoot())).toEqual([]);
     });
 
     it("rejects a name that already exists", async () => {
@@ -848,7 +848,7 @@ describe("importPdf", () => {
     const h = await harness();
     const outcome = await h.service.importPdf(await h.writePdf(), "");
     expect(outcome.status).toBe("added");
-    expect(await pathExists(path.join(h.lib.paths.papersRoot(), "vaswani2017attention", "paper.pdf"))).toBe(true);
+    expect(await pathExists(path.join(h.lib.paths.layout.papersRoot(), "vaswani2017attention", "paper.pdf"))).toBe(true);
   });
 
   it("loads the PDF parser lazily, on the first import", async () => {
@@ -867,12 +867,12 @@ describe("importPdf", () => {
       if (outcome.status === "added") { expect(outcome.paper.id).toBe(expected); }
       await h.store.reload();
     }
-    expect(await fs.readdir(h.lib.paths.papersRoot())).toEqual(["vaswani2017attention", "vaswani2017attentiona", "vaswani2017attentionb"]);
+    expect(await fs.readdir(h.lib.paths.layout.papersRoot())).toEqual(["vaswani2017attention", "vaswani2017attentiona", "vaswani2017attentionb"]);
   });
 
   it("treats ids as taken regardless of case and also avoids folders the scan does not know", async () => {
     const h = await harness([{ id: "Vaswani2017Attention" }]);
-    const orphan = path.join(h.lib.paths.papersRoot(), "vaswani2017attentiona");
+    const orphan = path.join(h.lib.paths.layout.papersRoot(), "vaswani2017attentiona");
     await fs.mkdir(orphan);
     await fs.writeFile(path.join(orphan, "paper.pdf"), fakePdfBytes());
     h.parse.mockResolvedValueOnce({ ...ATTENTION, doi: "10.1000/other" });
@@ -888,7 +888,7 @@ describe("importPdf", () => {
     const h = await harness([{ id: "existing", meta: { doi: "10.5555/3295222.3295349".toUpperCase() } }]);
     const outcome = await h.service.importPdf(await h.writePdf(), "");
     expect(outcome).toMatchObject({ status: "duplicate", existingId: "existing" });
-    expect(await fs.readdir(h.lib.paths.papersRoot())).toEqual(["existing"]);
+    expect(await fs.readdir(h.lib.paths.layout.papersRoot())).toEqual(["existing"]);
   });
 
   it("fails on bytes that are not a PDF, without calling the parser or creating a folder", async () => {
@@ -896,7 +896,7 @@ describe("importPdf", () => {
     const outcome = await h.service.importPdf(await h.writePdf("fake.pdf", "<html>definitely not a pdf</html>"), "");
     expect(outcome).toMatchObject({ status: "failed", error: "Not a PDF file" });
     expect(h.parse).not.toHaveBeenCalled();
-    expect(await fs.readdir(h.lib.paths.papersRoot())).toEqual([]);
+    expect(await fs.readdir(h.lib.paths.layout.papersRoot())).toEqual([]);
   });
 
   it("fails on a missing file", async () => {
@@ -911,7 +911,7 @@ describe("importPdf", () => {
     h.parse.mockRejectedValueOnce(new Error("pdf.js exploded"));
     const outcome = await h.service.importPdf(await h.writePdf(), "");
     expect(outcome).toMatchObject({ status: "failed", error: "pdf.js exploded" });
-    expect(await fs.readdir(h.lib.paths.papersRoot())).toEqual([]);
+    expect(await fs.readdir(h.lib.paths.layout.papersRoot())).toEqual([]);
     expect(h.logs.some((l) => l.level === "WARN" && l.message === "PDF import failed")).toBe(true);
   });
 
@@ -945,7 +945,7 @@ describe("importPdf", () => {
   it("leaves no temporary files behind", async () => {
     const h = await harness();
     await h.service.importPdf(await h.writePdf(), "");
-    expect(await listFiles(h.lib.paths.tmpDir())).toEqual([]);
+    expect(await listFiles(h.lib.paths.layout.tmpDir())).toEqual([]);
   });
 });
 
@@ -1062,7 +1062,7 @@ describe("importIdentifier", () => {
     expect(await h.service.importIdentifier("10.1038/nature12373", "")).toEqual({
       status: "failed", error: "Could not find DOI 10.1038/nature12373", input: "10.1038/nature12373",
     });
-    expect(await fs.readdir(h.lib.paths.papersRoot())).toEqual([]);
+    expect(await fs.readdir(h.lib.paths.layout.papersRoot())).toEqual([]);
   });
 
   it("fails when the text holds no identifier at all", async () => {
@@ -1079,7 +1079,7 @@ describe("importIdentifier", () => {
     expect(await h.service.importIdentifier("10.1038/nature12373", "")).toEqual({
       status: "duplicate", existingId: "have-it", input: "10.1038/nature12373",
     });
-    expect(await fs.readdir(h.lib.paths.papersRoot())).toEqual(["have-it"]);
+    expect(await fs.readdir(h.lib.paths.layout.papersRoot())).toEqual(["have-it"]);
   });
 
   it("de-duplicates the generated cite key against existing ids", async () => {
@@ -1166,7 +1166,7 @@ describe("importAny", () => {
     expect(h.parse.mock.calls[0]![1]).toBe("My Paper");
     expect((await readYaml(metaFile(h, "vaswani2017attention")))["source"]).toBe("My Paper.pdf");
     expect(new Uint8Array(await fs.readFile(path.join(h.lib.paperDir("vaswani2017attention"), "paper.pdf")))).toEqual(fakePdfBytes("web"));
-    expect(await listFiles(h.lib.paths.tmpDir())).toEqual([]);
+    expect(await listFiles(h.lib.paths.layout.tmpDir())).toEqual([]);
   });
 
   it("appends .pdf to a URL file name that lacks it", async () => {
@@ -1188,8 +1188,8 @@ describe("importAny", () => {
       "Download failed: HTTP 404",
       "The file is too large",
     ]);
-    expect(await fs.readdir(h.lib.paths.papersRoot())).toEqual([]);
-    expect(await listFiles(h.lib.paths.tmpDir())).toEqual([]);
+    expect(await fs.readdir(h.lib.paths.layout.papersRoot())).toEqual([]);
+    expect(await listFiles(h.lib.paths.layout.tmpDir())).toEqual([]);
   });
 
   it("treats a URL that contains an identifier as an identifier, not a download", async () => {

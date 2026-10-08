@@ -11,6 +11,7 @@ import {
   normalizePaperData as normalize,
   serializePaperData,
   type PaperData,
+  type LibraryLayout,
   type ReadingState,
 } from "@labshelf/core";
 import { FileSystemService } from "../fileSystemService.js";
@@ -24,7 +25,7 @@ export type { PaperData };
  */
 export class PaperDataStore {
   constructor(
-    private readonly researchRoot: vscode.Uri,
+    private readonly layout: LibraryLayout<vscode.Uri>,
     private readonly fsService: FileSystemService,
   ) {}
 
@@ -44,14 +45,12 @@ export class PaperDataStore {
     return next;
   }
 
-  // Folder owning one paper's sidecar: <researchRoot>/papers/<paperId>/
   private dataDir(paperId: string): vscode.Uri {
-    return vscode.Uri.joinPath(this.researchRoot, "papers", paperId);
+    return this.layout.paperDataDir(paperId);
   }
 
-  // Sidecar file path: <researchRoot>/papers/<paperId>/data.json
   private dataPath(paperId: string): vscode.Uri {
-    return vscode.Uri.joinPath(this.dataDir(paperId), "data.json");
+    return this.layout.paperDataPath(paperId);
   }
 
   /**

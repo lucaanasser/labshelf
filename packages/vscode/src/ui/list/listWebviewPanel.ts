@@ -6,7 +6,7 @@
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { isUnderDir } from '@labshelf/core';
+import { PDF_FILE, isUnderDir, paperFiles } from '@labshelf/core';
 import type { PaperService } from '../../core/paperService.js';
 import type { TextLayerJob } from '../../commands/textLayerQueue.js';
 import type { Annotation, EventBus, PaperRecord } from '@labshelf/core';
@@ -265,7 +265,7 @@ export class ListWebviewPanel {
     let pdfSize: number | null = null;
     if (paper.hasPdf !== false) {
       try {
-        pdfSize = (await vscode.workspace.fs.stat(vscode.Uri.file(path.join(paper.path, 'paper.pdf')))).size;
+        pdfSize = (await vscode.workspace.fs.stat(vscode.Uri.file(paperFiles(paper.path, path.join).pdf))).size;
       } catch {
         // missing on this device
       }
@@ -278,7 +278,7 @@ export class ListWebviewPanel {
       paperId,
       annotations: annotations.map((a) => ({ id: a.id, type: a.type, page: a.pageNumber, content: a.content, color: a.color ?? null, createdAt: a.createdAt })),
       reading: sidecar.reading ? { page: sidecar.reading.page, updatedAt: sidecar.reading.updatedAt } : null,
-      pdf: pdfSize === null ? null : { size: pdfSize, relPath: root ? path.relative(root, path.join(paper.path, 'paper.pdf')) : 'paper.pdf' },
+      pdf: pdfSize === null ? null : { size: pdfSize, relPath: root ? path.relative(root, paperFiles(paper.path, path.join).pdf) : PDF_FILE },
       bibtex: this._deps.paperService.bibtexFor(paper),
       cite: formatCitations(paper),
     });

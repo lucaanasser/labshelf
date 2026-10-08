@@ -15,6 +15,7 @@ import { toast } from "../../ui/toast";
 import { on } from "../events";
 import type { LibraryStore } from "../state/libraryStore";
 import { loadPrefs } from "../state/uiPrefs";
+import { PAPERS_DIR } from "@labshelf/core";
 
 const POLL_INTERVAL_MS = 1500;
 const POLL_MAX_TICKS = 120;
@@ -33,7 +34,7 @@ export async function initLibraryData(store: LibraryStore): Promise<void> {
   try {
     // scanLibrary derives the tree and the pdf-presence set from a single key scan.
     const [scan, papers, sync] = await Promise.all([
-      scanLibrary("papers"),
+      scanLibrary(PAPERS_DIR),
       listAllRecords(),
       send<SyncStatusData>({ type: "sync.status" }).catch(() => null),
     ]);
@@ -46,7 +47,7 @@ export async function initLibraryData(store: LibraryStore): Promise<void> {
 
 /** Re-reads folders, PDF presence and papers from IDB after a local mutation or a sync. */
 export async function refreshLibrary(store: LibraryStore): Promise<void> {
-  const [scan, papers] = await Promise.all([scanLibrary("papers"), listAllRecords()]);
+  const [scan, papers] = await Promise.all([scanLibrary(PAPERS_DIR), listAllRecords()]);
   store.set({ folders: scan.tree, pdfDirs: scan.pdfDirs, papers });
 }
 

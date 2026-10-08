@@ -6,6 +6,7 @@
  * @dependents capture/resolvers, options/index, background scheduler
  */
 import { bx } from "./browserApi";
+import { PAPERS_DIR } from "@labshelf/core";
 
 /** Persisted user preferences. */
 export interface LabShelfSettings {
@@ -28,7 +29,7 @@ const DEFAULTS: LabShelfSettings = {
   sciHubMirror: "https://sci-hub.se",
   contactEmail: "contact@labshelf.dev",
   autoSyncMinutes: 15,
-  lastFolder: "papers",
+  lastFolder: PAPERS_DIR,
 };
 
 /**

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
-import { EventBus, EVENTS } from '@labshelf/core';
+import { EventBus, EVENTS, libraryLayout } from '@labshelf/core';
 
 function makeFakeStore(): PaperDataStore {
   const files = new Map<string, string>();
@@ -17,7 +17,7 @@ function makeFakeStore(): PaperDataStore {
     return v;
   });
   jest.spyOn(fs, 'exists').mockImplementation(async (uri) => files.has(uri.fsPath));
-  return new PaperDataStore(vscode.Uri.file('/lib/.research'), fs);
+  return new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs);
 }
 
 async function makeManager() {
