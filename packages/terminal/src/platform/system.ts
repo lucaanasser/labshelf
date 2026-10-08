@@ -2,9 +2,6 @@
  * The few places the terminal app touches the desktop: copying to the clipboard, opening a PDF or folder with the
  * user's apps, moving folders to the trash, and running $EDITOR. Each one degrades instead of failing: no clipboard
  * tool falls back to OSC 52 (works over SSH), no trash support is reported so the caller can ask before deleting.
- *
- * @depends none
- * @dependents ui/app, cli/commands, library/paperService
  */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, promises as fs } from "node:fs";
@@ -29,7 +26,6 @@ function pipeTo(command: string, args: string[], input: string): Promise<boolean
 
 /**
  * Whether an executable is on PATH.
- * @usedBy copyToClipboard, preview/thumbnails, cli doctor
  * @returns true when found
  */
 export function hasCommand(command: string, env: NodeJS.ProcessEnv = process.env): boolean {
@@ -39,7 +35,6 @@ export function hasCommand(command: string, env: NodeJS.ProcessEnv = process.env
 
 /**
  * Copies text to the system clipboard; `osc52` receives the escape fallback when no clipboard tool exists.
- * @usedBy ui/app, cli/commands
  * @returns how it was copied
  */
 export async function copyToClipboard(text: string, osc52?: (sequence: string) => void): Promise<"system" | "osc52" | "failed"> {
@@ -58,7 +53,6 @@ export async function copyToClipboard(text: string, osc52?: (sequence: string) =
 
 /**
  * Opens a file or folder with the system's default app (or `viewer` when configured), without waiting for it.
- * @usedBy ui/app, cli open
  * @returns void; throws when the opener cannot start
  */
 export function openExternal(target: string, viewer?: string): void {
@@ -85,7 +79,6 @@ export function openExternal(target: string, viewer?: string): void {
 
 /**
  * Reveals a folder in Finder / the file manager.
- * @usedBy ui/app
  * @returns void
  */
 export function revealInFileManager(target: string): void {
@@ -100,7 +93,6 @@ export function revealInFileManager(target: string): void {
 
 /**
  * Whether moveToTrash works on this platform.
- * @usedBy ui/app, cli rm
  * @returns true on macOS and freedesktop systems
  */
 export function trashSupported(): boolean {
@@ -128,7 +120,6 @@ async function moveAcrossVolumes(from: string, to: string): Promise<void> {
 /**
  * Moves a file or folder to the user's trash (macOS ~/.Trash, freedesktop ~/.local/share/Trash), the same thing the
  * VS Code extension does with useTrash.
- * @usedBy library/paperService
  * @returns the path it now has in the trash
  */
 export async function moveToTrash(target: string): Promise<string> {
@@ -160,7 +151,6 @@ export async function moveToTrash(target: string): Promise<string> {
 
 /**
  * Runs the user's editor on a file in the foreground; the caller must have released the terminal.
- * @usedBy ui/app (via Terminal.suspend), cli note
  * @returns true when the editor exited cleanly
  */
 export function runEditor(file: string, env: NodeJS.ProcessEnv = process.env): boolean {

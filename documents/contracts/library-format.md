@@ -24,6 +24,8 @@ Each log file is append-only. Past 2 MiB it moves to `<name>.log.1` (one rotated
 
 The browser stores the same tree in IndexedDB under the same relative paths. `papers/…` maps to the `library` namespace, and `appdata/<paper id>/data.json` maps to `.research/papers/<paper id>/data.json`.
 
+IndexedDB holds only files, so an empty folder is a zero-byte `.keep` file inside it.
+
 ## Paper identity
 
 - The paper id is the name of its folder and equals its cite key. It never changes when the paper moves between folders.

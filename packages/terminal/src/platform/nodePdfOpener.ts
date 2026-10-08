@@ -3,9 +3,6 @@
  * because Electron fails pdfjs' Node detection; plain Node passes it). Loads the legacy build lazily — only importing
  * a PDF or rendering a thumbnail pays for it — runs the worker in-process, and points CMaps, standard fonts and wasm
  * at the files shipped with pdfjs-dist so text in CID and non-embedded fonts extracts correctly.
- *
- * @depends pdfjs-dist, @labshelf/core (PdfDocumentOpener)
- * @dependents library/paperService, preview/thumbnailWorker
  */
 import * as path from "node:path";
 
@@ -19,7 +16,6 @@ let loading: Promise<PdfjsModule> | undefined;
 
 /**
  * getDocument options that read pdfjs' data files from disk.
- * @usedBy NodePdfOpener, preview/thumbnailWorker
  * @returns options to spread into getDocument
  */
 export function pdfjsDataOptions(): Record<string, unknown> {
@@ -41,7 +37,6 @@ export function pdfjsDataOptions(): Record<string, unknown> {
 
 /**
  * Imports pdfjs once, with its worker registered in-process.
- * @usedBy NodePdfOpener, preview/thumbnailWorker
  * @returns the pdfjs module
  */
 export function loadPdfjs(): Promise<PdfjsModule> {
