@@ -540,6 +540,7 @@
     "build:webview": "node build/reader.mjs",
     "watch": "node build/host.mjs --watch",
     "watch:webview": "node build/reader.mjs --watch",
+    "dev": "node build/host.mjs --watch & node build/reader.mjs --watch & wait",
     "typecheck": "tsc --noEmit -p ./",
     "vscode:prepublish": "node build/host.mjs --production && node build/reader.mjs --production",
     "lint": "node ../../scripts/run-eslint.mjs",
