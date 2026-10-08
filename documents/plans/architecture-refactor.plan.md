@@ -43,6 +43,13 @@ When this plan is done, delete it and the note at the top of `architecture.md`.
   - **BC10** the VS Code log appends and rotates to `app.log.1` at 2 MiB (S3.6);
   - **BC11** VS Code writes files atomically, through a temp file and a rename (S3.7);
   - **BC12** VS Code sync skips deleting a local file that is already gone (S3.7).
+  - **BC13** VS Code import skips a PDF whose DOI is already in the library, as the terminal does (S4.2);
+  - **BC14** one import summary in the terminal wording: `Added "<title>" — metadata unconfirmed, check it`, `N added, N already in the library, N failed: <first error>` (S4.1);
+  - **BC15** moving a folder into the folder it is already in does nothing, with no error (S4.1);
+  - **BC16** VS Code shows and logs a failed trash, and the paper stays in the list (S4.2);
+  - **BC17** a name collision on a move or rename says `"<name>" already exists there` in every app (S4.1);
+  - **BC18** the import folder walk skips dot entries, sorts the paths and logs folders it cannot read (S4.1);
+  - **BC19** symlinks are not followed: a symlinked PDF or folder is skipped on import, and a symlinked `paper.pdf` counts as no PDF (S4.1).
 
 Open questions (each one blocks only the steps named):
 
@@ -186,7 +193,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S4.1 | Library mutations in core over a file-system port | S3.7 | H · main thread | core tests for each mutation | [ ] |
+| S4.1 | Library mutations in core over a file-system port | S3.7 | H · main thread | core tests for each mutation | [x] |
 | S4.2 | Apps use the core mutations (BC3) | S4.1 | H+M · refactor-step | BC3 test; app services reduced to glue | [ ] |
 
 ### Session 6 — library model and search
@@ -730,3 +737,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-08 16:08 S3.7 done (before S3.5, which needs the atomic write in core): `@labshelf/core/node` exists and exports `writeFileAtomic`, `NodeFileSystem` and `NodeLocalFileSystem` from `core/src/library/node/`; a dependency-cruiser rule stops the browser importing core `node/`. The terminal keeps only `platform/nodeLockStore.ts` until S5.2. VS Code has one `VscodeFileSystem` for both ports, built per library root because its temp dir is `.research/tmp`; `SyncController.setLibrary` takes the new adapter on a root change. BC11 (atomic writes, every VS Code write through the adapter) and BC12 (deleting a missing file succeeds) have tests. Core `tsconfig.json` loads Node types; the neutral config still keeps `node:*` out of neutral code. Dependency-cruiser baseline 289 → 278.
 - 2026-10-08 16:14 S3.5 done: the shared config schema and merge rules are in `core/src/library/sharedConfig.ts`, the XDG path and atomic file update in `library/node/sharedConfigFile.ts`. The terminal keeps only its preferences and `resolveLibraryRoot` (which still expands `~` and relative roots; VS Code accepts only absolute ones, as the contract says). VS Code logs a failed mirror of `libraryRoot` and mirrors once, from `ensureSyncController`; an unchanged update skips the write. Dependency-cruiser baseline 278 → 276.
 - 2026-10-08 16:20 S3.6 done: `core/src/logging/` has the entry format and a `Logger` that fans out to `LogSink` ports (`ports/logSink.ts`) and never rejects; `logging/node/fileLogSink.ts` appends through a queue and rotates to `.1` at 2 MiB. The terminal and VS Code loggers are gone; VS Code builds its logger in `core/extensionLogger.ts` (file plus SQLite sinks, sink failures to `console.error`), the terminal drops sink failures on purpose because the TUI owns the screen. BC10 has tests. Non-`Error` values are logged without a synthetic stack. `library-format.md` names the rotation file.
+- 2026-10-08 16:44 S4.1 done: `core/src/library/mutations/` holds the paper field, move, trash, folder, import, import-summary and text-layer verdict functions over the `LibraryFileSystem` port (`ports/libraryFileSystem.ts`: the two existing ports plus `rename`, `trash`, `mkdir`); `NodeLibraryFileSystem` is in `@labshelf/core/node` with an injected trash. Mutations write disk only and return what changed; apps update their index afterwards. `library/` does not import `io/`: the artifact writer and the PDF parser are structural ports. BC13–BC19 added to D7 (asked while mapping); each has a core test. The apps still use their own copies until S4.2. Core 723 tests.
