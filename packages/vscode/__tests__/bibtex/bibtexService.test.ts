@@ -77,3 +77,30 @@ describe('BibTeXService.writePaperArtifacts', () => {
     expect(paths.some(p => p.endsWith('bib.bib'))).toBe(true);
   });
 });
+
+describe('BibTeXService — the bib file line follows the PDF on disk', () => {
+  const bibText = (): string => {
+    const call = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls.find(([uri]: [vscode.Uri]) => uri.fsPath.endsWith('bib.bib'));
+    return Buffer.from(call![1] as Uint8Array).toString('utf8');
+  };
+
+  it('omits the file line when generateBibTeX is told there is no PDF', () => {
+    expect(svc.generateBibTeX(makePaper())).toContain('file = {');
+    expect(svc.generateBibTeX(makePaper(), { includeFile: false })).not.toContain('file =');
+  });
+
+  it('writes the file line only when paper.pdf exists in the folder', async () => {
+    // Default mock stat resolves File, so exists() is true and the line is kept.
+    await svc.writePaperArtifacts('/tmp/papers/test2024', makePaper(), '/src/paper.pdf');
+    expect(bibText()).toContain('file = {');
+
+    // No paper.pdf: stat for it rejects, the metadata sidecar still resolves.
+    (vscode.workspace.fs.writeFile as jest.Mock).mockClear();
+    (vscode.workspace.fs.stat as jest.Mock).mockImplementation(async (uri: vscode.Uri) => {
+      if (uri.fsPath.endsWith('paper.pdf')) { throw new Error('EntryNotFound'); }
+      return { type: vscode.FileType.File };
+    });
+    await svc.writePaperArtifacts('/tmp/papers/test2024', makePaper(), '/src/paper.pdf');
+    expect(bibText()).not.toContain('file =');
+  });
+});

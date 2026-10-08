@@ -1,8 +1,9 @@
 /**
  * Generates the HTML shell of the PDF reader webview: CSP, pdf.js asset preloads, structural containers, the inert JSON boot block and the bundled runtime (dist/reader).
- * All behaviour lives in the bundle built from pdf-viewer/webview/ by build/reader.mjs.
+ * All behaviour lives in the bundle built from @labshelf/reader (src/webview/main.ts) by build/reader.mjs; the body
+ * skeleton is the shared READER_SHELL_BODY, which the browser extension's reader page uses too.
  *
- * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/shared/protocol.ts, @labshelf/core
+ * @depends pdf-viewer/ThemeManager.ts, @labshelf/reader, @labshelf/core
  * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/PdfRenderer.ts (re-export shim), pdf-viewer/renderer/index.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
@@ -12,10 +13,11 @@ import type { PdfTheme } from "@labshelf/core";
 import { ThemeManager } from "../ThemeManager.js";
 import {
   PROTOCOL_VERSION,
+  READER_SHELL_BODY,
   type EffectiveTheme,
   type ReaderBootParams,
   type ReaderPrefs,
-} from "../shared/protocol.js";
+} from "@labshelf/reader";
 
 export interface RenderParams {
   webview: vscode.Webview;
@@ -206,21 +208,7 @@ ${viewerCssUrl ? `<link rel="stylesheet" href="${viewerCssUrl}"/>` : ""}
 <link rel="stylesheet" href="${styleUrl}"/>
 </head>
 <body>
-<div id="app">
-  <aside id="sidebar" aria-label="Sidebar" hidden></aside>
-  <div id="sidebar-resizer" hidden></div>
-  <main id="pdf-shell">
-    <div id="toolbar" role="toolbar" aria-label="Reader"></div>
-    <div id="find-bar" role="search"></div>
-    <div id="viewerContainer" tabindex="0"><div id="viewer" class="pdfViewer"></div></div>
-    <div id="status-pill"></div>
-    <div id="loading-msg">Loading PDF...</div>
-    <div id="error-msg" role="alert" hidden></div>
-  </main>
-</div>
-<div id="selection-toolbar" role="toolbar" aria-label="Selection"></div>
-<div id="hover-popup" role="tooltip"></div>
-<div id="cheatsheet"></div>
+${READER_SHELL_BODY}
 <script id="labshelf-boot" type="application/json">${serializeBoot(boot)}</script>
 <script nonce="${n}" type="module" src="${scriptUrl}"></script>
 </body>

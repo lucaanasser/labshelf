@@ -48,4 +48,27 @@ describe('buildListScript', () => {
   it('directs drag-and-drop import to the sidebar tree in the empty state', () => {
     expect(body).toContain('drop PDF files onto a folder in the LabShelf tree');
   });
+
+  it('has no backslashes outside the embedded icon table', () => {
+    // The script lives in a TypeScript template string; a stray escape there
+    // changes meaning silently.
+    const lines = body.split('\n').filter((line) => line.includes('\\') && !line.includes('const ICON ='));
+    expect(lines).toEqual([]);
+  });
+
+  it('shows text layers and asks the host for OCR', () => {
+    expect(body).toContain("m.type === 'jobs'");
+    expect(body).toContain("post('makeSearchable'");
+    for (const fragment of ['tl-tab', 'tlBanner', 'tlField', 'file-no-text']) {
+      expect(body).toContain(fragment);
+    }
+  });
+
+  it('renders papers saved without a PDF honestly', () => {
+    expect(body).toContain('function hasPdf(p)');
+    expect(body).toContain('file-off');
+    expect(body).toContain('No PDF attached');
+    // textLayerSummary reports "No PDF" instead of a text-layer verdict.
+    expect(body).toContain("'No PDF'");
+  });
 });

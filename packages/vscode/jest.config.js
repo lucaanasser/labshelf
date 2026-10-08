@@ -14,9 +14,6 @@ module.exports = {
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/extension.ts',
-    // DOM-bound reader webview code; its branching logic lives in webview/logic, which is covered.
-    '!src/pdf-viewer/webview/main.ts',
-    '!src/pdf-viewer/webview/ui/**',
   ],
   coverageThreshold: {
     global: {

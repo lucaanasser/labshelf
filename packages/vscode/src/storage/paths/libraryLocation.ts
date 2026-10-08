@@ -1,12 +1,14 @@
 /**
- * Persists, resolves, and sets up the central LabShelf library directory using VS Code globalState.
+ * Persists, resolves, and sets up the central LabShelf library directory using VS Code globalState, mirrored in the
+ * config file shared with the terminal app so both open the same library.
  *
- * @depends storage/fileSystemService
+ * @depends storage/fileSystemService, storage/paths/sharedConfig
  * @dependents extension.ts, storage/index.ts, storage/paths/index.ts
  */
 import * as vscode from "vscode";
 
 import type { FileSystemService } from "../fileSystemService.js";
+import { readSharedLibraryRoot, writeSharedLibraryRoot } from "./sharedConfig.js";
 
 const LIBRARY_ROOT_KEY = "labshelf.libraryRoot";
 
@@ -16,7 +18,8 @@ const LIBRARY_ROOT_KEY = "labshelf.libraryRoot";
  * @returns URI of the library root, or undefined if unset or inaccessible
  */
 export async function resolveLibraryRoot(context: vscode.ExtensionContext): Promise<vscode.Uri | undefined> {
-  const stored = context.globalState.get<string>(LIBRARY_ROOT_KEY);
+  // A library set up in the terminal app first is adopted from the shared config.
+  const stored = context.globalState.get<string>(LIBRARY_ROOT_KEY) ?? (await readSharedLibraryRoot());
   if (!stored) {
     return undefined;
   }
@@ -41,6 +44,20 @@ export async function resolveLibraryRoot(context: vscode.ExtensionContext): Prom
  */
 export async function persistLibraryRoot(context: vscode.ExtensionContext, uri: vscode.Uri): Promise<void> {
   await context.globalState.update(LIBRARY_ROOT_KEY, uri.fsPath);
+  await mirrorLibraryRoot(uri);
+}
+
+/**
+ * Records the library root in the shared config for the terminal app; failures only cost the terminal its default.
+ * @usedBy persistLibraryRoot, extension.ts (activation, for libraries configured before the shared file existed)
+ * @returns void
+ */
+export async function mirrorLibraryRoot(uri: vscode.Uri): Promise<void> {
+  try {
+    await writeSharedLibraryRoot(uri.fsPath);
+  } catch {
+    // Read-only home or similar: VS Code keeps working from globalState.
+  }
 }
 
 /**

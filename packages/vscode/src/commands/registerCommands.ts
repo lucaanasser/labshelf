@@ -7,9 +7,11 @@ import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
 import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
 import type { IResearchDatabase, PaperRecord, PaperStatus, BatchImportResult } from "@labshelf/core";
+import { isSafeExternalUrl } from "@labshelf/reader";
 import { fetchMetadataForPaper, offerMetadataFetch, resolveMissingMetadata } from "./fetchMetadata.js";
 import { announceImport, importWithProgress } from "./importProgress.js";
 import { queueTextLayers } from "./textLayerQueue.js";
+import type { ReindexSummary } from "../storage/data/reindexLibrary.js";
 
 const LOG_MODULE = "commands/registerCommands";
 
@@ -20,6 +22,9 @@ export type ActiveServices = {
   annotationManager: AnnotationManager;
   database: IResearchDatabase;
   paperDataStore: PaperDataStore;
+  // Rebuilds the index from disk and emits the resulting paper events. Bound in
+  // extension.ts over the live database, indexer and event bus.
+  reindexLibrary: () => Promise<ReindexSummary>;
 };
 
 export type RequireServices = () => Promise<ActiveServices | null>;
@@ -49,13 +54,16 @@ export function registerCommands(
         await runBatchImport(services.paperService, services.logger, selected);
       });
     }),
-    vscode.commands.registerCommand("labshelf.makeSearchable", async () => {
+    // Called with paper ids from the list panel, or with nothing from the palette.
+    vscode.commands.registerCommand("labshelf.makeSearchable", async (target?: string | string[]) => {
       const services = await requireServices();
       if (!services) { return; }
       await executeSafely(services.logger, "labshelf.makeSearchable", async () => {
-        const paper = await pickPaper(services.paperService, "Make a scanned paper searchable (OCR)");
-        if (paper) {
-          await queueTextLayers(services.paperService, [paper], { logger: services.logger, announceAll: true });
+        const papers = target !== undefined
+          ? await papersByIds(services.paperService, Array.isArray(target) ? target : [target])
+          : [await pickPaper(services.paperService, "Make a scanned paper searchable (OCR)")].filter(isPaper);
+        if (papers.length > 0) {
+          await queueTextLayers(services.paperService, papers, { logger: services.logger, announceAll: true });
         }
       });
     }),
@@ -63,10 +71,12 @@ export function registerCommands(
       const services = await requireServices();
       if (!services) { return; }
       await executeSafely(services.logger, "labshelf.makeLibrarySearchable", async () => {
-        // Papers that already have text are skipped in a fraction of a second each.
-        const papers = await services.paperService.listPapers();
+        // Papers that already have text are skipped in a fraction of a second
+        // each; papers saved without a PDF have nothing to read and are left out.
+        const papers = (await services.paperService.listPapers()).filter((p) => p.hasPdf !== false);
         await queueTextLayers(services.paperService, papers, { logger: services.logger });
-        void vscode.window.showInformationMessage("LabShelf: finished checking the library for scanned papers.");
+        const checked = await services.paperService.listPapers();
+        void vscode.window.showInformationMessage(`LabShelf: ${describeLibraryTextLayers(checked)}`);
       });
     }),
     vscode.commands.registerCommand("labshelf.openPaper", async () => {
@@ -101,7 +111,13 @@ export function registerCommands(
       const services = await requireServices();
       if (!services) { return; }
       await executeSafely(services.logger, "labshelf.rebuildIndex", async () => {
-        await vscode.window.showInformationMessage("Rebuild Index is wired for the next iteration.");
+        const summary = await services.reindexLibrary();
+        const changed = summary.added.length + summary.updated.length;
+        void vscode.window.showInformationMessage(
+          changed > 0
+            ? `LabShelf: index rebuilt — ${summary.added.length} added, ${summary.updated.length} updated.`
+            : "LabShelf: index rebuilt; nothing changed.",
+        );
       });
     }),
     vscode.commands.registerCommand("labshelf.openSidebar", async () => {
@@ -112,7 +128,7 @@ export function registerCommands(
       if (!services) { return; }
       await executeSafely(services.logger, "labshelf.openPaperPdfExternal", async () => {
         const paper = await resolvePaper(services.paperService, paperId, "Open paper PDF in default viewer");
-        if (paper) {
+        if (paper && await ensurePaperPdf(services, paper)) {
           await openPaperPdfExternal(paper);
         }
       });
@@ -191,6 +207,41 @@ export function registerCommands(
   );
 }
 
+/**
+ * Guards every "open the PDF" entry point. When the paper has no paper.pdf it
+ * reconciles the possibly stale flag, warns the user immediately (the VS Code
+ * form of the "instant popup" asked for), offers the article page when a DOI or
+ * URL is known, and returns false so the caller opens nothing.
+ * @usedBy extension (labshelf.openPdfViewer), registerCommands (labshelf.openPaperPdfExternal)
+ * @returns true when the PDF is present and the reader may open
+ */
+export async function ensurePaperPdf(services: ActiveServices, paper: PaperRecord): Promise<boolean> {
+  const reconciled = await services.paperService.reconcilePdf(paper.id);
+  const current = reconciled?.paper ?? paper;
+  const hasPdf = reconciled ? reconciled.hasPdf : paper.hasPdf !== false;
+  if (hasPdf) {
+    return true;
+  }
+  await services.logger.log("INFO", LOG_MODULE, "Paper has no PDF; reader not opened", { paperId: current.id });
+  const link = articleLink(current);
+  const choice = await vscode.window.showWarningMessage(
+    `LabShelf: "${current.title}" has no PDF yet.`,
+    ...(link ? ["Open Link"] : []),
+  );
+  if (choice === "Open Link" && link) {
+    await vscode.env.openExternal(vscode.Uri.parse(link));
+  }
+  return false;
+}
+
+// The article's own page: its DOI resolver first, else a stored http(s) URL.
+// Only safe web schemes are offered, so a hand-edited record cannot smuggle a
+// file: or command: link into an openExternal call.
+function articleLink(paper: PaperRecord): string | undefined {
+  const candidate = paper.doi ? `https://doi.org/${paper.doi}` : paper.url;
+  return candidate && isSafeExternalUrl(candidate) ? candidate : undefined;
+}
+
 /** Returns the paper matching paperId if given, or presents a quick-pick for the user to choose from. @usedBy extension (labshelf.openPdfViewer, labshelf.exportAnnotations). @returns the paper, or undefined when cancelled or the library is empty */
 export async function resolvePaper(
   paperService: PaperService,
@@ -233,6 +284,30 @@ async function pickFrom(papers: PaperRecord[], placeholder: string): Promise<Pap
   }));
   const picked = await vscode.window.showQuickPick(items, { placeHolder: placeholder, matchOnDescription: true });
   return picked?.paper;
+}
+
+// Resolves ids from a webview message to papers, dropping any that no longer exist.
+async function papersByIds(paperService: PaperService, ids: string[]): Promise<PaperRecord[]> {
+  const wanted = new Set(ids);
+  return (await paperService.listPapers()).filter((paper) => wanted.has(paper.id));
+}
+
+function isPaper(value: PaperRecord | undefined): value is PaperRecord {
+  return value !== undefined;
+}
+
+/**
+ * Summarizes the text layers across the library after a library-wide pass.
+ * @usedBy commands/registerCommands.ts (labshelf.makeLibrarySearchable)
+ * @returns e.g. "Library checked: 12 with text, 2 made searchable by OCR, 1 without text."
+ */
+export function describeLibraryTextLayers(papers: PaperRecord[]): string {
+  const count = (state: string): number => papers.filter((paper) => paper.textLayer?.state === state).length;
+  const parts = [`${count("native")} with text`];
+  if (count("ocr") > 0) { parts.push(`${count("ocr")} made searchable by OCR`); }
+  const without = count("missing") + count("failed");
+  if (without > 0) { parts.push(`${without} without text (see the "No text" filter)`); }
+  return `Library checked: ${parts.join(", ")}.`;
 }
 
 // Capitalizes the first letter of a paper status string for display.

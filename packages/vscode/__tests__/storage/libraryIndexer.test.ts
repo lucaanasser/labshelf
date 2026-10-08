@@ -142,3 +142,75 @@ describe('LibraryIndexer', () => {
     expect(await indexer.rebuild()).toEqual({ papers: 0, annotations: 0 });
   });
 });
+
+describe('LibraryIndexer — fields that only live in metadata.yaml', () => {
+  it('restores the abstract, keywords and text layer verdict', async () => {
+    const paths = new LibraryPaths(vscode.Uri.file('/lib'));
+    const fs = makeFakeFs({
+      files: {
+        '/lib/papers/scan/metadata.yaml': [
+          'title: Efficient Algorithms',
+          'summary: We show many graph search problems can be solved efficiently.',
+          'keywords: [graph search, geometry, 42]',
+          'textLayer: { state: ocr, ocrPages: 17, checkedAt: "2026-10-07T12:00:00.000Z" }',
+        ].join('\n'),
+        '/lib/papers/bad/metadata.yaml': 'title: Bad\ntextLayer: { state: scanned }\nkeywords: nope\n',
+      },
+      dirs: {
+        '/lib/papers': [['scan', D], ['bad', D]],
+        '/lib/papers/scan': [['metadata.yaml', F]],
+        '/lib/papers/bad': [['metadata.yaml', F]],
+      },
+    });
+    const db = new InMemoryResearchDatabase();
+    await db.initialize();
+
+    await new LibraryIndexer(paths, fs, db, new PaperDataStore(paths.researchRoot(), fs)).rebuild();
+    const byId = new Map((await db.listPapers()).map((paper) => [paper.id, paper]));
+
+    expect(byId.get('scan')).toMatchObject({
+      summary: 'We show many graph search problems can be solved efficiently.',
+      keywords: ['graph search', 'geometry'],
+      textLayer: { state: 'ocr', ocrPages: 17, checkedAt: '2026-10-07T12:00:00.000Z' },
+    });
+    expect(byId.get('bad')).not.toHaveProperty('textLayer');
+    expect(byId.get('bad')).not.toHaveProperty('keywords');
+  });
+});
+
+describe('LibraryIndexer — hasPdf derived from the folder listing', () => {
+  const SYMLINK = vscode.FileType.SymbolicLink;
+
+  function fsWith(entries: Array<[string, number]>): { paths: LibraryPaths; fs: FileSystemService; db: InMemoryResearchDatabase } {
+    const paths = new LibraryPaths(vscode.Uri.file('/lib'));
+    const fs = makeFakeFs({
+      files: { '/lib/papers/p/metadata.yaml': 'title: P\n' },
+      dirs: { '/lib/papers': [['p', D]], '/lib/papers/p': entries as Array<[string, vscode.FileType]> },
+    });
+    return { paths, fs, db: new InMemoryResearchDatabase() };
+  }
+
+  it.each([
+    ['a real PDF beside metadata', [['metadata.yaml', F], ['paper.pdf', F]], true],
+    ['a symlink to a PDF (File|SymbolicLink bit)', [['metadata.yaml', F], ['paper.pdf', F | SYMLINK]], true],
+    ['only metadata and bib', [['metadata.yaml', F], ['bib.bib', F]], false],
+    ['a directory named paper.pdf', [['metadata.yaml', F], ['paper.pdf', D]], false],
+  ])('sets hasPdf for %s', async (_name, entries, expected) => {
+    const { paths, fs, db } = fsWith(entries as Array<[string, number]>);
+    await db.initialize();
+    await new LibraryIndexer(paths, fs, db, new PaperDataStore(paths.researchRoot(), fs)).rebuild();
+    expect((await db.listPapers())[0]!.hasPdf).toBe(expected);
+  });
+
+  it('derives the flag from the listing walk already made, with no extra directory or stat call', async () => {
+    const { paths, fs, db } = fsWith([['metadata.yaml', F], ['paper.pdf', F]]);
+    await db.initialize();
+    (vscode.workspace.fs.stat as jest.Mock).mockClear();
+    const readDirectory = fs.readDirectory as unknown as jest.Mock;
+    readDirectory.mockClear();
+    await new LibraryIndexer(paths, fs, db, new PaperDataStore(paths.researchRoot(), fs)).rebuild();
+    // papers/ and the one paper folder — the PDF presence reuses that listing.
+    expect(readDirectory).toHaveBeenCalledTimes(2);
+    expect(vscode.workspace.fs.stat).not.toHaveBeenCalled();
+  });
+});

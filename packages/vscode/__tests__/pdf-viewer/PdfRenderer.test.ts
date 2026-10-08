@@ -9,7 +9,7 @@ import {
   serializeBoot,
 } from '../../src/pdf-viewer/renderer/PdfRenderer';
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
-import { DEFAULT_READER_PREFS } from '../../src/pdf-viewer/shared/protocol';
+import { DEFAULT_READER_PREFS } from '@labshelf/reader';
 
 const vscode = require('vscode');
 

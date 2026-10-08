@@ -4,7 +4,7 @@
  * pdf.mjs can parse PDFs inside the extension host.
  *
  * @depends pdfjs-dist, @labshelf/core, pdf/pdfjsNodeEnvironment.ts
- * @dependents extension.ts
+ * @dependents extension.ts, pdf/tesseractOcrEngine.ts
  */
 import type { PdfDocumentLike, PdfDocumentOpener } from "@labshelf/core";
 
@@ -16,17 +16,38 @@ const PLATFORM_BY_OS: Record<string, string> = {
   win32: "Win32",
 };
 
+/**
+ * Loads pdfjs ready to parse inside the extension host: polyfills installed and
+ * the worker registered in-process. Every caller that opens a PDF must come
+ * through here — the first one to run cannot rely on another having done it.
+ * @usedBy pdf/nodePdfOpener.ts, pdf/tesseractOcrEngine.ts
+ * @returns the pdfjs module
+ */
+export async function loadPdfjs(): Promise<Record<string, unknown>> {
+  return sharedOpener.prepare();
+}
+
 export class NodePdfOpener implements PdfDocumentOpener {
+  /**
+   * Installs the polyfills, imports pdfjs, and registers its worker in-process.
+   * @usedBy pdf/nodePdfOpener.ts (open, loadPdfjs)
+   * @returns the pdfjs module
+   */
+  async prepare(): Promise<Record<string, unknown>> {
+    this.ensurePdfGlobals();
+    const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as Record<string, unknown>;
+    this.patchPdfjsFeatureTest(pdfjs);
+    await this.ensurePdfWorker(pdfjs);
+    return pdfjs;
+  }
+
   /**
    * Loads pdfjs and returns a parsed document for the given bytes.
    * @usedBy extension.ts (constructor injection into PdfImportParser)
    * @returns PdfDocumentLike
    */
   async open(pdfBytes: Uint8Array): Promise<PdfDocumentLike> {
-    this.ensurePdfGlobals();
-    const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as Record<string, unknown>;
-    this.patchPdfjsFeatureTest(pdfjs);
-    await this.ensurePdfWorker(pdfjs);
+    const pdfjs = await this.prepare();
     // pdfjs takes ownership of `data` and detaches the caller's buffer, which
     // would silently leave importers with a zero-length array to write to disk.
     // Hand it a private copy so the caller's bytes stay readable afterwards.
@@ -127,6 +148,8 @@ export class NodePdfOpener implements PdfDocumentOpener {
     }
   }
 }
+
+const sharedOpener = new NodePdfOpener();
 
 interface PdfLoadingTask {
   promise: Promise<PdfDocumentLike>;

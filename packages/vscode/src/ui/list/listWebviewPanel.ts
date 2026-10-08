@@ -1,21 +1,40 @@
 /**
  * Manages the central editor tab that browses the library: any folder opens here, with breadcrumb and subfolder navigation, search, and paper organization, next to an inline detail sidebar.
  *
- * @depends ui/list/template.ts, ui/library/folderNavigation.ts, ui/library/collectionFolders.ts, core/paperService.ts, @labshelf/core
+ * @depends ui/list/template.ts, ui/list/citationFormats.ts, ui/tabIcon.ts, ui/library/folderNavigation.ts, ui/library/collectionFolders.ts, core/paperService.ts, @labshelf/core
  * @dependents ui/list/index.ts, extension.ts
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { isUnderDir } from '@labshelf/core';
 import type { PaperService } from '../../core/paperService.js';
-import type { ExtensionEventBus, PaperRecord } from '@labshelf/core';
+import type { TextLayerJob } from '../../commands/textLayerQueue.js';
+import type { Annotation, ExtensionEventBus, PaperRecord } from '@labshelf/core';
 import { listAllCollectionFolders, readCollectionFolders } from '../library/collectionFolders.js';
 import { buildListState, rootNode } from '../library/folderNavigation.js';
-import type { LibraryNode } from '../library/folderNavigation.js';
+import type { LibraryNode, PaperStats } from '../library/folderNavigation.js';
+import { formatCitations } from './citationFormats.js';
 import { buildListPanelHtml } from './template.js';
+import { labshelfTabIcon } from '../tabIcon.js';
 
 const RELOAD_DEBOUNCE_MS = 60;
 const PAPER_EVENTS = ['paper:added', 'paper:updated', 'paper:deleted'] as const;
+// Annotations change the counts on the rows; closing the reader moves "last read".
+const SIDECAR_EVENTS = ['annotation:created', 'annotation:updated', 'annotation:deleted', 'pdf:viewer:closed'] as const;
+const CITE_FORMATS = ['key', 'bibtex', 'apa', 'mla', 'chicago', 'inText'] as const;
+type CiteFormat = (typeof CITE_FORMATS)[number];
+
+/** The slice of a paper's reader sidecar the panel reads. */
+export interface PaperSidecar {
+  annotations: Annotation[];
+  reading?: { page: number; updatedAt: string };
+}
+
+/** A paper whose content resembles another's, by the AI index. */
+export interface SimilarPaper {
+  paperId: string;
+  score: number;
+}
 
 export interface ListPanelDeps {
   extensionUri: vscode.Uri;
@@ -25,6 +44,15 @@ export interface ListPanelDeps {
   getPapersRoot: () => string | null;
   /** Called whenever the panel shows a different folder, so the sidebar tree can follow. */
   onDidNavigate?: (folder: LibraryNode) => void;
+  /** Papers waiting for or undergoing OCR, shown on their rows while it runs. */
+  textLayerJobs?: {
+    current: () => TextLayerJob[];
+    onDidChange: (listener: (jobs: TextLayerJob[]) => void) => vscode.Disposable;
+  };
+  /** Reads a paper's reader sidecar (annotations, reading position). Without it the panel shows no annotations. */
+  loadSidecar?: (paperId: string) => Promise<PaperSidecar>;
+  /** Papers with similar content, when the AI index is running. */
+  findSimilar?: (paper: PaperRecord) => Promise<SimilarPaper[]>;
 }
 
 export class ListWebviewPanel {
@@ -40,6 +68,13 @@ export class ListWebviewPanel {
   private _lastNotified: string | undefined;
   private _reloadTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly _onPaperEvent = (): void => this._scheduleReload();
+  private readonly _onSidecarEvent = (payload: unknown): void => {
+    const paperId = (payload as { paperId?: unknown } | undefined)?.paperId;
+    if (this._webviewReady && !this._disposed) {
+      void this._panel.webview.postMessage({ type: 'sidecarChanged', paperId: typeof paperId === 'string' ? paperId : null });
+    }
+    this._scheduleReload();
+  };
 
   /**
    * Reveals the existing list panel if one is open, or creates a new one, and navigates it to the given folder (papers/ when omitted).
@@ -63,6 +98,7 @@ export class ListWebviewPanel {
         localResourceRoots: [deps.extensionUri],
       },
     );
+    panel.iconPath = labshelfTabIcon(deps.extensionUri);
 
     ListWebviewPanel.currentPanel = new ListWebviewPanel(panel, deps, folder);
   }
@@ -86,6 +122,19 @@ export class ListWebviewPanel {
     for (const event of PAPER_EVENTS) {
       deps.eventBus.on(event, this._onPaperEvent);
     }
+    for (const event of SIDECAR_EVENTS) {
+      deps.eventBus.on(event, this._onSidecarEvent);
+    }
+    // Job updates arrive every page or two; they patch the rows without
+    // re-reading the index.
+    if (deps.textLayerJobs) {
+      this._disposables.push(deps.textLayerJobs.onDidChange((jobs) => void this._postJobs(jobs)));
+    }
+  }
+
+  private async _postJobs(jobs: TextLayerJob[]): Promise<void> {
+    if (!this._webviewReady || this._disposed) { return; }
+    await this._panel.webview.postMessage({ type: 'jobs', jobs });
   }
 
   /**
@@ -168,14 +217,123 @@ export class ListWebviewPanel {
       // A failed index read keeps the panel usable and empty rather than broken.
     }
     const subfolders = await readCollectionFolders(folder.dirPath);
+    const stats = await this._readStats(papers);
     if (seq !== this._loadSeq) { return; }
 
     this._folder = folder;
     this._panel.title = folder.isRoot ? 'LabShelf' : folder.label;
-    await this._panel.webview.postMessage(buildListState(papers, folder, root, subfolders, path.sep));
+    await this._panel.webview.postMessage({
+      ...buildListState(papers, folder, root, subfolders, path.sep),
+      ...(stats ? { stats } : {}),
+    });
+    if (this._deps.textLayerJobs) { await this._postJobs(this._deps.textLayerJobs.current()); }
     if (this._lastNotified !== folder.dirPath) {
       this._lastNotified = folder.dirPath;
       this._deps.onDidNavigate?.(folder);
+    }
+  }
+
+  // Annotation counts and last reading position for every paper, from the reader sidecars.
+  private async _readStats(papers: PaperRecord[]): Promise<Record<string, PaperStats> | undefined> {
+    const load = this._deps.loadSidecar;
+    if (!load) { return undefined; }
+    const stats: Record<string, PaperStats> = {};
+    await Promise.all(papers.map(async (paper) => {
+      try {
+        const data = await load(paper.id);
+        stats[paper.id] = {
+          annotations: data.annotations.length,
+          ...(data.reading ? { lastPage: data.reading.page, lastRead: data.reading.updatedAt } : {}),
+        };
+      } catch {
+        // An unreadable sidecar only costs that row its counts.
+      }
+    }));
+    return stats;
+  }
+
+  // Everything the detail pane shows beyond the record: annotations, reading position, the file, citations.
+  private async _postExtras(paperId: string): Promise<void> {
+    const paper = await this._findPaper(paperId);
+    if (!paper || this._disposed) { return; }
+    let sidecar: PaperSidecar = { annotations: [] };
+    try {
+      if (this._deps.loadSidecar) { sidecar = await this._deps.loadSidecar(paperId); }
+    } catch {
+      // shown as "no annotations"
+    }
+    let pdfSize: number | null = null;
+    if (paper.hasPdf !== false) {
+      try {
+        pdfSize = (await vscode.workspace.fs.stat(vscode.Uri.file(path.join(paper.path, 'paper.pdf')))).size;
+      } catch {
+        // missing on this device
+      }
+    }
+    const root = this._deps.getPapersRoot();
+    const annotations = [...sidecar.annotations].sort((a, b) =>
+      a.pageNumber - b.pageNumber || (a.position?.y ?? 0) - (b.position?.y ?? 0) || a.createdAt.localeCompare(b.createdAt));
+    await this._panel.webview.postMessage({
+      type: 'extras',
+      paperId,
+      annotations: annotations.map((a) => ({ id: a.id, type: a.type, page: a.pageNumber, content: a.content, color: a.color ?? null, createdAt: a.createdAt })),
+      reading: sidecar.reading ? { page: sidecar.reading.page, updatedAt: sidecar.reading.updatedAt } : null,
+      pdf: pdfSize === null ? null : { size: pdfSize, relPath: root ? path.relative(root, path.join(paper.path, 'paper.pdf')) : 'paper.pdf' },
+      bibtex: this._deps.paperService.bibtexFor(paper),
+      cite: formatCitations(paper),
+    });
+  }
+
+  private async _postSimilar(paperId: string): Promise<void> {
+    const find = this._deps.findSimilar;
+    const paper = find ? await this._findPaper(paperId) : undefined;
+    if (!find || !paper) { return; }
+    let items: SimilarPaper[] = [];
+    try {
+      items = (await find(paper)).filter((item) => item.paperId !== paperId);
+    } catch {
+      // The AI index is optional; Related falls back to metadata.
+    }
+    if (!this._disposed) { await this._panel.webview.postMessage({ type: 'similar', paperId, items }); }
+  }
+
+  private async _copyCitations(ids: string[], format: CiteFormat): Promise<void> {
+    const all = await this._deps.paperService.listPapers();
+    const papers = ids.map((id) => all.find((p) => p.id === id)).filter((p): p is PaperRecord => !!p);
+    if (papers.length === 0) { return; }
+    const text = format === 'key' ? papers.map((p) => p.citeKey).join(',')
+      : format === 'bibtex' ? papers.map((p) => this._deps.paperService.bibtexFor(p)).join('\n\n')
+      : papers.map((p) => formatCitations(p)[format]).join('\n');
+    await vscode.env.clipboard.writeText(text);
+    const label = { key: 'cite key', bibtex: 'BibTeX', apa: 'APA reference', mla: 'MLA reference', chicago: 'Chicago reference', inText: 'in-text citation' }[format];
+    vscode.window.setStatusBarMessage(`LabShelf: copied ${papers.length === 1 ? label : `${papers.length} × ${label}`}`, 2500);
+  }
+
+  private async _setTags(ids: string[], add: string[], remove: string[]): Promise<void> {
+    const drop = new Set(remove.map((t) => t.toLowerCase()));
+    const all = await this._deps.paperService.listPapers();
+    for (const id of ids) {
+      const paper = all.find((p) => p.id === id);
+      if (!paper) { continue; }
+      const tags = (paper.tags ?? []).filter((t) => !drop.has(t.toLowerCase())).concat(add);
+      await this._deps.paperService.updatePaperFields(id, { tags });
+    }
+  }
+
+  private async _deletePapers(ids: string[]): Promise<void> {
+    const all = await this._deps.paperService.listPapers();
+    const papers = ids.map((id) => all.find((p) => p.id === id)).filter((p): p is PaperRecord => !!p);
+    if (papers.length === 0) { return; }
+    const what = papers.length === 1 ? `"${papers[0]!.title}"` : `${papers.length} papers`;
+    const choice = await vscode.window.showWarningMessage(
+      `Remove ${what} from library?`,
+      { modal: true },
+      'Remove only',
+      'Remove + delete files',
+    );
+    if (!choice) { return; }
+    for (const paper of papers) {
+      await this._deps.paperService.deletePaper(paper.id, choice === 'Remove + delete files');
     }
   }
 
@@ -208,8 +366,13 @@ export class ListWebviewPanel {
       }
       case 'openPdf': {
         if (paperId) {
-          await vscode.commands.executeCommand('labshelf.openPdfViewer', paperId);
+          const page = msg['page'];
+          await vscode.commands.executeCommand('labshelf.openPdfViewer', paperId, ...(typeof page === 'number' && page > 0 ? [page] : []));
         }
+        break;
+      }
+      case 'openPdfExternal': {
+        if (paperId) { await vscode.commands.executeCommand('labshelf.openPaperPdfExternal', paperId); }
         break;
       }
       case 'openFolder': {
@@ -220,11 +383,21 @@ export class ListWebviewPanel {
         break;
       }
       case 'copyCitation': {
-        const paper = await this._findPaper(paperId);
-        if (paper) {
-          await vscode.env.clipboard.writeText(paper.citeKey);
-          vscode.window.showInformationMessage(`Copied: ${paper.citeKey}`);
+        const format = (CITE_FORMATS as readonly string[]).includes(msg['format'] as string) ? msg['format'] as CiteFormat : 'key';
+        await this._copyCitations(paperId ? [paperId] : toIds(msg['paperIds']), format);
+        break;
+      }
+      case 'copyText': {
+        const text = msg['text'];
+        if (typeof text === 'string' && text) {
+          await vscode.env.clipboard.writeText(text);
+          vscode.window.setStatusBarMessage(`LabShelf: copied ${typeof msg['label'] === 'string' ? msg['label'] : 'text'}`, 2500);
         }
+        break;
+      }
+      case 'openExternal': {
+        const url = msg['url'];
+        if (typeof url === 'string' && /^https?:\/\//i.test(url)) { await vscode.env.openExternal(vscode.Uri.parse(url)); }
         break;
       }
       case 'updateStatus': {
@@ -234,18 +407,35 @@ export class ListWebviewPanel {
         }
         break;
       }
+      case 'setTags': {
+        const strings = (v: unknown): string[] => toIds(v).map((t) => t.trim()).filter(Boolean);
+        const ids = paperId ? [paperId] : toIds(msg['paperIds']);
+        if (ids.length > 0) { await this._setTags(ids, strings(msg['add']), strings(msg['remove'])); }
+        break;
+      }
+      case 'setNote': {
+        const note = msg['note'];
+        if (paperId && typeof note === 'string') { await this._deps.paperService.updatePaperFields(paperId, { note }); }
+        break;
+      }
       case 'deletePaper': {
-        if (!paperId) { break; }
-        const paper = await this._findPaper(paperId);
-        if (!paper) { break; }
-        const choice = await vscode.window.showWarningMessage(
-          `Remove "${paper.title}" from library?`,
-          { modal: true },
-          'Remove only',
-          'Remove + delete files',
-        );
-        if (!choice) { break; }
-        await this._deps.paperService.deletePaper(paperId, choice === 'Remove + delete files');
+        await this._deletePapers(paperId ? [paperId] : toIds(msg['paperIds']));
+        break;
+      }
+      case 'paperExtras': {
+        if (paperId) { await this._postExtras(paperId); }
+        break;
+      }
+      case 'findSimilar': {
+        if (paperId) { await this._postSimilar(paperId); }
+        break;
+      }
+      case 'exportAnnotations': {
+        if (paperId) { await vscode.commands.executeCommand('labshelf.exportAnnotations', paperId); }
+        break;
+      }
+      case 'fetchMetadata': {
+        if (paperId) { await vscode.commands.executeCommand('labshelf.fetchMetadata', paperId); }
         break;
       }
       case 'addPaper': {
@@ -260,6 +450,11 @@ export class ListWebviewPanel {
       case 'movePapers': {
         const target = this._safeDir(msg['targetDir']);
         if (target) { await this._movePapers(toIds(msg['paperIds']), target); }
+        break;
+      }
+      case 'makeSearchable': {
+        const ids = paperId ? [paperId] : toIds(msg['paperIds']);
+        if (ids.length > 0) { await vscode.commands.executeCommand('labshelf.makeSearchable', ids); }
         break;
       }
       case 'pickMoveTarget': {
@@ -314,6 +509,9 @@ export class ListWebviewPanel {
     if (this._reloadTimer) { clearTimeout(this._reloadTimer); }
     for (const event of PAPER_EVENTS) {
       this._deps.eventBus.off(event, this._onPaperEvent);
+    }
+    for (const event of SIDECAR_EVENTS) {
+      this._deps.eventBus.off(event, this._onSidecarEvent);
     }
     this._panel.dispose();
     while (this._disposables.length) { this._disposables.pop()?.dispose(); }

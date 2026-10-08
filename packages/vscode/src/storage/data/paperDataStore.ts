@@ -1,26 +1,24 @@
 /**
  * Owns the per-paper sidecar JSON (.research/papers/<id>/data.json), the authoritative source for annotations, theme preferences and the reading position.
  *
- * @depends @labshelf/core, storage/fileSystemService, pdf-viewer/shared/readingState.ts
+ * @depends @labshelf/core, @labshelf/reader (sidecar format), storage/fileSystemService
  * @dependents extension.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, storage/data/index.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts, storage/index.ts, commands/registerCommands.ts (types only)
  */
 import * as vscode from "vscode";
 import { randomUUID } from "crypto";
 
 import type { Annotation, PdfTheme } from "@labshelf/core";
+import {
+  emptyPaperData as emptyData,
+  normalizePaperData as normalize,
+  serializePaperData,
+  type PaperData,
+  type ReadingState,
+} from "@labshelf/reader";
 import { FileSystemService } from "../fileSystemService.js";
-import { normalizeReadingState, type ReadingState } from "../../pdf-viewer/shared/readingState.js";
 
-export interface PaperData {
-  annotations: Annotation[];
-  theme: PdfTheme;
-  /** Last reading position; absent until the paper has been opened in the reader. */
-  reading?: ReadingState;
-}
-
-function emptyData(): PaperData {
-  return { annotations: [], theme: "auto" };
-}
+// The sidecar format is shared with the browser extension, which keeps the same file at IndexedDB appdata/<id>/data.json.
+export type { PaperData };
 
 /**
  * Read/write accessor for a paper's sidecar JSON, the single source of truth for its annotations and theme.
@@ -83,12 +81,7 @@ export class PaperDataStore {
    */
   async save(paperId: string, data: PaperData): Promise<void> {
     await this.fsService.ensureDirectory(this.dataDir(paperId));
-    const payload: PaperData = {
-      annotations: data.annotations,
-      theme: data.theme,
-    };
-    if (data.reading) { payload.reading = data.reading; }
-    await this.fsService.writeText(this.dataPath(paperId), JSON.stringify(payload, null, 2));
+    await this.fsService.writeText(this.dataPath(paperId), serializePaperData(data));
   }
 
   /**
@@ -223,24 +216,4 @@ export class PaperDataStore {
   async getReadingState(paperId: string): Promise<ReadingState | null> {
     return (await this.load(paperId)).reading ?? null;
   }
-}
-
-const VALID_THEMES: PdfTheme[] = ["auto", "light", "dark", "sepia", "high-contrast"];
-
-// Defensive normalization so a corrupt sidecar never throws.
-function normalize(parsed: unknown): PaperData {
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return emptyData();
-  }
-  const obj = parsed as Record<string, unknown>;
-  const annotations = Array.isArray(obj.annotations)
-    ? (obj.annotations.filter(
-        (a) => a && typeof a === "object" && typeof (a as Annotation).id === "string",
-      ) as Annotation[])
-    : [];
-  const theme = VALID_THEMES.includes(obj.theme as PdfTheme) ? (obj.theme as PdfTheme) : "auto";
-  const data: PaperData = { annotations, theme };
-  const reading = normalizeReadingState(obj.reading);
-  if (reading) { data.reading = reading; }
-  return data;
 }

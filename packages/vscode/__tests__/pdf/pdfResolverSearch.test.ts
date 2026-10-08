@@ -36,6 +36,18 @@ describe('searchOnlineByText', () => {
     expect(await searchOnlineByText(FRONT_MATTER)).toBeUndefined();
   });
 
+  it('rejects a short title that is missing one of its words from the page', async () => {
+    // Three of the four words appear together; "critical" does not.
+    const page = [
+      'From fitness landscapes to seascapes: non-equilibrium dynamics of selection and adaptation',
+      'Ville Mustonen and Michael Lassig. Evolution is a quest for innovation. Organisms adapt to changing',
+      'natural selection by evolving new phenotypes. Can we read this dynamics in their genomes?',
+    ].join(' ');
+    mockCrossRef([{ title: 'Non equilibrium critical dynamics', DOI: '10.1017/cbo9781139046213.011' }]);
+
+    expect(await searchOnlineByText(page)).toBeUndefined();
+  });
+
   it('prefers the title printed first over a fuller record found later in the page', async () => {
     mockCrossRef([
       { title: 'Basic operations for breadth first search on a graph', DOI: '10.1000/later', abstract: 'x'.repeat(200) },

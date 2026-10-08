@@ -275,7 +275,13 @@
     "viewsWelcome": [
       {
         "view": "labshelf.library",
-        "contents": "No folders yet.\n[New folder](command:labshelf.newFolder)\nYou can also drag PDFs here."
+        "contents": "Loading your library…",
+        "when": "!labshelf.libraryLoaded"
+      },
+      {
+        "view": "labshelf.library",
+        "contents": "No folders yet.\n[New folder](command:labshelf.newFolder)\nYou can also drag PDFs here.",
+        "when": "labshelf.libraryLoaded"
       },
       {
         "view": "labshelf.settings",
@@ -385,7 +391,7 @@
         "labshelf.ocr.makeSearchable": {
           "type": "boolean",
           "default": true,
-          "description": "After importing a scanned paper, read every page and add an invisible text layer so the PDF can be searched (Ctrl+F) and its text selected. The pages themselves are not altered. Runs in the background; requires labshelf.ocr.enabled."
+          "description": "After importing a scanned paper, read every page and add an invisible text layer so the PDF can be searched (Ctrl+F) and its text selected. The pages themselves are not altered. Runs in the background; requires labshelf.ocr.enabled. When off, scans are still detected and flagged in the library, and can be made searchable from the paper's details."
         },
         "labshelf.ocr.maxPages": {
           "type": "number",
@@ -460,8 +466,8 @@
         },
         "labshelf.reader.openBeside": {
           "type": "boolean",
-          "default": true,
-          "description": "Open the reader beside the current editor. Disable to open it in the active editor group."
+          "default": false,
+          "description": "Open the reader beside the current editor (split view). When disabled, the reader opens full-width in the active editor group."
         }
       }
     },
@@ -535,7 +541,7 @@
     "watch": "tsc -watch -p ./",
     "watch:webview": "node build/reader.mjs --watch",
     "typecheck": "tsc --noEmit -p ./ && pnpm run typecheck:webview",
-    "typecheck:webview": "tsc --noEmit -p src/pdf-viewer/webview/tsconfig.json",
+    "typecheck:webview": "pnpm --filter @labshelf/reader typecheck",
     "vscode:prepublish": "pnpm run build:host && node build/reader.mjs --production",
     "lint": "eslint . --ext .ts",
     "test": "jest",
@@ -551,6 +557,7 @@
   "dependencies": {
     "@labshelf/ai": "workspace:*",
     "@labshelf/core": "workspace:*",
+    "@labshelf/reader": "workspace:*",
     "@napi-rs/canvas": "^1.0.9",
     "@thednp/dommatrix": "^3.0.4",
     "pdf-lib": "^1.17.1",

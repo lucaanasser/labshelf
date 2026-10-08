@@ -223,6 +223,26 @@ describe('titleFromPlainText', () => {
     expect(titleFromPlainText(ocr)).toBe('Attention Is All You Need');
   });
 
+  it('reads a title split by OCR symbol soup above names joined by "and"', () => {
+    // OCR of the first page of a scanned Trends in Genetics paper.
+    const ocr = [
+      '-.',
+      'From fitness landscapes to seascapes:',
+      '[| | [_] [| -',
+      'non-equilibrium dynamics of selection',
+      'and adaptation',
+      'Ville Mustonen and Michael Lassig',
+      'Institut flr Theoretische Physik, Universitat zu Kéln, ZllpicherstraRe 77, 50937 Koln, Germany',
+    ].join('\n');
+
+    expect(titleFromPlainText(ocr)).toBe('From fitness landscapes to seascapes: non-equilibrium dynamics of selection and adaptation');
+  });
+
+  it('does not take a Title Case title with lowercase function words for a byline', () => {
+    const ocr = ['Selection Dynamics in Evolving Populations', 'Ann Lee and Bo Chen'].join('\n');
+    expect(titleFromPlainText(ocr)).toBe('Selection Dynamics in Evolving Populations');
+  });
+
   it('returns undefined when no byline confirms a candidate', () => {
     const ocr = [
       'This document describes the internal procedures of the laboratory',

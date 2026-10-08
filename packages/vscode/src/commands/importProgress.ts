@@ -32,7 +32,9 @@ export async function importWithProgress(
   const result = await runImport(paperService, uris, targetParentDir);
   // Scanned papers gain their text layer after they appear in the library:
   // reading every page can take a minute, which is too long to hold an import.
-  void queueTextLayers(paperService, result.success, { logger });
+  // With automatic OCR off they are still checked, so the list can flag them.
+  const autoOcr = vscode.workspace.getConfiguration("labshelf").get<boolean>("ocr.makeSearchable", true);
+  void queueTextLayers(paperService, result.success, { logger, mode: autoOcr ? "ocr" : "check" });
   return result;
 }
 

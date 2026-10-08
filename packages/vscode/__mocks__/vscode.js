@@ -245,6 +245,36 @@ class DataTransfer {
   [Symbol.iterator]() { return this._map.entries(); }
 }
 
+// ─── File system watchers / RelativePattern ───────────────────────────────────
+
+class RelativePattern {
+  constructor(base, pattern) { this.base = base; this.pattern = pattern; }
+}
+
+// Every watcher created, so tests can fire file events: `_fileWatchers[0]._fire('change', Uri.file(...))`.
+const _fileWatchers = [];
+workspace.createFileSystemWatcher = jest.fn((pattern) => {
+  const listeners = { create: [], change: [], delete: [] };
+  const on = (kind) => (cb) => { listeners[kind].push(cb); return { dispose: () => {} }; };
+  const watcher = {
+    pattern,
+    onDidCreate: on('create'),
+    onDidChange: on('change'),
+    onDidDelete: on('delete'),
+    dispose: jest.fn(),
+    _fire: (kind, uri) => listeners[kind].forEach((cb) => cb(uri)),
+  };
+  _fileWatchers.push(watcher);
+  return watcher;
+});
+
+// ─── Status bar ───────────────────────────────────────────────────────────────
+
+const StatusBarAlignment = { Left: 1, Right: 2 };
+window.createStatusBarItem = jest.fn(() => ({
+  text: '', tooltip: '', command: undefined, show: jest.fn(), hide: jest.fn(), dispose: jest.fn(),
+}));
+
 // ─── CancellationToken ────────────────────────────────────────────────────────
 
 const CancellationToken = { None: { isCancellationRequested: false } };
@@ -265,6 +295,9 @@ module.exports = {
   DataTransferItem,
   CancellationToken,
   ColorThemeKind,
+  RelativePattern,
+  StatusBarAlignment,
+  _fileWatchers,
   ViewColumn: { One: 1, Two: 2, Active: -1, Beside: -2 },
   WebviewPanel: class {},
   makeWebviewPanel,

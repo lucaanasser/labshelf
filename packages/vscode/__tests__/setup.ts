@@ -9,6 +9,11 @@ if (typeof (globalThis as { crypto?: unknown }).crypto === "undefined") {
   Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 }
 
+// The shared LabShelf config (~/.config/labshelf/config.json) is per user; tests must never read or write the real one.
+process.env["XDG_CONFIG_HOME"] = require("node:fs").mkdtempSync(
+  require("node:path").join(require("node:os").tmpdir(), "labshelf-config-"),
+);
+
 beforeAll(() => {
   // Initialize test environment
 });

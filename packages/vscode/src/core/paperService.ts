@@ -14,6 +14,7 @@ import {
   BibTeXService,
   FolderService,
   isUnderDir,
+  parsePaperMetadata,
 } from "@labshelf/core";
 import type {
   PaperRecord,
@@ -21,6 +22,7 @@ import type {
   IResearchDatabase,
   ResolvedMetadata,
   ParsedPdfImport,
+  TextLayerInfo,
 } from "@labshelf/core";
 import { FileSystemService } from "../storage/fileSystemService.js";
 import type { ILibraryPaths } from "../storage/paths/libraryPaths.js";
@@ -30,7 +32,8 @@ import type { PdfTextLayerBuilder, TextLayerHooks, TextLayerOutcome } from "../p
 export type MakeSearchableResult =
   | { status: "added"; paper: PaperRecord; pagesAdded: number; pagesFailed: number }
   | { status: "not-needed" | "cancelled" }
-  | { status: "unavailable"; reason: string };
+  // skipped: needs OCR but was deliberately not read; unavailable: OCR failed.
+  | { status: "skipped" | "unavailable"; reason: string };
 
 /** One step of a batch import, reported just before the file is processed. */
 export interface ImportProgress {
@@ -38,6 +41,13 @@ export interface ImportProgress {
   index: number;
   total: number;
   fileName: string;
+}
+
+/** The fields of a paper the user edits by hand; absent keys are left as they are. */
+export interface PaperFieldsPatch {
+  status?: PaperRecord["status"];
+  tags?: string[];
+  note?: string;
 }
 
 export interface PaperMoveResult {
@@ -53,7 +63,7 @@ export class PaperService {
     private readonly paths: ILibraryPaths,
     private readonly pdfImportParser: PdfImportParser,
     private readonly bibTeXService: BibTeXService,
-    // Absent when OCR is turned off; scanned papers then stay as imported.
+    // Classifies PDFs and, when OCR is on, gives scans a text layer.
     private readonly textLayerBuilder?: PdfTextLayerBuilder,
   ) {}
 
@@ -89,6 +99,8 @@ export class PaperService {
       path: targetFolder.fsPath,
       citeKey: paperId,
       status: "unread",
+      // The PDF was just written above, so this import always has one.
+      hasPdf: true,
       ...(parsed.authors?.length ? { authors: parsed.authors } : {}),
       ...(parsed.year ? { year: parsed.year } : {}),
       ...(parsed.summary ? { summary: parsed.summary } : {}),
@@ -144,7 +156,7 @@ export class PaperService {
     };
 
     await this.database.upsertPaper(updated);
-    await this.bibTeXService.writePaperArtifacts(updated.path, updated, `${updated.path}${path.sep}paper.pdf`);
+    await this.writeArtifacts(updated);
     this.eventBus.emit(EVENTS.PAPER_UPDATED, updated);
     return updated;
   }
@@ -186,39 +198,170 @@ export class PaperService {
 
   /**
    * Gives a scanned paper a text layer so it can be searched and selected, and
-   * replaces paper.pdf with the result; emits PAPER_UPDATED so the text is
-   * re-indexed. Papers that already have text are left untouched.
+   * replaces paper.pdf with the result. Whatever happens, the verdict is
+   * recorded on the paper (textLayer) so the library can show it; papers that
+   * already have text are only marked as such.
    * @usedBy commands/textLayerQueue.ts
    * @returns what was done, or why nothing could be
    */
   async makeSearchable(paperId: string, hooks?: TextLayerHooks): Promise<MakeSearchableResult> {
     if (!this.textLayerBuilder) {
-      return { status: "unavailable", reason: "OCR is turned off (labshelf.ocr.enabled / labshelf.ocr.makeSearchable)" };
+      return { status: "unavailable", reason: "text layer support is not available" };
     }
-    const paper = (await this.database.listPapers()).find((entry) => entry.id === paperId);
+    const paper = await this._findPaper(paperId);
     if (!paper) {
       return { status: "unavailable", reason: "paper not found" };
     }
+    // A paper saved without a PDF has nothing to read: skip quietly instead of
+    // letting the read throw and recording a bogus "failed" verdict.
+    if (!(await this._pdfExists(paper))) {
+      return { status: "skipped", reason: "it has no PDF" };
+    }
 
-    const pdfUri = vscode.Uri.file(path.join(paper.path, "paper.pdf"));
     let outcome: TextLayerOutcome;
     try {
-      outcome = await this.textLayerBuilder.build(await vscode.workspace.fs.readFile(pdfUri), hooks);
+      outcome = await this.textLayerBuilder.build(await this._readPdf(paper), hooks);
     } catch (error) {
-      return { status: "unavailable", reason: error instanceof Error ? error.message : String(error) };
+      outcome = { status: "unavailable", reason: describeError(error) };
     }
+
     if (outcome.status !== "added") {
+      await this.recordTextLayer(paperId, verdictFor(outcome));
       return outcome;
     }
 
+    // Reading a scan takes the better part of a minute, in which the paper may
+    // have been moved or removed; the file goes wherever it is now.
+    const current = await this._findPaper(paperId);
+    if (!current) {
+      return { status: "unavailable", reason: "the paper was removed while it was being read" };
+    }
+    const pdfUri = vscode.Uri.file(path.join(current.path, "paper.pdf"));
     // Written beside the original and renamed over it, so an interrupted write
     // can never leave the library with half a paper.
-    const pendingUri = vscode.Uri.file(path.join(paper.path, "paper.searchable.tmp"));
+    const pendingUri = vscode.Uri.file(path.join(current.path, "paper.searchable.tmp"));
     await vscode.workspace.fs.writeFile(pendingUri, outcome.bytes);
     await vscode.workspace.fs.rename(pendingUri, pdfUri, { overwrite: true });
 
-    this.eventBus.emit(EVENTS.PAPER_UPDATED, paper);
-    return { status: "added", paper, pagesAdded: outcome.pagesAdded, pagesFailed: outcome.pagesFailed };
+    const updated = await this.recordTextLayer(paperId, verdictFor(outcome), { force: true });
+    return { status: "added", paper: updated ?? current, pagesAdded: outcome.pagesAdded, pagesFailed: outcome.pagesFailed };
+  }
+
+  /**
+   * Records whether a paper's PDF has text of its own, without reading any page
+   * optically. Used to label papers imported before text layers were tracked.
+   * @usedBy commands/textLayerQueue.ts
+   * @returns the updated paper, or undefined when it is unknown or could not be checked
+   */
+  async checkTextLayer(paperId: string): Promise<PaperRecord | undefined> {
+    const paper = await this._findPaper(paperId);
+    if (!this.textLayerBuilder || !paper) {
+      return undefined;
+    }
+    // Nothing on disk to classify: leave the record untouched (no verdict, no
+    // metadata.yaml rewrite, no event) so PDF-less papers stay clean.
+    if (!(await this._pdfExists(paper))) {
+      return paper;
+    }
+    let verdict: TextLayerInfo;
+    try {
+      const detection = await this.textLayerBuilder.detect(await this._readPdf(paper));
+      verdict =
+        detection.status === "missing" ? { state: "missing", checkedAt: now() }
+        : detection.status === "unavailable" ? { state: "failed", reason: detection.reason, checkedAt: now() }
+        : { state: detection.status, checkedAt: now() };
+    } catch (error) {
+      verdict = { state: "failed", reason: describeError(error), checkedAt: now() };
+    }
+    return this.recordTextLayer(paperId, verdict);
+  }
+
+  // Stores a verdict on the freshest copy of the record, so a status change or
+  // move made while a page was being read is not undone. An unchanged verdict
+  // is not rewritten, which keeps a library-wide check from touching every file.
+  private async recordTextLayer(
+    paperId: string,
+    verdict: TextLayerInfo,
+    options: { force?: boolean } = {},
+  ): Promise<PaperRecord | undefined> {
+    const current = await this._findPaper(paperId);
+    if (!current) {
+      return undefined;
+    }
+    if (!options.force && (sameVerdict(current.textLayer, verdict) || keepsOcrDetail(current.textLayer, verdict))) {
+      return current;
+    }
+    const updated: PaperRecord = { ...current, textLayer: verdict };
+    await this.database.upsertPaper(updated);
+    await this.writeArtifacts(updated);
+    this.eventBus.emit(EVENTS.PAPER_UPDATED, updated);
+    return updated;
+  }
+
+  // Rewrites metadata.yaml and the .bib file. Tags and the note belong to whoever set them: a rewrite that does not
+  // set them leaves the file's own copy, which a sync may have changed since the index was built.
+  // The reading status, too, belongs to whoever set it: a rewrite that does not (a text-layer verdict, resolved
+  // metadata) keeps the file's own status, which the terminal app or a sync may have changed after the index was built.
+  private async writeArtifacts(
+    paper: PaperRecord,
+    owned: Pick<PaperRecord, "tags" | "note"> = {},
+    options: { ownsStatus?: boolean } = {},
+  ): Promise<void> {
+    const { tags: _tags, note: _note, ...rest } = paper;
+    const status = options.ownsStatus ? paper.status : (await this._statusOnDisk(paper)) ?? paper.status;
+    await this.bibTeXService.writePaperArtifacts(paper.path, { ...rest, status, ...owned }, `${paper.path}${path.sep}paper.pdf`);
+  }
+
+  private async _statusOnDisk(paper: PaperRecord): Promise<PaperRecord["status"] | undefined> {
+    try {
+      const status = parsePaperMetadata(await this.fsService.readText(vscode.Uri.file(path.join(paper.path, "metadata.yaml"))))?.["status"];
+      return status === "unread" || status === "reading" || status === "done" ? status : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async _findPaper(paperId: string): Promise<PaperRecord | undefined> {
+    return (await this.database.listPapers()).find((entry) => entry.id === paperId);
+  }
+
+  private async _readPdf(paper: PaperRecord): Promise<Uint8Array> {
+    return vscode.workspace.fs.readFile(vscode.Uri.file(path.join(paper.path, "paper.pdf")));
+  }
+
+  // Authoritative presence check at action time. Uses vscode.workspace.fs
+  // directly (as _expandToPdfs does): FileSystemService.exists also reports
+  // true for a directory, and the test double has no exists. FileType is a bit
+  // flag, so a symlink to a file reports File|SymbolicLink — test the bit.
+  private async _pdfExists(paper: PaperRecord): Promise<boolean> {
+    try {
+      const stat = await vscode.workspace.fs.stat(vscode.Uri.file(path.join(paper.path, "paper.pdf")));
+      return (stat.type & vscode.FileType.File) !== 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Re-checks whether a paper's PDF is on disk and, when the stored flag is
+   * stale, corrects it and emits PAPER_UPDATED. hasPdf is derived, so this only
+   * touches the index — never metadata.yaml.
+   * @usedBy commands/registerCommands.ts (ensurePaperPdf), extension.ts (post-sync)
+   * @returns the current record and its real hasPdf, or undefined when unknown
+   */
+  async reconcilePdf(paperId: string): Promise<{ paper: PaperRecord; hasPdf: boolean } | undefined> {
+    const current = await this._findPaper(paperId);
+    if (!current) {
+      return undefined;
+    }
+    const hasPdf = await this._pdfExists(current);
+    if (current.hasPdf === hasPdf) {
+      return { paper: current, hasPdf };
+    }
+    const updated: PaperRecord = { ...current, hasPdf };
+    await this.database.upsertPaper(updated);
+    this.eventBus.emit(EVENTS.PAPER_UPDATED, updated);
+    return { paper: updated, hasPdf };
   }
 
   /**
@@ -247,25 +390,58 @@ export class PaperService {
    */
   async resolvePdfUri(paperId: string): Promise<vscode.Uri | null> {
     const paper = (await this.database.listPapers()).find((p) => p.id === paperId);
-    return paper ? vscode.Uri.file(path.join(paper.path, "paper.pdf")) : null;
+    // A paper saved without a PDF has no file to resolve, so the AI indexer and
+    // other readers skip it silently instead of failing on a missing file.
+    if (!paper || paper.hasPdf === false || !(await this._pdfExists(paper))) {
+      return null;
+    }
+    return vscode.Uri.file(path.join(paper.path, "paper.pdf"));
   }
 
   /**
    * Updates the read-status of one paper and emits PAPER_UPDATED; returns undefined if not found.
-   * @usedBy ui/list/listWebviewPanel.ts
+   * @usedBy commands/registerCommands.ts
    * @returns updated PaperRecord or undefined
    */
   async updatePaperStatus(paperId: string, status: PaperRecord["status"]): Promise<PaperRecord | undefined> {
-    const papers = await this.database.listPapers();
-    const current = papers.find((paper) => paper.id === paperId);
+    return this.updatePaperFields(paperId, { status });
+  }
+
+  /**
+   * Changes the fields the user owns (reading status, tags, note) in the index and in metadata.yaml, which the index is
+   * rebuilt from on every activation, and emits PAPER_UPDATED. An unchanged patch writes nothing.
+   * @usedBy ui/list/listWebviewPanel.ts
+   * @returns updated PaperRecord, or undefined when the paper is unknown
+   */
+  async updatePaperFields(paperId: string, patch: PaperFieldsPatch): Promise<PaperRecord | undefined> {
+    const current = await this._findPaper(paperId);
     if (!current) {
       return undefined;
     }
+    const owned: Pick<PaperRecord, "tags" | "note"> = {};
+    if (patch.tags !== undefined) { owned.tags = normalizeTags(patch.tags); }
+    if (patch.note !== undefined) { owned.note = patch.note; }
 
-    const next: PaperRecord = { ...current, status };
+    const next: PaperRecord = { ...current, ...(patch.status ? { status: patch.status } : {}), ...owned };
+    const changed = next.status !== current.status
+      || (owned.tags !== undefined && owned.tags.join("\n") !== (current.tags ?? []).join("\n"))
+      || (owned.note !== undefined && owned.note !== (current.note ?? ""));
+    if (!changed) {
+      return current;
+    }
     await this.database.upsertPaper(next);
+    await this.writeArtifacts(next, owned, { ownsStatus: patch.status !== undefined });
     this.eventBus.emit(EVENTS.PAPER_UPDATED, next);
     return next;
+  }
+
+  /**
+   * The BibTeX entry of a paper, as written to its folder but without the local `file` line.
+   * @usedBy ui/list/listWebviewPanel.ts
+   * @returns the entry text
+   */
+  bibtexFor(paper: PaperRecord): string {
+    return this.bibTeXService.generateBibTeX(paper, { includeFile: false });
   }
 
   /**
@@ -451,11 +627,68 @@ export class PaperService {
   async regenerateBibTeX(): Promise<number> {
     const papers = await this.database.listPapers();
     for (const paper of papers) {
-      await this.bibTeXService.writePaperArtifacts(paper.path, paper, `${paper.path}/paper.pdf`);
+      await this.writeArtifacts(paper);
     }
 
     return papers.length;
   }
+}
+
+// Trimmed, de-duplicated (case-insensitively, first spelling wins) and in the order given.
+function normalizeTags(tags: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of tags) {
+    const tag = raw.trim().replace(/\s+/g, " ");
+    const key = tag.toLowerCase();
+    if (tag && !seen.has(key)) {
+      seen.add(key);
+      out.push(tag);
+    }
+  }
+  return out;
+}
+
+// Turns a text-layer job's outcome into the verdict shown in the library.
+function verdictFor(outcome: TextLayerOutcome): TextLayerInfo {
+  const checkedAt = now();
+  switch (outcome.status) {
+    case "added":
+      return {
+        state: "ocr",
+        ocrPages: outcome.pagesAdded,
+        ...(outcome.pagesFailed > 0 ? { failedPages: outcome.pagesFailed } : {}),
+        checkedAt,
+      };
+    case "not-needed":
+      return { state: outcome.layer, checkedAt };
+    case "cancelled":
+      return { state: "missing", reason: "OCR was cancelled", checkedAt };
+    case "skipped":
+      return { state: "missing", reason: outcome.reason, checkedAt };
+    case "unavailable":
+      return { state: "failed", reason: outcome.reason, checkedAt };
+  }
+}
+
+// Re-checking a paper LabShelf read itself finds text — an OCR layer at best,
+// native-looking text at worst — and knows less than the record does (how
+// many pages were read). The record wins.
+function keepsOcrDetail(current: TextLayerInfo | undefined, next: TextLayerInfo): boolean {
+  return current?.state === "ocr" && (next.state === "ocr" || next.state === "native") && next.ocrPages === undefined;
+}
+
+function sameVerdict(a: TextLayerInfo | undefined, b: TextLayerInfo): boolean {
+  return Boolean(a) && a!.state === b.state && a!.reason === b.reason
+    && a!.ocrPages === b.ocrPages && a!.failedPages === b.failedPages;
+}
+
+function now(): string {
+  return new Date().toISOString();
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 // A record is worth reviewing when no registry confirmed it: the title and

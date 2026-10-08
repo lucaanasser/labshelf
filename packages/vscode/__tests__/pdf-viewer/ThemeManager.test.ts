@@ -1,6 +1,6 @@
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { PDF_VIEWER_CONFIG } from '../../src/pdf-viewer/config';
-import { THEME_PRESETS, presetFor, toPageColors } from '../../src/pdf-viewer/shared/themePresets';
+import { THEME_PRESETS, presetFor, toPageColors } from '@labshelf/reader';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 

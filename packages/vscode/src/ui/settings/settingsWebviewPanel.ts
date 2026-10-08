@@ -3,11 +3,12 @@
  * Drive connection state, and delegates every action back to the commands and callbacks
  * owned by the composition root.
  *
- * @depends sync/adapter/syncController.ts
+ * @depends sync/adapter/syncController.ts, ui/tabIcon.ts
  * @dependents ui/settings/index.ts, extension.ts
  */
 import * as vscode from "vscode";
 import type { SyncController } from "../../sync/adapter/syncController.js";
+import { labshelfTabIcon } from "../tabIcon.js";
 
 export interface SettingsPanelOptions {
   /** Current library root, or null while no library is configured. */
@@ -50,6 +51,7 @@ export class SettingsWebviewPanel {
         localResourceRoots: [extensionUri],
       },
     );
+    panel.iconPath = labshelfTabIcon(extensionUri);
 
     SettingsWebviewPanel.currentPanel = new SettingsWebviewPanel(panel, options);
   }

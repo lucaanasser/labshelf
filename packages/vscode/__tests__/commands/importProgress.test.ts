@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 import type { BatchImportResult, PaperRecord } from '@labshelf/core';
 import { announceImport, describeResult, describeStep, importWithProgress } from '../../src/commands/importProgress';
 import type { ImportProgress, PaperService } from '../../src/core/paperService';
+import { queueTextLayers } from '../../src/commands/textLayerQueue';
 
 const paper = (title: string): PaperRecord => ({ id: title, title, path: `/lib/${title}`, citeKey: title, status: 'unread' });
 const result = (overrides: Partial<BatchImportResult>): BatchImportResult => ({
@@ -84,5 +85,35 @@ describe('describeResult / announceImport', () => {
 
     announceImport(result({ success: [paper('A')] }));
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('LabShelf: Added "A"');
+  });
+});
+
+describe('importWithProgress — text layers after import', () => {
+  const config = (vscode.workspace as unknown as { _config: Record<string, Record<string, unknown>> })._config;
+  afterEach(() => { delete config['labshelf']; });
+
+  async function importOne(): Promise<{ makeSearchable: jest.Mock; checkTextLayer: jest.Mock }> {
+    const service = {
+      addPapersFromUris: jest.fn(async () => result({ success: [paper('Scan')] })),
+      makeSearchable: jest.fn(async () => ({ status: 'not-needed' })),
+      checkTextLayer: jest.fn(async () => undefined),
+    };
+    await importWithProgress(service as unknown as PaperService, [vscode.Uri.file('/docs/scan.pdf')]);
+    // Queueing nothing returns the queue's tail: everything queued so far is done.
+    await queueTextLayers(service as unknown as PaperService, []);
+    return service;
+  }
+
+  it('makes each imported paper searchable by default', async () => {
+    const service = await importOne();
+    expect(service.makeSearchable).toHaveBeenCalledWith('Scan', expect.any(Object));
+    expect(service.checkTextLayer).not.toHaveBeenCalled();
+  });
+
+  it('only checks it when automatic OCR is turned off', async () => {
+    config['labshelf'] = { 'ocr.makeSearchable': false };
+    const service = await importOne();
+    expect(service.checkTextLayer).toHaveBeenCalledWith('Scan');
+    expect(service.makeSearchable).not.toHaveBeenCalled();
   });
 });

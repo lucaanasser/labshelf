@@ -78,4 +78,13 @@ describe('buildListState', () => {
     expect(state.papers.find((p) => p.id === 'p4')?.relFolder).toBe('');
     expect(state.papers.find((p) => p.id === 'p2')?.relFolder).toBe('A / B');
   });
+
+  it('carries hasPdf through to each ListPaper so the row can render it honestly', () => {
+    const withPdf = { ...paper('p1', `${ROOT}/A`), hasPdf: true } as unknown as PaperRecord;
+    const without = { ...paper('p2', `${ROOT}/A`), hasPdf: false } as unknown as PaperRecord;
+    const state = buildListState([withPdf, without], { label: 'A', dirPath: `${ROOT}/A` }, ROOT, [], '/');
+    const byId = new Map(state.papers.map((p) => [p.id, p]));
+    expect(byId.get('p1')!.hasPdf).toBe(true);
+    expect(byId.get('p2')!.hasPdf).toBe(false);
+  });
 });

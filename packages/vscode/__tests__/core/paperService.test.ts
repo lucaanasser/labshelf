@@ -25,11 +25,16 @@ function makeService(overrides: {
   parsedPdf?: any;
   fsStatResult?: (uri: vscode.Uri) => { type: number };
   fsReadDir?: (uri: vscode.Uri) => [string, number][];
-  textLayerBuilder?: { build: jest.Mock };
+  textLayerBuilder?: { build?: jest.Mock; detect?: jest.Mock };
 } = {}): PaperService {
+  // Upserts land in the list, so a later read sees them as the real index would.
+  const rows: any[] = overrides.dbPapers ?? [];
   const mockDb: Partial<IResearchDatabase> = {
-    upsertPaper: jest.fn(async () => {}),
-    listPapers: jest.fn(async () => overrides.dbPapers ?? []),
+    upsertPaper: jest.fn(async (paper: any) => {
+      const at = rows.findIndex((row) => row.id === paper.id);
+      if (at === -1) { rows.push(paper); } else { rows[at] = paper; }
+    }),
+    listPapers: jest.fn(async () => rows.map((row) => ({ ...row }))),
     deletePaper: jest.fn(async () => {}),
     appendLog: jest.fn(async () => {}),
   };
@@ -75,7 +80,7 @@ function makeService(overrides: {
     mockPaths as ILibraryPaths,
     mockParser as PdfImportParser,
     mockBibTeX as BibTeXService,
-    overrides.textLayerBuilder,
+    overrides.textLayerBuilder as any,
   );
 }
 
@@ -98,6 +103,8 @@ describe('PaperService.addPaperFromUri', () => {
 
     expect(paper.title).toBe('Test Paper');
     expect(paper.status).toBe('unread');
+    // The PDF was just written into the library, so the import carries one.
+    expect(paper.hasPdf).toBe(true);
 
     const bus = (svc as any).eventBus;
     expect(bus.emit).toHaveBeenCalledWith('paper:added', expect.objectContaining({ title: 'Test Paper' }));
@@ -312,16 +319,17 @@ describe('PaperService.resolvePdfUri', () => {
 });
 
 describe('PaperService.makeSearchable', () => {
-  const stored = { id: 'scan1986', title: 'A Scan', path: '/workspace/papers/scan1986', citeKey: 'scan1986', status: 'unread' };
+  const stored = () => ({ id: 'scan1986', title: 'A Scan', path: '/workspace/papers/scan1986', citeKey: 'scan1986', status: 'unread' });
+  const verdictOf = (svc: PaperService) => (svc as any).database.upsertPaper.mock.calls.at(-1)?.[0]?.textLayer;
 
   beforeEach(() => {
     (vscode.workspace.fs.readFile as jest.Mock).mockImplementation(async () => new Uint8Array([1, 2, 3]));
   });
 
-  it('replaces paper.pdf through a temporary file and announces the update', async () => {
+  it('replaces paper.pdf through a temporary file and records the OCR verdict', async () => {
     const bytes = new Uint8Array([9, 9]);
-    const builder = { build: jest.fn(async () => ({ status: 'added', bytes, pagesAdded: 17, pagesFailed: 0 })) };
-    const svc = makeService({ dbPapers: [stored], textLayerBuilder: builder });
+    const builder = { build: jest.fn(async () => ({ status: 'added', bytes, pagesAdded: 17, pagesFailed: 1 })) };
+    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: builder });
 
     const result = await svc.makeSearchable('scan1986');
 
@@ -331,24 +339,158 @@ describe('PaperService.makeSearchable', () => {
     expect(written).toBe(bytes);
     const [from, to, options] = (vscode.workspace.fs.rename as jest.Mock).mock.calls[0];
     expect([from.fsPath, to.fsPath, options]).toEqual([pending.fsPath, '/workspace/papers/scan1986/paper.pdf', { overwrite: true }]);
-    expect((svc as any).eventBus.emit).toHaveBeenCalledWith('paper:updated', stored);
+
+    expect(verdictOf(svc)).toMatchObject({ state: 'ocr', ocrPages: 17, failedPages: 1 });
+    // The verdict lives in metadata.yaml too, or the next start would lose it.
+    const [folder, written2] = (svc as any).bibTeXService.writePaperArtifacts.mock.calls[0];
+    expect([folder, written2.textLayer.state]).toEqual(['/workspace/papers/scan1986', 'ocr']);
+    expect((svc as any).eventBus.emit).toHaveBeenCalledTimes(1);
+    expect((svc as any).eventBus.emit).toHaveBeenCalledWith('paper:updated', expect.objectContaining({ textLayer: expect.objectContaining({ state: 'ocr' }) }));
   });
 
-  it.each(['not-needed', 'cancelled'])('leaves the file alone when the outcome is %s', async (status) => {
-    const svc = makeService({ dbPapers: [stored], textLayerBuilder: { build: jest.fn(async () => ({ status })) } });
+  it('writes to where the paper is now and keeps changes made while it was being read', async () => {
+    const rows: any[] = [stored()];
+    const builder = {
+      build: jest.fn(async () => {
+        // The user moved the paper and started reading it during OCR.
+        rows[0] = { ...rows[0], path: '/workspace/papers/Moved/scan1986', status: 'reading' };
+        return { status: 'added', bytes: new Uint8Array([1]), pagesAdded: 2, pagesFailed: 0 };
+      }),
+    };
+    const svc = makeService({ dbPapers: rows, textLayerBuilder: builder });
 
-    expect(await svc.makeSearchable('scan1986')).toEqual({ status });
+    await svc.makeSearchable('scan1986');
+
+    expect((vscode.workspace.fs.rename as jest.Mock).mock.calls[0][1].fsPath).toBe('/workspace/papers/Moved/scan1986/paper.pdf');
+    expect(rows[0]).toMatchObject({ status: 'reading', path: '/workspace/papers/Moved/scan1986', textLayer: { state: 'ocr' } });
+  });
+
+  it.each([
+    [{ status: 'not-needed', layer: 'native' }, { state: 'native' }],
+    [{ status: 'not-needed', layer: 'ocr' }, { state: 'ocr' }],
+    [{ status: 'cancelled' }, { state: 'missing', reason: 'OCR was cancelled' }],
+    [{ status: 'skipped', reason: 'OCR is turned off' }, { state: 'missing', reason: 'OCR is turned off' }],
+    [{ status: 'unavailable', reason: 'no canvas' }, { state: 'failed', reason: 'no canvas' }],
+  ])('leaves the file alone and records the verdict for %j', async (outcome, verdict) => {
+    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: { build: jest.fn(async () => outcome) } });
+
+    expect(await svc.makeSearchable('scan1986')).toEqual(outcome);
     expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+    expect(verdictOf(svc)).toMatchObject(verdict);
+    expect(verdictOf(svc).checkedAt).toEqual(expect.any(String));
+  });
+
+  it('does not rewrite a paper whose verdict has not changed', async () => {
+    const paper = { ...stored(), textLayer: { state: 'native', checkedAt: '2026-01-01T00:00:00.000Z' } };
+    const svc = makeService({ dbPapers: [paper], textLayerBuilder: { build: jest.fn(async () => ({ status: 'not-needed', layer: 'native' })) } });
+
+    await svc.makeSearchable('scan1986');
+
+    expect((svc as any).database.upsertPaper).not.toHaveBeenCalled();
+    expect((svc as any).bibTeXService.writePaperArtifacts).not.toHaveBeenCalled();
     expect((svc as any).eventBus.emit).not.toHaveBeenCalled();
   });
 
-  it('reports why nothing happened when OCR is off, the paper is unknown, or the builder throws', async () => {
-    expect(await makeService({ dbPapers: [stored] }).makeSearchable('scan1986')).toMatchObject({ status: 'unavailable' });
+  it('records a builder crash as failed, and reports an unknown paper or a missing builder', async () => {
+    expect(await makeService({ dbPapers: [stored()] }).makeSearchable('scan1986')).toMatchObject({ status: 'unavailable' });
 
     const builder = { build: jest.fn(async () => { throw new Error('boom'); }) };
-    const svc = makeService({ dbPapers: [stored], textLayerBuilder: builder });
+    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: builder });
     expect(await svc.makeSearchable('missing')).toEqual({ status: 'unavailable', reason: 'paper not found' });
     expect(await svc.makeSearchable('scan1986')).toEqual({ status: 'unavailable', reason: 'boom' });
+    expect(verdictOf(svc)).toMatchObject({ state: 'failed', reason: 'boom' });
     expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+  });
+});
+
+describe('PaperService.checkTextLayer', () => {
+  const stored = (extra: Record<string, unknown> = {}) => ({ id: 'p1', title: 'P', path: '/workspace/papers/p1', citeKey: 'p1', status: 'unread', ...extra });
+
+  beforeEach(() => {
+    (vscode.workspace.fs.readFile as jest.Mock).mockImplementation(async () => new Uint8Array([1]));
+  });
+
+  it.each([
+    [{ status: 'native' }, { state: 'native' }],
+    [{ status: 'missing', textlessPages: 17, totalPages: 17 }, { state: 'missing' }],
+    [{ status: 'unavailable', reason: 'could not be opened' }, { state: 'failed', reason: 'could not be opened' }],
+  ])('records %j without reading any page optically', async (detection, verdict) => {
+    const builder = { build: jest.fn(), detect: jest.fn(async () => detection) };
+    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: builder });
+
+    const updated = await svc.checkTextLayer('p1');
+
+    expect(updated?.textLayer).toMatchObject(verdict);
+    expect(builder.build).not.toHaveBeenCalled();
+  });
+
+  it.each(['native', 'ocr'])('keeps the page counts of a paper LabShelf read when a re-check finds %s text', async (status) => {
+    const paper = stored({ textLayer: { state: 'ocr', ocrPages: 3, checkedAt: 'x' } });
+    const svc = makeService({ dbPapers: [paper], textLayerBuilder: { detect: jest.fn(async () => ({ status })) } });
+
+    expect((await svc.checkTextLayer('p1'))?.textLayer).toEqual({ state: 'ocr', ocrPages: 3, checkedAt: 'x' });
+    expect((svc as any).database.upsertPaper).not.toHaveBeenCalled();
+  });
+
+  it('labels a scan read by another OCR tool as ocr', async () => {
+    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: { detect: jest.fn(async () => ({ status: 'ocr' })) } });
+    expect((await svc.checkTextLayer('p1'))?.textLayer?.state).toBe('ocr');
+  });
+
+  it('returns undefined for an unknown paper or without a builder', async () => {
+    expect(await makeService({ dbPapers: [stored()] }).checkTextLayer('p1')).toBeUndefined();
+    expect(await makeService({ textLayerBuilder: { detect: jest.fn() } }).checkTextLayer('p1')).toBeUndefined();
+  });
+});
+
+describe('PaperService — papers saved without a PDF', () => {
+  const stored = (extra: Record<string, unknown> = {}) => ({ id: 'p1', title: 'P', path: '/workspace/papers/p1', citeKey: 'p1', status: 'unread', ...extra });
+  // stat throws exactly as vscode.workspace.fs does for a file that is not there.
+  const noPdf = { fsStatResult: () => { throw new Error('EntryNotFound (FileSystemError): /workspace/papers/p1/paper.pdf'); } };
+
+  it('checkTextLayer returns the paper untouched and never classifies it', async () => {
+    const detect = jest.fn();
+    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: { detect }, ...noPdf });
+
+    const result = await svc.checkTextLayer('p1');
+
+    expect(result).toMatchObject({ id: 'p1' });
+    expect(result).not.toHaveProperty('textLayer');
+    expect(detect).not.toHaveBeenCalled();
+    expect((svc as any).database.upsertPaper).not.toHaveBeenCalled();
+    expect((svc as any).bibTeXService.writePaperArtifacts).not.toHaveBeenCalled();
+    expect((svc as any).eventBus.emit).not.toHaveBeenCalled();
+  });
+
+  it('makeSearchable skips with "it has no PDF" and records nothing', async () => {
+    const build = jest.fn();
+    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: { build }, ...noPdf });
+
+    expect(await svc.makeSearchable('p1')).toEqual({ status: 'skipped', reason: 'it has no PDF' });
+    expect(build).not.toHaveBeenCalled();
+    expect((svc as any).database.upsertPaper).not.toHaveBeenCalled();
+    expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+  });
+
+  it('resolvePdfUri is null when the flag says so, and when the file is not there', async () => {
+    expect(await makeService({ dbPapers: [stored({ hasPdf: false })] }).resolvePdfUri('p1')).toBeNull();
+    expect(await makeService({ dbPapers: [stored()], ...noPdf }).resolvePdfUri('p1')).toBeNull();
+  });
+
+  it('reconcilePdf corrects a stale flag and emits, but only on a change', async () => {
+    // Stored false, file is actually present (default stat = File): flips to true.
+    const appeared = makeService({ dbPapers: [stored({ hasPdf: false })] });
+    expect(await appeared.reconcilePdf('p1')).toEqual({ paper: expect.objectContaining({ hasPdf: true }), hasPdf: true });
+    expect((appeared as any).database.upsertPaper).toHaveBeenCalledTimes(1);
+    expect((appeared as any).eventBus.emit).toHaveBeenCalledWith('paper:updated', expect.objectContaining({ hasPdf: true }));
+
+    // Already true and present: nothing is written or emitted.
+    const stable = makeService({ dbPapers: [stored({ hasPdf: true })] });
+    expect(await stable.reconcilePdf('p1')).toEqual({ paper: expect.objectContaining({ hasPdf: true }), hasPdf: true });
+    expect((stable as any).database.upsertPaper).not.toHaveBeenCalled();
+    expect((stable as any).eventBus.emit).not.toHaveBeenCalled();
+
+    // Unknown paper.
+    expect(await makeService().reconcilePdf('ghost')).toBeUndefined();
   });
 });

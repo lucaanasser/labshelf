@@ -27,12 +27,35 @@ export interface ListPaper extends PaperRecord {
   relFolder: string;
 }
 
+// Every paper in the library, trimmed to what the detail pane needs to find related papers outside the open folder.
+export interface LibraryPaper {
+  id: string;
+  title: string;
+  authors?: string[];
+  year?: number;
+  journal?: string;
+  publisher?: string;
+  keywords?: string[];
+  tags?: string[];
+  status: PaperRecord['status'];
+  folderPath: string;
+}
+
+// What the reader's sidecar says about a paper: annotation count and the last reading position.
+export interface PaperStats {
+  annotations: number;
+  lastPage?: number;
+  lastRead?: string;
+}
+
 export interface ListPanelState {
   type: 'state';
   folder: LibraryNode;
   breadcrumb: LibraryNode[];
   subfolders: SubfolderEntry[];
   papers: ListPaper[];
+  library: LibraryPaper[];
+  stats?: Record<string, PaperStats>;
 }
 
 /** Builds the node that represents papers/ itself. */
@@ -106,5 +129,17 @@ export function buildListState(
     breadcrumb: breadcrumbFor(rootDir, folder.dirPath, sep),
     subfolders: subfolders.map((s) => ({ ...s, count: countPapersUnder(paths, s.dirPath, sep) })),
     papers,
+    library: allPapers.map((p) => ({
+      id: p.id,
+      title: p.title,
+      status: p.status,
+      folderPath: parentDir(p.path, sep),
+      ...(p.authors ? { authors: p.authors } : {}),
+      ...(p.year ? { year: p.year } : {}),
+      ...(p.journal ? { journal: p.journal } : {}),
+      ...(p.publisher ? { publisher: p.publisher } : {}),
+      ...(p.keywords ? { keywords: p.keywords } : {}),
+      ...(p.tags ? { tags: p.tags } : {}),
+    })),
   };
 }

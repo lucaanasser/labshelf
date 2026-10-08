@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ListWebviewPanel } from '../../src/ui/list/listWebviewPanel';
 import type { ListPanelDeps } from '../../src/ui/list/listWebviewPanel';
 import type { LibraryNode, ListPanelState } from '../../src/ui/library/folderNavigation';
+import type { TextLayerJob } from '../../src/commands/textLayerQueue';
 
 const ROOT = '/lib/papers';
 const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
@@ -20,7 +21,7 @@ interface Harness {
   posted: () => jest.Mock;
 }
 
-function open(folder?: LibraryNode): Harness {
+function open(folder?: LibraryNode, extra: Partial<ListPanelDeps> = {}): Harness {
   const paperService = {
     listPapers: jest.fn(async () => [paper('p1', `${ROOT}/A`), paper('p2', `${ROOT}/A/B`), paper('p3', ROOT)]),
     movePapers: jest.fn(async (ids: string[]) => ({ moved: ids, failed: [] })),
@@ -35,6 +36,7 @@ function open(folder?: LibraryNode): Harness {
     eventBus: bus,
     getPapersRoot: () => ROOT,
     onDidNavigate,
+    ...extra,
   } as unknown as ListPanelDeps;
 
   ListWebviewPanel.createOrShow(deps, folder);
@@ -170,10 +172,79 @@ describe('ListWebviewPanel', () => {
     expect(h.paperService['updatePaperStatus']).toHaveBeenCalledWith('p1', 'done');
   });
 
+  it('carries hasPdf to the webview and still routes openPdf for a PDF-less paper', async () => {
+    const paperService = {
+      listPapers: jest.fn(async () => [
+        { ...paper('p1', ROOT), hasPdf: true },
+        { ...paper('p2', ROOT), hasPdf: false },
+      ]),
+      movePapers: jest.fn(), updatePaperStatus: jest.fn(), deletePaper: jest.fn(),
+    };
+    const h = open(undefined, { paperService } as unknown as Partial<ListPanelDeps>);
+    await h.fire({ command: 'ready' });
+
+    const byId = new Map(h.lastState().papers.map((p) => [p.id, p]));
+    expect(byId.get('p1')!.hasPdf).toBe(true);
+    expect(byId.get('p2')!.hasPdf).toBe(false);
+
+    // The panel still forwards the request; the host guard (ensurePaperPdf) decides.
+    await h.fire({ command: 'openPdf', paperId: 'p2' });
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('labshelf.openPdfViewer', 'p2');
+  });
+
   it('detaches its event listeners on dispose', async () => {
     const h = open();
     ListWebviewPanel.currentPanel?.dispose();
     expect(h.bus.off).toHaveBeenCalledTimes(h.bus.on.mock.calls.length);
     expect(ListWebviewPanel.currentPanel).toBeUndefined();
+  });
+});
+
+describe('ListWebviewPanel — text layers', () => {
+  function withJobs(initial: TextLayerJob[] = []) {
+    let listener: (jobs: TextLayerJob[]) => void = () => undefined;
+    const subscription = { dispose: jest.fn() };
+    const textLayerJobs = {
+      current: jest.fn(() => initial),
+      onDidChange: jest.fn((l: (jobs: TextLayerJob[]) => void) => { listener = l; return subscription; }),
+    };
+    return { textLayerJobs, subscription, emit: (jobs: TextLayerJob[]) => listener(jobs) };
+  }
+
+  it('sends the running jobs after every state, and each update as it comes', async () => {
+    const jobs = withJobs([{ paperId: 'p1', phase: 'reading', page: 2, total: 9 }]);
+    const h = open(undefined, { textLayerJobs: jobs.textLayerJobs } as Partial<ListPanelDeps>);
+
+    jobs.emit([{ paperId: 'p1', phase: 'queued' }]);
+    expect(h.posted()).not.toHaveBeenCalled();
+
+    await h.fire({ command: 'ready' });
+    const messages = h.posted().mock.calls.map(([message]) => message.type);
+    expect(messages).toEqual(['state', 'jobs']);
+    expect(h.posted().mock.calls[1][0]).toEqual({ type: 'jobs', jobs: [{ paperId: 'p1', phase: 'reading', page: 2, total: 9 }] });
+
+    jobs.emit([]);
+    await flush();
+    expect(h.posted().mock.calls.at(-1)?.[0]).toEqual({ type: 'jobs', jobs: [] });
+  });
+
+  it('asks for OCR on one paper or a selection', async () => {
+    const h = open();
+    await h.fire({ command: 'ready' });
+
+    await h.fire({ command: 'makeSearchable', paperId: 'p1' });
+    await h.fire({ command: 'makeSearchable', paperIds: ['p2', 'p3', 7] });
+    await h.fire({ command: 'makeSearchable', paperIds: [] });
+
+    const calls = (vscode.commands.executeCommand as jest.Mock).mock.calls.filter(([name]) => name === 'labshelf.makeSearchable');
+    expect(calls).toEqual([['labshelf.makeSearchable', ['p1']], ['labshelf.makeSearchable', ['p2', 'p3']]]);
+  });
+
+  it('stops listening to job updates when closed', async () => {
+    const jobs = withJobs();
+    open(undefined, { textLayerJobs: jobs.textLayerJobs } as Partial<ListPanelDeps>);
+
+    ListWebviewPanel.currentPanel?.dispose();
+    expect(jobs.subscription.dispose).toHaveBeenCalled();
   });
 });

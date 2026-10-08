@@ -26,15 +26,27 @@ export interface TextLayerHooks {
 export type TextLayerOutcome =
   // The document now carries a text layer on `pagesAdded` pages.
   | { status: "added"; bytes: Uint8Array; pagesAdded: number; pagesFailed: number }
-  // Every page already has text; nothing to do.
-  | { status: "not-needed" }
+  // The PDF already has text — its own, or an OCR layer added earlier.
+  | { status: "not-needed"; layer: ExistingLayer }
   | { status: "cancelled" }
+  // The document needs OCR but was deliberately not read (OCR off, too many pages).
+  | { status: "skipped"; reason: string }
   // OCR could not run or produced nothing usable; `reason` says why.
+  | { status: "unavailable"; reason: string };
+
+/** Where the text of a PDF that has some comes from. */
+export type ExistingLayer = "native" | "ocr";
+
+/** What a document's own text layer looks like, before any OCR. */
+export type TextLayerDetection =
+  | { status: ExistingLayer }
+  | { status: "missing"; textlessPages: number; totalPages: number }
   | { status: "unavailable"; reason: string };
 
 /** Adds a text layer to PDFs that lack one. */
 export interface PdfTextLayerBuilder {
   build(pdfBytes: Uint8Array, hooks?: TextLayerHooks): Promise<TextLayerOutcome>;
+  detect(pdfBytes: Uint8Array): Promise<TextLayerDetection>;
 }
 
 export interface SearchablePdfOptions {
@@ -47,9 +59,31 @@ const MIN_TEXTLESS_SHARE = 0.5;
 
 export class SearchablePdfBuilder implements PdfTextLayerBuilder {
   constructor(
-    private readonly engine: TesseractOcrEngine,
+    // Absent when OCR is turned off: documents are still classified, never read.
+    private readonly engine: TesseractOcrEngine | undefined,
     private readonly options: SearchablePdfOptions = {},
   ) {}
+
+  /**
+   * Reports whether the PDF needs OCR, without reading any page optically —
+   * a fraction of a second, so it can run over a whole library.
+   * @usedBy core/paperService.ts
+   * @returns native, missing (with page counts), or why the PDF could not be opened.
+   */
+  async detect(pdfBytes: Uint8Array): Promise<TextLayerDetection> {
+    const source = await openPdfForOcr(pdfBytes).catch(() => undefined);
+    if (!source) {
+      return { status: "unavailable", reason: "the PDF could not be opened for reading" };
+    }
+    try {
+      const pages = await pagesWithoutText(source);
+      return needsOcr(pages.length, source.numPages)
+        ? { status: "missing", textlessPages: pages.length, totalPages: source.numPages }
+        : { status: await existingLayer(source) };
+    } finally {
+      await source.close();
+    }
+  }
 
   /**
    * Reads every text-less page and returns the PDF with the text laid over it.
@@ -64,23 +98,24 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
 
     try {
       const pages = await pagesWithoutText(source);
-      // A born-digital paper has the odd page that is all figure. Reading those
-      // would stack a second copy of the caption over the real one; a scan is
-      // text-less throughout, which is what tells the two apart.
-      if (pages.length === 0 || pages.length < source.numPages * MIN_TEXTLESS_SHARE) {
-        return { status: "not-needed" };
+      if (!needsOcr(pages.length, source.numPages)) {
+        return { status: "not-needed", layer: await existingLayer(source) };
+      }
+      if (!this.engine) {
+        return { status: "skipped", reason: "OCR is turned off in settings (labshelf.ocr.enabled)" };
       }
       const maxPages = this.options.maxPages ?? DEFAULT_MAX_PAGES;
       if (pages.length > maxPages) {
-        return { status: "unavailable", reason: `${pages.length} pages need OCR, above the limit of ${maxPages}` };
+        return { status: "skipped", reason: `${pages.length} pages need OCR, above the limit of ${maxPages} (labshelf.ocr.maxPages)` };
       }
-      return await this.addLayers(pdfBytes, source, pages, hooks);
+      return await this.addLayers(this.engine, pdfBytes, source, pages, hooks);
     } finally {
       await source.close();
     }
   }
 
   private async addLayers(
+    engine: TesseractOcrEngine,
     pdfBytes: Uint8Array,
     source: OcrDocument,
     pages: number[],
@@ -92,7 +127,11 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
       target = await PDFDocument.load(pdfBytes);
     } catch (error) {
       // Encrypted or structurally unusual files: leave the paper untouched.
-      return { status: "unavailable", reason: `the PDF cannot be rewritten (${describe(error)})` };
+      // Publisher DRM is the usual cause, and pdf-lib's own wording is about its API.
+      const reason = /encrypted/i.test(describe(error))
+        ? "the PDF is encrypted by its publisher, so text cannot be added to it"
+        : `the PDF cannot be rewritten (${describe(error)})`;
+      return { status: "unavailable", reason };
     }
     if (target.getPageCount() !== source.numPages) {
       return { status: "unavailable", reason: "page count differs between the reader and the writer" };
@@ -113,7 +152,7 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
           pagesFailed += 1;
           continue;
         }
-        const layer = await this.engine.recognizeTextLayer(await source.renderPng(pageNumber));
+        const layer = await engine.recognizeTextLayer(await source.renderPng(pageNumber));
         if (!layer) {
           // A figure or a blank page: nothing to add, and not a failure.
           continue;
@@ -127,7 +166,7 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
         pagesAdded += 1;
       } catch (error) {
         pagesFailed += 1;
-        this.engine.report(`Text layer failed on page ${pageNumber}: ${describe(error)}`);
+        engine.report(`Text layer failed on page ${pageNumber}: ${describe(error)}`);
       }
     }
 
@@ -142,6 +181,29 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
     }
     return { status: "added", bytes, pagesAdded, pagesFailed };
   }
+}
+
+// A born-digital paper has the odd page that is all figure. Reading those
+// would stack a second copy of the caption over the real one; a scan is
+// text-less throughout, which is what tells the two apart.
+function needsOcr(textlessPages: number, totalPages: number): boolean {
+  return textlessPages > 0 && textlessPages >= totalPages * MIN_TEXTLESS_SHARE;
+}
+
+// Pages searched for text before giving up: a cover or a figure can come first.
+const LAYER_PROBE_PAGES = 3;
+
+// Text that is mostly invisible sits over a scan: some OCR tool put it there.
+// The first page with text decides; scans keep their masthead stamp visible,
+// so a majority, not all, of the runs must be invisible.
+async function existingLayer(document: OcrDocument): Promise<ExistingLayer> {
+  for (let pageNumber = 1; pageNumber <= Math.min(document.numPages, LAYER_PROBE_PAGES); pageNumber += 1) {
+    const share = await document.invisibleTextShare(pageNumber).catch(() => undefined);
+    if (share !== undefined) {
+      return share >= 0.5 ? "ocr" : "native";
+    }
+  }
+  return "native";
 }
 
 // A page counts as text-less by the same measure the importer uses, so a

@@ -35,11 +35,13 @@ async function textLayer(): Promise<Uint8Array> {
   return pdf.save();
 }
 
-function ocrDocument(pageTexts: string[], rotations: number[] = []): OcrDocument {
+function ocrDocument(pageTexts: string[], rotations: number[] = [], invisible: Array<number | undefined> = []): OcrDocument {
   return {
     numPages: pageTexts.length,
     pageText: jest.fn(async (n: number) => pageTexts[n - 1] ?? ''),
     rotation: jest.fn(async (n: number) => rotations[n - 1] ?? 0),
+    // Pages with text draw it visibly unless told otherwise.
+    invisibleTextShare: jest.fn(async (n: number) => (n - 1 in invisible ? invisible[n - 1] : pageTexts[n - 1] ? 0 : undefined)),
     renderPng: jest.fn(async () => Buffer.from('png')),
     close: jest.fn(async () => undefined),
   };
@@ -79,7 +81,16 @@ describe('SearchablePdfBuilder', () => {
     openSequence(ocrDocument([PAGE_OF_TEXT, '', PAGE_OF_TEXT]));
     const engine = engineReturning(await textLayer());
 
-    expect(await new SearchablePdfBuilder(engine).build(await blankPdf(3))).toEqual({ status: 'not-needed' });
+    expect(await new SearchablePdfBuilder(engine).build(await blankPdf(3))).toEqual({ status: 'not-needed', layer: 'native' });
+    expect(engine.recognizeTextLayer).not.toHaveBeenCalled();
+  });
+
+  it('recognises a scan that some OCR tool already read', async () => {
+    // Page 1 is a figure; page 2 has mostly invisible text with a visible stamp.
+    openSequence(ocrDocument([PAGE_OF_TEXT, PAGE_OF_TEXT, PAGE_OF_TEXT], [], [undefined, 0.84, 0]));
+    const engine = engineReturning(await textLayer());
+
+    expect(await new SearchablePdfBuilder(engine).build(await blankPdf(3))).toEqual({ status: 'not-needed', layer: 'ocr' });
     expect(engine.recognizeTextLayer).not.toHaveBeenCalled();
   });
 
@@ -95,7 +106,18 @@ describe('SearchablePdfBuilder', () => {
     openSequence(ocrDocument(['', '', '']));
 
     const outcome = await new SearchablePdfBuilder(engineReturning(await textLayer()), { maxPages: 2 }).build(await blankPdf(3));
-    expect(outcome).toEqual({ status: 'unavailable', reason: '3 pages need OCR, above the limit of 2' });
+    expect(outcome).toEqual({ status: 'skipped', reason: '3 pages need OCR, above the limit of 2 (labshelf.ocr.maxPages)' });
+  });
+
+  it('classifies but never reads when OCR is turned off', async () => {
+    openSequence(ocrDocument(['', '']));
+
+    expect(await new SearchablePdfBuilder(undefined).build(await blankPdf(2))).toEqual({
+      status: 'skipped',
+      reason: 'OCR is turned off in settings (labshelf.ocr.enabled)',
+    });
+    openSequence(ocrDocument([PAGE_OF_TEXT, PAGE_OF_TEXT]));
+    expect(await new SearchablePdfBuilder(undefined).build(await blankPdf(2))).toEqual({ status: 'not-needed', layer: 'native' });
   });
 
   it('skips rotated pages and counts them as failed', async () => {
@@ -131,10 +153,53 @@ describe('SearchablePdfBuilder', () => {
     expect((await new SearchablePdfBuilder(engineReturning(undefined)).build(await blankPdf(1))).status).toBe('unavailable');
   });
 
+  it('explains an encrypted PDF in plain words', async () => {
+    const pdf = await PDFDocument.create();
+    pdf.addPage([400, 600]);
+    const bytes = await pdf.save();
+    jest.spyOn(PDFDocument, 'load').mockRejectedValueOnce(
+      new Error('Input document to `PDFDocument.load` is encrypted. You can use `PDFDocument.load(..., { ignoreEncryption: true })`'),
+    );
+    openSequence(ocrDocument(['']));
+
+    expect(await new SearchablePdfBuilder(engineReturning(await textLayer())).build(bytes)).toEqual({
+      status: 'unavailable',
+      reason: 'the PDF is encrypted by its publisher, so text cannot be added to it',
+    });
+  });
+
   it('leaves an unreadable PDF untouched', async () => {
     openSequence(ocrDocument(['']));
 
     const outcome = await new SearchablePdfBuilder(engineReturning(await textLayer())).build(new Uint8Array([1, 2, 3]));
     expect(outcome.status).toBe('unavailable');
+  });
+});
+
+describe('SearchablePdfBuilder.detect', () => {
+  it('tells a scan from a born-digital paper without any OCR', async () => {
+    const engine = engineReturning(await textLayer());
+    const builder = new SearchablePdfBuilder(engine);
+
+    openSequence(ocrDocument(['', '', PAGE_OF_TEXT]));
+    expect(await builder.detect(new Uint8Array())).toEqual({ status: 'missing', textlessPages: 2, totalPages: 3 });
+
+    openSequence(ocrDocument([PAGE_OF_TEXT, '', PAGE_OF_TEXT]));
+    expect(await builder.detect(new Uint8Array())).toEqual({ status: 'native' });
+
+    openSequence(ocrDocument([PAGE_OF_TEXT, PAGE_OF_TEXT], [], [0.96]));
+    expect(await builder.detect(new Uint8Array())).toEqual({ status: 'ocr' });
+
+    expect(engine.recognizeTextLayer).not.toHaveBeenCalled();
+  });
+
+  it('closes the document and reports a PDF that cannot be opened', async () => {
+    const document = ocrDocument(['']);
+    openSequence(document);
+    await new SearchablePdfBuilder(undefined).detect(new Uint8Array());
+    expect(document.close).toHaveBeenCalled();
+
+    openSequence(undefined);
+    expect(await new SearchablePdfBuilder(undefined).detect(new Uint8Array())).toMatchObject({ status: 'unavailable' });
   });
 });

@@ -1,23 +1,35 @@
-/** Orchestrates the sync lifecycle — auth, engine wiring, debounced auto-sync on library events, periodic polling, and status bar feedback. @depends vscode, @labshelf/core, googleDriveAuth, vscodeLocalFileSystem, libraryPaths. @dependents extension */
+/** Orchestrates the sync lifecycle — auth, engine wiring, debounced auto-sync on library events, periodic polling, and status bar feedback. Shares the library with the terminal app: both hold the core SyncLock while syncing, name Drive folders with the same core rule, and record each run in the shared last-run file. @depends vscode, @labshelf/core, googleDriveAuth, vscodeLocalFileSystem, nodeLockStore, libraryPaths. @dependents extension */
+import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
 import type { ILibraryPaths } from "../../storage/paths/libraryPaths.js";
 import {
+  buildLibraryFolderNames,
   createGoogleDriveProvider,
+  readSyncRunRecord,
+  summarizeSyncResult,
   SyncEngine,
+  SyncLock,
   SyncManifest,
+  writeSyncRunRecord,
 } from "@labshelf/core";
 import type {
   ExtensionEventBus,
   SyncResult,
   FolderNameMaps,
+  SyncLockInfo,
 } from "@labshelf/core";
 import { GoogleDriveAuth } from "../auth/googleDriveAuth.js";
 import { VscodeLocalFileSystem } from "./vscodeLocalFileSystem.js";
+import { isProcessAlive, NodeLockStore } from "./nodeLockStore.js";
 
 const DEBOUNCE_MS = 30_000;
 const PROVIDER_ID = "google-drive";
+const APP_ID = "vscode";
+
+/** Where a sync request came from: a manual one reports a busy lock, an automatic one stays quiet. */
+export type SyncReason = "manual" | "auto";
 
 export class SyncController implements vscode.Disposable {
   private readonly auth: GoogleDriveAuth;
@@ -25,6 +37,10 @@ export class SyncController implements vscode.Disposable {
   private readonly statusBar: vscode.StatusBarItem;
   private readonly _onDidChangeStatus = new vscode.EventEmitter<void>();
   readonly onDidChangeStatus: vscode.Event<void> = this._onDidChangeStatus.event;
+  // Fired after a successful sync so the host can re-index when Drive pulled
+  // files in (a paper, or a paper's PDF, that arrived on another device).
+  private readonly _onDidSync = new vscode.EventEmitter<SyncResult>();
+  readonly onDidSync: vscode.Event<SyncResult> = this._onDidSync.event;
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
   private periodicTimer: ReturnType<typeof setInterval> | undefined;
   private syncing = false;
@@ -81,21 +97,32 @@ export class SyncController implements vscode.Disposable {
     vscode.window.showInformationMessage("LabShelf: Disconnected from Google Drive.");
   }
 
-  /** Runs a full sync if authenticated, updating the status bar and reporting results. @usedBy extension. @returns void */
-  async sync(): Promise<void> {
+  /** Runs a full sync if authenticated, updating the status bar and reporting results. Skips (quietly when automatic) while another app — the terminal, another window — holds the library's sync lock. @usedBy extension. @returns void */
+  async sync(reason: SyncReason = "manual"): Promise<void> {
     if (!this.auth.isAuthenticated()) {
-      vscode.window.showWarningMessage("LabShelf Sync: connect to Google Drive first.");
+      if (reason === "manual") {
+        vscode.window.showWarningMessage("LabShelf Sync: connect to Google Drive first.");
+      }
       return;
     }
+    if (this.syncing) { return; }
     this.syncing = true;
     this.statusBar.text = "$(sync~spin) LabShelf Sync";
     this.statusBar.show();
     this._onDidChangeStatus.fire();
 
     try {
-      const result = await this.runEngine();
+      const lock = new SyncLock(new NodeLockStore(), this.lockPath(), { app: APP_ID, pid: process.pid, host: os.hostname() }, { isProcessAlive });
+      const attempt = await lock.runExclusive(() => this.runEngine());
+      if (!attempt.ran) {
+        this.reportBusy(attempt.holder, reason);
+        return;
+      }
+      const result = attempt.value;
       this.lastSyncTime = new Date().toLocaleTimeString();
+      await this.recordRun(result);
       this.reportResult(result);
+      this._onDidSync.fire(result);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       vscode.window.showErrorMessage(`LabShelf Sync: ${msg}`);
@@ -121,18 +148,42 @@ export class SyncController implements vscode.Disposable {
     return this.lastSyncTime;
   }
 
-  // Builds the paperId ↔ display title translation maps used to name Drive folders.
+  // Builds the paperId ↔ display title translation maps used to name Drive folders (the core rule the terminal shares).
   private async buildFolderNames(): Promise<FolderNameMaps | undefined> {
     if (!this.getPaperTitles) return undefined;
-    const titles = await this.getPaperTitles();
-    const localToRemote = new Map<string, string>();
-    const remoteToLocal = new Map<string, string>();
-    for (const [id, raw] of titles) {
-      const display = raw.trim().replace(/[\x00-\x1f\x7f/\\]/g, "").slice(0, 255) || id;
-      localToRemote.set(id, display);
-      remoteToLocal.set(display, id);
+    return buildLibraryFolderNames(await this.getPaperTitles());
+  }
+
+  private lockPath(): string {
+    return path.join(this.paths.syncDir().fsPath, `${PROVIDER_ID}.lock`);
+  }
+
+  private lastRunPath(): string {
+    return path.join(this.paths.syncDir().fsPath, `${PROVIDER_ID}.last.json`);
+  }
+
+  // Records the run for the other apps on this library; a failure here must not fail the sync itself.
+  private async recordRun(result: SyncResult): Promise<void> {
+    try {
+      await writeSyncRunRecord(this.localFs, this.lastRunPath(), summarizeSyncResult(result, APP_ID, os.hostname()));
+    } catch {
+      // The record is informational.
     }
-    return { localToRemote, remoteToLocal };
+  }
+
+  // Another app is syncing this library: its changes arrive through the file watcher, so only a manual request says so.
+  private reportBusy(holder: SyncLockInfo | undefined, reason: SyncReason): void {
+    this.statusBar.text = "$(cloud) LabShelf";
+    if (reason === "manual") {
+      const who = holder?.app === "terminal" ? "The LabShelf terminal app" : "Another LabShelf window";
+      vscode.window.setStatusBarMessage(`LabShelf Sync: ${who} is syncing this library right now.`, 6000);
+    }
+  }
+
+  // True when any app on this library synced within the last half interval, so a periodic run would find nothing new.
+  private async syncedRecently(intervalMs: number): Promise<boolean> {
+    const last = await readSyncRunRecord(this.localFs, this.lastRunPath()).catch(() => undefined);
+    return last !== undefined && Date.now() - Date.parse(last.finishedAt) < intervalMs / 2;
   }
 
   // Instantiates the provider, manifest, and engine, then runs a full sync.
@@ -177,7 +228,7 @@ export class SyncController implements vscode.Disposable {
   private scheduleDebounce(): void {
     if (!this.auth.isAuthenticated()) { return; }
     clearTimeout(this.debounceTimer);
-    this.debounceTimer = setTimeout(() => { void this.sync(); }, DEBOUNCE_MS);
+    this.debounceTimer = setTimeout(() => { void this.sync("auto"); }, DEBOUNCE_MS);
   }
 
   // Starts the periodic sync interval using the configured autoSyncIntervalMinutes setting.
@@ -186,7 +237,10 @@ export class SyncController implements vscode.Disposable {
     const intervalMin = vscode.workspace
       .getConfiguration("labshelf")
       .get<number>("sync.autoSyncIntervalMinutes", 15);
-    this.periodicTimer = setInterval(() => { void this.sync(); }, intervalMin * 60_000);
+    const intervalMs = intervalMin * 60_000;
+    this.periodicTimer = setInterval(() => {
+      void this.syncedRecently(intervalMs).then((recent) => { if (!recent) { void this.sync("auto"); } });
+    }, intervalMs);
   }
 
   // Clears the periodic sync interval if running.
@@ -217,6 +271,7 @@ export class SyncController implements vscode.Disposable {
     clearTimeout(this.debounceTimer);
     this.stopPeriodicSync();
     this._onDidChangeStatus.dispose();
+    this._onDidSync.dispose();
     this.disposables.forEach(d => d.dispose());
   }
 }

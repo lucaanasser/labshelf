@@ -11,6 +11,7 @@
  */
 import type { PdfOcrEngine } from "@labshelf/core";
 
+import { loadPdfjs } from "./nodePdfOpener.js";
 import { loadPdfCanvas, nodeRenderOptions } from "./pdfjsNodeEnvironment.js";
 
 // Tesseract wants roughly 300 DPI; PDF user space is 72 DPI.
@@ -161,6 +162,9 @@ export interface OcrDocument {
   pageText(pageNumber: number): Promise<string>;
   // The page's /Rotate angle; a rotated page renders upright, unlike its media box.
   rotation(pageNumber: number): Promise<number>;
+  // Share of the page's text runs drawn invisibly (render mode 3 or 7), which
+  // is how every OCR tool lays its text over a scan; undefined when no text.
+  invisibleTextShare(pageNumber: number): Promise<number | undefined>;
   renderPng(pageNumber: number): Promise<Buffer>;
   close(): Promise<void>;
 }
@@ -176,7 +180,9 @@ export async function openPdfForOcr(pdfBytes: Uint8Array): Promise<OcrDocument |
     return undefined;
   }
 
-  const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as Record<string, unknown>;
+  // Not a bare import: in the extension host pdfjs needs its worker registered
+  // first, and a check at startup can run before anything else opened a PDF.
+  const pdfjs = await loadPdfjs();
   const getDocument = pdfjs["getDocument"] as (opts: Record<string, unknown>) => {
     promise: Promise<PdfRenderDocument>;
     destroy(): Promise<void>;
@@ -194,6 +200,10 @@ export async function openPdfForOcr(pdfBytes: Uint8Array): Promise<OcrDocument |
     },
     async rotation(pageNumber) {
       return (await document.getPage(pageNumber)).rotate ?? 0;
+    },
+    async invisibleTextShare(pageNumber) {
+      const ops = await (await document.getPage(pageNumber)).getOperatorList();
+      return invisibleShare(ops, pdfjs["OPS"] as Record<string, number>);
     },
     async renderPng(pageNumber) {
       const page = await document.getPage(pageNumber);
@@ -222,6 +232,44 @@ function scaledViewport(page: PdfRenderPage): PdfViewport {
   return page.getViewport({ scale: RENDER_SCALE * Math.sqrt(MAX_RENDER_PIXELS / pixels) });
 }
 
+interface OperatorList {
+  fnArray: number[];
+  argsArray: unknown[][];
+}
+
+// Text render modes that paint nothing: 3 is invisible, 7 adds to the clip only.
+const INVISIBLE_MODES = new Set([3, 7]);
+
+/**
+ * Counts which share of a page's text-showing operators run in an invisible
+ * render mode. The mode is graphics state, so it follows save/restore.
+ * @usedBy pdf/tesseractOcrEngine.ts
+ * @returns A fraction from 0 to 1, or undefined when the page shows no text.
+ */
+export function invisibleShare(ops: OperatorList, OPS: Record<string, number>): number | undefined {
+  const showText = new Set([OPS["showText"], OPS["showSpacedText"], OPS["nextLineShowText"], OPS["nextLineSetSpacingShowText"]]);
+  const saved: number[] = [];
+  let mode = 0;
+  let runs = 0;
+  let invisible = 0;
+  for (let i = 0; i < ops.fnArray.length; i += 1) {
+    const fn = ops.fnArray[i];
+    if (fn === OPS["save"]) {
+      saved.push(mode);
+    } else if (fn === OPS["restore"]) {
+      mode = saved.pop() ?? 0;
+    } else if (fn === OPS["setTextRenderingMode"]) {
+      mode = Number(ops.argsArray[i]?.[0] ?? 0);
+    } else if (showText.has(fn)) {
+      runs += 1;
+      if (INVISIBLE_MODES.has(mode)) {
+        invisible += 1;
+      }
+    }
+  }
+  return runs === 0 ? undefined : invisible / runs;
+}
+
 interface PdfViewport {
   width: number;
   height: number;
@@ -229,6 +277,7 @@ interface PdfViewport {
 
 interface PdfRenderPage {
   rotate?: number;
+  getOperatorList(): Promise<OperatorList>;
   getTextContent(): Promise<{ items: Array<{ str?: string }> }>;
   getViewport(options: { scale: number }): PdfViewport;
   render(options: Record<string, unknown>): { promise: Promise<void> };

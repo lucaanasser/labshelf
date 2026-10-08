@@ -8,7 +8,7 @@ import {
   PdfImportParser,
   BibTeXService,
 } from "@labshelf/core";
-import type { IResearchDatabase } from "@labshelf/core";
+import type { IResearchDatabase, SyncResult } from "@labshelf/core";
 import { PaperService } from "./core/paperService.js";
 import { WorkspaceLogger } from "./core/logger.js";
 import { FileSystemService } from "./storage/fileSystemService.js";
@@ -18,7 +18,9 @@ import {
   resolveLibraryRoot,
   runLibrarySetupWizard,
   ensureLibraryStructure,
+  mirrorLibraryRoot,
 } from "./storage/paths/libraryLocation.js";
+import { ExternalChangeWatcher, findMissingPapers } from "./storage/data/externalChangeWatcher.js";
 import { LibraryTreeDataProvider, LibraryDragAndDropController } from "./ui/library/index.js";
 import type { LibraryNode } from "./ui/library/index.js";
 import {
@@ -31,8 +33,8 @@ import {
 import { ListWebviewPanel } from "./ui/list/index.js";
 import { SettingsWebviewPanel } from "./ui/settings/index.js";
 import { PdfViewerPanel } from "./pdf-viewer/PdfViewerPanel.js";
-import { registerCommands, resolvePaper } from "./commands/registerCommands.js";
-import type { ReaderCommandId } from "./pdf-viewer/shared/protocol.js";
+import { registerCommands, resolvePaper, ensurePaperPdf } from "./commands/registerCommands.js";
+import type { ReaderCommandId } from "@labshelf/reader";
 import { registerAiCommands } from "./commands/registerAiCommands.js";
 import { announceImport, importWithProgress } from "./commands/importProgress.js";
 import type { ActiveServices } from "./commands/registerCommands.js";
@@ -41,16 +43,24 @@ import { SqliteResearchDatabase } from "./db/sqliteResearchDatabase.js";
 import { NodePdfOpener } from "./pdf/nodePdfOpener.js";
 import { TesseractOcrEngine } from "./pdf/tesseractOcrEngine.js";
 import { SearchablePdfBuilder } from "./pdf/searchablePdfBuilder.js";
+import { currentTextLayerJobs, onTextLayerJobsChanged, queueTextLayers } from "./commands/textLayerQueue.js";
 import { ThemeManager } from "./pdf-viewer/ThemeManager.js";
 import { AnnotationManager } from "./pdf-viewer/AnnotationManager.js";
 import { PaperDataStore } from "./storage/data/paperDataStore.js";
 import { LibraryIndexer } from "./storage/data/libraryIndexer.js";
+import { reindexLibrary } from "./storage/data/reindexLibrary.js";
 import { migrateSidecarsFromDb } from "./storage/data/migrateSidecars.js";
 import { SyncController } from "./sync/adapter/syncController.js";
+import { findSimilarPapers } from "./ai/service/similarPapers.js";
 
 const READER_COMMANDS: readonly ReaderCommandId[] = [
   "zoomIn", "zoomOut", "zoomReset", "find", "historyBack", "historyForward", "toggleSidebar",
 ];
+
+// A "failed" text-layer verdict whose reason is a missing file: left behind by
+// an older build that checked PDF-less papers. Once the PDF shows up, the paper
+// is re-checked so the bogus verdict is replaced by a real one.
+const STALE_PDF_FAILURE = /nonexistent|ENOENT|EntryNotFound|FileNotFound|no such file/i;
 
 /** Activates the extension, initializing services if a library is already configured. @usedBy vscode runtime. @returns void */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -66,19 +76,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     libraryRoot ? new LibraryPaths(libraryRoot).papersRoot() : null;
 
   if (libraryRoot) {
-    activeServices = await buildServices(context, libraryRoot, fileSystemService, eventBus);
-    aiService = await maybeStartAi(context, fileSystemService, eventBus, activeServices);
-    syncController = new SyncController(
-      context,
-      new LibraryPaths(libraryRoot),
-      eventBus,
-      async () => {
-        const papers = await activeServices!.paperService.listPapers();
-        return new Map(papers.map(p => [p.id, p.title]));
-      },
-    );
-    await syncController.initialize();
-    context.subscriptions.push(syncController);
+    // The Library tree is only registered once the index is open. Until then the view shows
+    // "Loading your library…" (package.json viewsWelcome, keyed on labshelf.libraryLoaded) under
+    // VS Code's own progress bar, never "No folders yet", which would read as a lost library.
+    const root = libraryRoot;
+    activeServices = await vscode.window.withProgress({ location: { viewId: "labshelf.library" } }, async () => {
+      const services = await buildServices(context, root, fileSystemService, eventBus);
+      activeServices = services;
+      aiService = await maybeStartAi(context, fileSystemService, eventBus, services);
+      await ensureSyncController(root);
+      return services;
+    });
   } else {
     // Library not configured — inform the user without blocking activation.
     vscode.window.showInformationMessage(
@@ -108,21 +116,80 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     libraryRoot = root;
     activeServices = await buildServices(context, root, fileSystemService, eventBus);
     libraryProvider.setPapersRoot(new LibraryPaths(root).papersRoot());
-    if (!syncController) {
-      syncController = new SyncController(
-        context,
-        new LibraryPaths(root),
-        eventBus,
-        async () => {
-          const papers = await activeServices!.paperService.listPapers();
-          return new Map(papers.map(p => [p.id, p.title]));
-        },
-      );
-      await syncController.initialize();
-      context.subscriptions.push(syncController);
-    }
+    await ensureSyncController(root);
 
     return activeServices;
+  }
+
+  // Creates the sync controller once, wiring the post-sync re-index. A sync that
+  // pulls files from Drive must surface in the list without a reload, so the
+  // controller's onDidSync triggers reindexLibrary (edits 8-9).
+  async function ensureSyncController(root: vscode.Uri): Promise<void> {
+    // Every path that activates a library root comes through here, so the watcher and the shared config follow it.
+    watchLibrary(root);
+    void mirrorLibraryRoot(root);
+    if (syncController) { return; }
+    const controller = new SyncController(
+      context,
+      new LibraryPaths(root),
+      eventBus,
+      async () => {
+        const papers = await activeServices!.paperService.listPapers();
+        return new Map(papers.map((p) => [p.id, p.title]));
+      },
+    );
+    controller.onDidSync((result) => { void onLibrarySynced(result); });
+    await controller.initialize();
+    context.subscriptions.push(controller);
+    syncController = controller;
+  }
+
+  // Re-indexes from disk after a sync that changed the library namespace, then
+  // refreshes the views. The list panel, tree and AI indexer update through the
+  // paper events reindexLibrary emits.
+  async function onLibrarySynced(result: SyncResult): Promise<void> {
+    if (!activeServices || !syncChangedLibrary(result)) { return; }
+    try {
+      await activeServices.reindexLibrary();
+    } catch (error) {
+      await activeServices.logger.log("WARN", "extension", "Re-index after sync failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+    refreshLibraryViews();
+  }
+
+  // Changes made outside this window (the LabShelf terminal app, a sync it ran, another window) are picked up from
+  // disk: re-index, drop papers whose folder is gone, and refresh the views.
+  let externalWatcher: ExternalChangeWatcher | undefined;
+  function watchLibrary(root: vscode.Uri): void {
+    externalWatcher?.dispose();
+    externalWatcher = new ExternalChangeWatcher(new LibraryPaths(root), () => { void onExternalChange(); });
+    context.subscriptions.push(externalWatcher);
+  }
+
+  async function onExternalChange(): Promise<void> {
+    if (!activeServices) { return; }
+    const services = activeServices;
+    try {
+      await services.reindexLibrary();
+      const missing = await findMissingPapers(await services.paperService.listPapers(), async (folder) => {
+        try {
+          await vscode.workspace.fs.stat(vscode.Uri.file(path.join(folder, "metadata.yaml")));
+          return true;
+        } catch {
+          return false;
+        }
+      });
+      for (const id of missing) { await services.paperService.deletePaper(id, false); }
+    } catch (error) {
+      await services.logger.log("WARN", "extension", "Re-index after an external change failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+    refreshLibraryViews();
   }
 
   const libraryDnD = new LibraryDragAndDropController(async (uris, targetDir) => {
@@ -167,6 +234,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     showCollapseAll: true,
   });
   context.subscriptions.push(libraryTreeView);
+  // From here an empty Library view really is empty: switch its welcome text from loading to "No folders yet".
+  void vscode.commands.executeCommand("setContext", "labshelf.libraryLoaded", true);
 
   // Keeps the tree selection on the folder the list panel shows. reveal() would
   // force the sidebar open, so a hidden tree is synced when it becomes visible instead.
@@ -240,19 +309,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           libraryRoot = root;
           activeServices = await buildServices(context, root, fileSystemService, eventBus);
           libraryProvider.setPapersRoot(new LibraryPaths(root).papersRoot());
-          if (!syncController) {
-            syncController = new SyncController(
-              context,
-              new LibraryPaths(root),
-              eventBus,
-              async () => {
-                const papers = await activeServices!.paperService.listPapers();
-                return new Map(papers.map(p => [p.id, p.title]));
-              },
-            );
-            await syncController.initialize();
-            context.subscriptions.push(syncController);
-          }
+          await ensureSyncController(root);
           return root;
         },
       });
@@ -270,6 +327,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
               eventBus,
               getPapersRoot: () => papersRootUri()?.fsPath ?? null,
               onDidNavigate: syncTreeToPanel,
+              textLayerJobs: { current: currentTextLayerJobs, onDidChange: onTextLayerJobsChanged },
+              loadSidecar: (paperId) => services.paperDataStore.load(paperId),
+              findSimilar: (paper) => findSimilarPapers(aiService, paper),
             },
             node,
           );
@@ -285,6 +345,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       // Without an id (command palette) the user picks the paper.
       const paper = await resolvePaper(services.paperService, paperId, "Open paper in the reader");
       if (!paper) { return; }
+      // One guard covers every reader entry point (double-click, Enter, child
+      // row, detail button, palette): a PDF-less paper warns and opens nothing.
+      if (!(await ensurePaperPdf(services, paper))) { return; }
       PdfViewerPanel.createOrShow(
         {
           extensionUri: context.extensionUri,
@@ -461,6 +524,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 /** Called by VS Code on extension deactivation — cleanup is handled via disposables. @usedBy vscode runtime. @returns void */
 export function deactivate(): void { return; }
 
+// True when a sync pulled, removed or conflicted files in the library
+// namespace — the cases where on-disk papers (or their PDFs) changed and the
+// index must be rebuilt. Uploads alone need no re-index.
+function syncChangedLibrary(result: SyncResult): boolean {
+  return result.namespaces.some(
+    (ns) => ns.namespace === "library" && (ns.downloaded > 0 || ns.deletedLocal > 0 || ns.conflicts.length > 0),
+  );
+}
+
 // Spins up the AI service when a library is configured. Resolution failures
 // degrade the AI subsystem instead of breaking activation; the rest of the
 // extension keeps working.
@@ -514,13 +586,12 @@ function createOcrEngine(
   return engine;
 }
 
-// Builds the step that gives scanned papers a selectable text layer. It shares
-// the import's OCR engine, and is absent when either setting turns it off.
-function createTextLayerBuilder(engine: TesseractOcrEngine | undefined): SearchablePdfBuilder | undefined {
+// Builds the step that classifies PDFs and gives scans a selectable text layer.
+// It shares the import's OCR engine; with OCR off it still classifies, so the
+// library can flag scans. labshelf.ocr.makeSearchable only governs whether
+// that runs on its own after an import (commands/importProgress.ts).
+function createTextLayerBuilder(engine: TesseractOcrEngine | undefined): SearchablePdfBuilder {
   const config = vscode.workspace.getConfiguration("labshelf");
-  if (!engine || !config.get<boolean>("ocr.makeSearchable", true)) {
-    return undefined;
-  }
   return new SearchablePdfBuilder(engine, { maxPages: config.get<number>("ocr.maxPages", 150) });
 }
 
@@ -554,9 +625,31 @@ async function buildServices(
   const indexer = new LibraryIndexer(paths, fileSystemService, database, paperDataStore);
   await migrateSidecarsFromDb(database, paperDataStore, await database.listPapers());
   await indexer.rebuild();
+  // Papers imported before text layers were tracked are classified once, in the
+  // background and without OCR; the verdict is saved in metadata.yaml. Papers
+  // saved without a PDF have nothing to read and are left out. A paper whose PDF
+  // only just arrived may still carry a stale "file missing" verdict from an
+  // older build, so it is re-checked once its PDF is present.
+  const indexed = await database.listPapers();
+  const toCheck = indexed.filter(
+    (paper) =>
+      paper.hasPdf !== false &&
+      (!paper.textLayer ||
+        (paper.textLayer.state === "failed" && STALE_PDF_FAILURE.test(paper.textLayer.reason ?? ""))),
+  );
+  if (toCheck.length > 0) {
+    void queueTextLayers(paperService, toCheck, { mode: "check", logger });
+  }
   const themeManager = new ThemeManager(paperDataStore);
   const annotationManager = new AnnotationManager(paperDataStore, eventBus);
-  return { paperService, logger, themeManager, annotationManager, database, paperDataStore };
+  const reindex = () =>
+    reindexLibrary({
+      database,
+      indexer,
+      eventBus,
+      queueCheck: (papers) => void queueTextLayers(paperService, papers, { mode: "check", logger }),
+    });
+  return { paperService, logger, themeManager, annotationManager, database, paperDataStore, reindexLibrary: reindex };
 }
 
 // Tries to create the SQLite database; falls back to the in-memory implementation on failure.

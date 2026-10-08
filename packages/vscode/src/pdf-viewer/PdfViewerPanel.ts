@@ -1,7 +1,7 @@
 /**
  * Creates and manages the PDF reader webview panels: lifecycle, the typed host side of the reader protocol, reading-state persistence, clipboard/export actions and reading analytics.
  *
- * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/renderer/PdfRenderer.ts, pdf-viewer/readerPrefs.ts, pdf-viewer/shared/*, @labshelf/core, @labshelf/ai (types only)
+ * @depends pdf-viewer/ThemeManager.ts, pdf-viewer/AnnotationManager.ts, ui/tabIcon.ts, pdf-viewer/renderer/PdfRenderer.ts, pdf-viewer/readerPrefs.ts, @labshelf/reader, @labshelf/core, @labshelf/ai (types only)
  * @dependents extension.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
@@ -12,17 +12,19 @@ import { ThemeManager } from "./ThemeManager.js";
 import { AnnotationManager } from "./AnnotationManager.js";
 import { PdfRenderer, getPdfjsDirectory, getReaderBundleDirectory } from "./renderer/PdfRenderer.js";
 import { READER_CONFIG_SECTION, getReaderPrefs, getReaderViewColumn } from "./readerPrefs.js";
-import { formatAnnotationsMarkdown } from "./shared/annotationsMarkdown.js";
-import { formatQuoteWithCitation } from "./shared/citationFormat.js";
+import { labshelfTabIcon } from "../ui/tabIcon.js";
 import {
+  formatAnnotationsMarkdown,
+  formatQuoteWithCitation,
   isSafeExternalUrl,
   isWebviewMessage,
+  normalizeReadingState,
   type EffectiveTheme,
   type HostToWebview,
   type ReaderCommandId,
+  type ReadingState,
   type WebviewToHost,
-} from "./shared/protocol.js";
-import { normalizeReadingState, type ReadingState } from "./shared/readingState.js";
+} from "@labshelf/reader";
 
 export const READER_VIEW_TYPE = "labshelfPdf";
 
@@ -122,6 +124,7 @@ export class PdfViewerPanel {
         // not the PDF text the reader's own find bar covers.
       },
     );
+    panel.iconPath = labshelfTabIcon(deps.extensionUri);
 
     new PdfViewerPanel(panel, deps, pdfUri, paper, options);
   }

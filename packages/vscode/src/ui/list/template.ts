@@ -10,7 +10,7 @@ import { secIcon } from './template.icons.js';
 import { buildListScript } from './template.script.js';
 
 /**
- * Builds the complete HTML shell for the list webview: collection header with search and actions, the status and subfolder filter bar, sortable column heads, the paper list, and the detail pane.
+ * Builds the complete HTML shell for the list webview: collection header with search and actions, the status and subfolder filter bar, sortable column heads, the paper list, the tabbed detail pane, and the tag suggestions list.
  * @usedBy ui/list/listWebviewPanel.ts
  * @returns A full HTML document string ready to assign to webview.html.
  */
@@ -31,9 +31,9 @@ export function buildListPanelHtml(webview: vscode.Webview): string {
   <div class="list-pane">
     <div class="list-header">
       <nav class="breadcrumb" id="breadcrumb" aria-label="Collection path"></nav>
-      <div class="search-box">
+      <div class="search-box" title="Searches title, authors, year, venue, tags, keywords, abstract and your note.&#10;Narrow to one field with author:  year:  tag:  kw:  venue:  note:  — or #tag">
         <span class="search-icon">${secIcon('search')}</span>
-        <input id="searchInput" type="text" placeholder="Search title, author, year, keyword  ( / )" spellcheck="false" autocomplete="off"/>
+        <input id="searchInput" type="text" placeholder="Search papers, tags, notes…   /" spellcheck="false" autocomplete="off"/>
         <button class="search-clear" id="searchClear" title="Clear search (Esc)">${secIcon('x')}</button>
       </div>
       <button class="list-icon-btn" id="includeSubBtn" title="Show papers from subfolders">${secIcon('layers')}</button>
@@ -46,11 +46,12 @@ export function buildListPanelHtml(webview: vscode.Webview): string {
       <div class="sub-strip" id="subStrip" aria-label="Subfolders"></div>
     </div>
     <div class="col-heads" id="colHeads">
-      <div></div><div></div>
+      <div></div>
       <div class="col-head sortable" data-sort="title">Title<span class="sort-ind">${secIcon('chevron-down')}</span></div>
       <div class="col-head sortable" data-sort="creator">Creator<span class="sort-ind">${secIcon('chevron-down')}</span></div>
       <div class="col-head sortable" data-sort="year">Year<span class="sort-ind">${secIcon('chevron-down')}</span></div>
       <div class="col-head sortable col-pub" data-sort="publication">Publication<span class="sort-ind">${secIcon('chevron-down')}</span></div>
+      <div class="col-head sortable col-read" data-sort="lastRead" title="When you last had the paper open in the reader">Last read<span class="sort-ind">${secIcon('chevron-down')}</span></div>
       <div class="col-head sortable" data-sort="status">Status<span class="sort-ind">${secIcon('chevron-down')}</span></div>
     </div>
     <div class="paper-list" id="paperList" tabindex="0"><div class="detail-placeholder">Loading…</div></div>
@@ -60,6 +61,7 @@ export function buildListPanelHtml(webview: vscode.Webview): string {
     <div class="detail-placeholder">Select a paper to see details</div>
   </div>
 </div>
+<datalist id="tagOptions"></datalist>
 ${buildListScript(n)}
 </body>
 </html>`;
