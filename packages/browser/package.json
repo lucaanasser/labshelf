@@ -6,20 +6,30 @@
     "build": "node build/build.mjs",
     "build:chrome": "node build/build.mjs --target=chrome",
     "build:firefox": "node build/build.mjs --target=firefox",
+    "dev:firefox": "node build/build.mjs --target=firefox && web-ext run --source-dir=dist/firefox",
+    "package:firefox": "node build/build.mjs --target=firefox && web-ext build --source-dir=dist/firefox --artifacts-dir=dist/xpi --filename labshelf-{version}.xpi --overwrite-dest",
     "typecheck": "tsc --noEmit -p ./",
     "lint:manifest": "web-ext lint --source-dir=dist/firefox --self-hosted",
-    "test": "echo \"No tests yet\""
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@labshelf/core": "workspace:*",
+    "@labshelf/reader": "workspace:*",
     "idb": "^8.0.0",
+    "pdfjs-dist": "~6.3.289",
     "webextension-polyfill": "^0.12.0",
     "yaml": "^2.7.1"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.13.10",
     "@types/webextension-polyfill": "^0.12.1",
     "esbuild": "^0.24.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.9",
     "typescript": "^7.0.2",
+    "typescript-js": "npm:typescript@^6.0.3",
     "web-ext": "^8.0.0"
   }
 }

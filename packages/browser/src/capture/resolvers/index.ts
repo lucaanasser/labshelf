@@ -3,5 +3,6 @@
  * @depends ./resolverChain, ./types
  * @dependents capture/captureService
  */
-export { resolvePdfUrl } from "./resolverChain";
+export { resolvePdf } from "./resolverChain";
+export type { PdfAttempt } from "./resolverChain";
 export type { ResolveContext, ResolvedPdf, PdfResolver } from "./types";

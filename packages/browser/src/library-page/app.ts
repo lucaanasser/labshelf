@@ -1,98 +1,127 @@
 /**
- * Root component of the library page. Builds the three-column layout shell —
- * header (title + breadcrumb + global actions), body (sidebar / main / aside),
- * footer (status bar) — and exposes mount points for the views to populate.
+ * Root component of the library page. Builds the VS Code-like frame once —
+ * sidebar (library tree) | list pane | detail pane, with a status bar along
+ * the bottom — and exposes mount points for the views. The shell is never
+ * rebuilt on navigation; views repaint their own slice.
  *
- * Wires header actions (search, sync now, capture clipboard) to the store and
- * the background runtime; the individual views render into the mount points
- * registered in {@link LibraryAppMounts}.
+ * Also owns the two sashes: dragging resizes the sidebar / detail pane, and
+ * dragging below a threshold collapses it, exactly like the VS Code panel.
  *
- * @depends platform/browserApi, platform/runtimeMessages, state/libraryStore
+ * @depends ui/dom, state/uiPrefs
  * @dependents library-page/index
  */
-import { bx } from "../platform/browserApi";
-import type {
-  RuntimeMessage,
-  RuntimeResponse,
-  SyncStatusData,
-} from "../platform/runtimeMessages";
-import type { LibraryStore } from "./state/libraryStore";
+import { $ } from "../ui/dom";
+import { loadPrefs, savePrefs } from "./state/uiPrefs";
 
 export interface LibraryAppMounts {
   sidebar: HTMLElement;
-  main: HTMLElement;
-  aside: HTMLElement;
-  breadcrumb: HTMLElement;
-  footerLeft: HTMLElement;
-  footerRight: HTMLElement;
+  listHeader: HTMLElement;
+  filterBar: HTMLElement;
+  list: HTMLElement;
+  detail: HTMLElement;
+  statusBar: HTMLElement;
 }
 
-async function send<T = unknown>(message: RuntimeMessage): Promise<T> {
-  const reply = (await bx.runtime.sendMessage(message)) as RuntimeResponse;
-  if (!reply.ok) throw new Error(reply.error);
-  return reply.data as T;
-}
+const SIDEBAR = { min: 160, max: 420, collapseAt: 110 };
+const DETAIL = { min: 220, max: 620, collapseAt: 160 };
 
-/** Builds the layout DOM, attaches header handlers, returns the view mounts. */
-export function buildApp(root: HTMLElement, store: LibraryStore): LibraryAppMounts {
+/** Builds the layout DOM, wires the sashes, and returns the view mounts. */
+export function buildApp(root: HTMLElement): LibraryAppMounts {
   root.innerHTML = `
-    <div class="app">
-      <header class="app__header">
-        <span class="app__title">LABSHELF</span>
-        <nav class="app__breadcrumb" id="breadcrumb" aria-label="Folder breadcrumb"></nav>
-        <div class="app__actions">
-          <input id="search" type="search" placeholder="SEARCH TITLE / AUTHOR" aria-label="Search papers" />
-          <button id="sync-now" type="button">SYNC</button>
-          <button id="capture-clip" type="button" class="btn--accent">+ ADD</button>
-        </div>
-      </header>
-      <div class="app__body">
-        <aside class="app__sidebar" id="sidebar"></aside>
-        <main class="app__main" id="main"></main>
-        <aside class="app__aside" id="aside"></aside>
-      </div>
-      <footer class="app__footer">
-        <div class="app__footer__left" id="footer-left"></div>
-        <div class="app__footer__right" id="footer-right"></div>
-      </footer>
+    <div class="app" id="app">
+      <aside class="sidebar" id="sidebar" aria-label="Library"></aside>
+      <div class="sash sash-sidebar" id="sidebarSash" title="Drag to resize"></div>
+      <section class="list-pane" id="listPane">
+        <div class="list-header" id="listHeader"></div>
+        <div class="filter-bar" id="filterBar"></div>
+        <div class="list-body" id="listBody"></div>
+      </section>
+      <div class="sash sash-detail" id="detailSash" title="Drag to resize"></div>
+      <aside class="detail-pane" id="detailPane" aria-label="Paper details"></aside>
     </div>
+    <footer class="status-bar" id="statusBar"></footer>
   `;
 
-  const $ = (id: string): HTMLElement => {
-    const el = root.querySelector<HTMLElement>(`#${id}`);
-    if (!el) throw new Error(`Missing element #${id}`);
-    return el;
-  };
+  const app = $("app", root);
+  const sidebar = $("sidebar", root);
+  const detail = $("detailPane", root);
+  const prefs = loadPrefs();
 
-  const search = $("search") as HTMLInputElement;
-  search.addEventListener("input", () => store.set({ search: search.value }));
+  sidebar.style.width = `${prefs.sidebarWidth}px`;
+  detail.style.width = `${prefs.detailWidth}px`;
+  app.classList.toggle("sidebar-collapsed", prefs.sidebarCollapsed);
+  app.classList.toggle("detail-collapsed", prefs.detailCollapsed);
 
-  $("sync-now").addEventListener("click", () => { void triggerSync(store); });
-  $("capture-clip").addEventListener("click", () => { void triggerCapture(store); });
+  attachSash($("sidebarSash", root), {
+    pane: sidebar,
+    collapsedClass: "sidebar-collapsed",
+    app,
+    limits: SIDEBAR,
+    widthFromPointer: (x) => x - app.getBoundingClientRect().left,
+    persist: (width, collapsed) => savePrefs({ sidebarWidth: width, sidebarCollapsed: collapsed }),
+  });
+  attachSash($("detailSash", root), {
+    pane: detail,
+    collapsedClass: "detail-collapsed",
+    app,
+    limits: DETAIL,
+    widthFromPointer: (x) => app.getBoundingClientRect().right - x,
+    persist: (width, collapsed) => savePrefs({ detailWidth: width, detailCollapsed: collapsed }),
+  });
 
   return {
-    sidebar: $("sidebar"),
-    main: $("main"),
-    aside: $("aside"),
-    breadcrumb: $("breadcrumb"),
-    footerLeft: $("footer-left"),
-    footerRight: $("footer-right"),
+    sidebar,
+    listHeader: $("listHeader", root),
+    filterBar: $("filterBar", root),
+    list: $("listBody", root),
+    detail,
+    statusBar: $("statusBar", root),
   };
 }
 
-async function triggerSync(store: LibraryStore): Promise<void> {
-  try {
-    const status = await send<SyncStatusData>({ type: "sync.now" });
-    store.set({ sync: status, error: null });
-  } catch (err) {
-    store.set({ error: err instanceof Error ? err.message : String(err) });
-  }
+/** Toggles a pane's collapsed state and persists it. */
+export function togglePane(which: "sidebar" | "detail"): boolean {
+  const app = $("app");
+  const cls = which === "sidebar" ? "sidebar-collapsed" : "detail-collapsed";
+  const collapsed = app.classList.toggle(cls);
+  if (which === "sidebar") savePrefs({ sidebarCollapsed: collapsed }); else savePrefs({ detailCollapsed: collapsed });
+  return collapsed;
 }
 
-async function triggerCapture(store: LibraryStore): Promise<void> {
-  try {
-    await send({ type: "capture.activeTab" });
-  } catch (err) {
-    store.set({ error: err instanceof Error ? err.message : String(err) });
-  }
+interface SashOptions {
+  pane: HTMLElement;
+  app: HTMLElement;
+  collapsedClass: string;
+  limits: { min: number; max: number; collapseAt: number };
+  widthFromPointer: (clientX: number) => number;
+  persist: (width: number, collapsed: boolean) => void;
+}
+
+function attachSash(sash: HTMLElement, o: SashOptions): void {
+  let dragging = false;
+  sash.addEventListener("mousedown", (e) => {
+    dragging = true;
+    sash.classList.add("dragging");
+    document.body.classList.add("resizing");
+    e.preventDefault();
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+    const desired = o.widthFromPointer(e.clientX);
+    if (desired < o.limits.collapseAt) { o.app.classList.add(o.collapsedClass); return; }
+    o.app.classList.remove(o.collapsedClass);
+    o.pane.style.width = `${Math.min(o.limits.max, Math.max(o.limits.min, desired))}px`;
+  });
+  window.addEventListener("mouseup", () => {
+    if (!dragging) return;
+    dragging = false;
+    sash.classList.remove("dragging");
+    document.body.classList.remove("resizing");
+    o.persist(parseInt(o.pane.style.width, 10) || o.limits.min, o.app.classList.contains(o.collapsedClass));
+  });
+  // Double-click restores a collapsed pane, the quickest way back once it is hidden.
+  sash.addEventListener("dblclick", () => {
+    o.app.classList.remove(o.collapsedClass);
+    o.persist(parseInt(o.pane.style.width, 10) || o.limits.min, false);
+  });
 }

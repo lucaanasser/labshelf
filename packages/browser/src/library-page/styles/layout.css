@@ -1,97 +1,70 @@
 /*
- * Three-column Paperpile-style frame: sidebar (tree) | main (paper list) | aside (detail).
- * Sticky header on top with breadcrumb + global actions; sticky footer status bar at the bottom.
+ * Frame: sidebar | list pane | detail pane, status bar underneath. Ported from
+ * the VS Code list webview (template.css.ts) with the native sidebar tree and
+ * status bar drawn in-page. Requires ui/styles/tokens.css + base.css.
  */
-.app {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  height: 100vh;
-}
+html, body { height: 100%; overflow: hidden; }
+body, #root { display: flex; flex-direction: column; }
+#root { height: 100%; min-height: 0; }
 
-.app__header {
-  display: grid;
-  grid-template-columns: 240px 1fr auto;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-}
+.app { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+body.resizing, body.resizing * { cursor: col-resize !important; user-select: none !important; }
 
-.app__title { color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
-.app__title::before { content: "▮ "; }
+/* ── Sashes ─────────────────────────────────────────────────────── */
+.sash { width: 4px; flex-shrink: 0; cursor: col-resize; background: transparent; transition: background var(--ls-fast); z-index: 5; }
+.sash-sidebar { margin-left: -2px; }
+.sash-detail { margin-right: -2px; }
+.sash:hover, .sash.dragging { background: var(--ls-focus); }
+/* collapsed: keep a visible edge sticking out so it can be grabbed back */
+.app.sidebar-collapsed .sash-sidebar, .app.detail-collapsed .sash-detail { background: var(--ls-border); }
+.app.sidebar-collapsed .sash-sidebar:hover, .app.detail-collapsed .sash-detail:hover { background: var(--ls-focus); }
 
-.app__breadcrumb {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--fg-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* ── Sidebar ────────────────────────────────────────────────────── */
+.sidebar {
+  width: 220px; flex-shrink: 0; display: flex; flex-direction: column; min-width: 0; overflow: hidden;
+  background: var(--ls-sidebar-bg); border-right: 1px solid var(--ls-sidebar-border);
 }
-.app__breadcrumb__sep { color: var(--muted); margin: 0 6px; }
-.app__breadcrumb__crumb { cursor: pointer; }
-.app__breadcrumb__crumb:hover { color: var(--fg); }
-.app__breadcrumb__current { color: var(--fg); }
+.app.sidebar-collapsed .sidebar { display: none; }
 
-.app__actions { display: flex; gap: 6px; align-items: center; }
-.app__actions input[type="search"] { width: 200px; }
+/* ── List pane ──────────────────────────────────────────────────── */
+.list-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.list-header {
+  display: flex; align-items: center; gap: 6px; padding: 5px 8px; flex-shrink: 0;
+  border-bottom: 1px solid var(--ls-border-soft); background: var(--ls-sidebar-bg);
+}
+.filter-bar {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-height: 30px; padding: 3px 10px; overflow: hidden;
+  border-bottom: 1px solid var(--ls-border-soft);
+}
+.filter-bar:empty { display: none; }
+.list-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
-.app__body {
-  display: grid;
-  grid-template-columns: 240px 1fr 320px;
-  min-height: 0;
+/* ── Detail pane ────────────────────────────────────────────────── */
+.detail-pane {
+  width: 272px; min-width: 220px; max-width: 620px; flex-shrink: 0; overflow-y: auto;
+  display: flex; flex-direction: column;
+  background: var(--ls-sidebar-bg); border-left: 1px solid var(--ls-sidebar-border);
 }
+.app.detail-collapsed .detail-pane { display: none; }
 
-.app__sidebar {
-  border-right: 1px solid var(--border);
-  overflow: auto;
-  background: var(--bg);
+/* ── Status bar (22px, VS Code) ─────────────────────────────────── */
+.status-bar {
+  display: flex; align-items: center; height: 22px; flex-shrink: 0; padding: 0 4px;
+  font-size: 12px; color: var(--ls-statusbar-fg); background: var(--ls-statusbar-bg);
+  border-top: 1px solid var(--ls-sidebar-border);
 }
-.app__main {
-  overflow: auto;
-  background: var(--bg);
+.status-left, .status-right { display: flex; align-items: center; height: 100%; }
+.status-right { margin-left: auto; }
+.status-item {
+  display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 6px; border: none; background: none;
+  color: inherit; font-size: 12px; cursor: default; white-space: nowrap; border-radius: 0;
 }
-.app__aside {
-  border-left: 1px solid var(--border);
-  overflow: auto;
-  background: var(--bg);
-}
+.status-item svg { width: 14px; height: 14px; }
+.status-item.clickable { cursor: pointer; }
+.status-item.clickable:hover { background: var(--ls-statusbar-hover); }
+.status-item.error { color: var(--ls-error); }
+.status-item .spin { animation: ls-spin 1.2s linear infinite; }
+@keyframes ls-spin { to { transform: rotate(360deg); } }
 
-.app__footer {
-  border-top: 1px solid var(--border);
-  padding: 6px 12px;
-  color: var(--muted);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-.app__footer__left, .app__footer__right { display: flex; gap: 12px; }
-.app__footer__sep { color: var(--border-dashed); }
-
-/* Section headers inside each pane */
-.pane__header {
-  position: sticky;
-  top: 0;
-  background: var(--bg);
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 10px;
-  color: var(--muted);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.empty {
-  padding: 24px;
-  color: var(--muted);
-  font-size: 12px;
-  text-align: center;
-}
+/* ── Narrow windows ────────────────────────────────────────────── */
+@media (max-width: 860px) { .col-pub { display: none !important; } }

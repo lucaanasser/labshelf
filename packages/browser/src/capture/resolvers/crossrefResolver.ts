@@ -22,8 +22,8 @@ interface CrossRefMessage {
 
 export const crossrefResolver: PdfResolver = {
   name: "crossref",
-  async resolve(ctx: ResolveContext): Promise<string | undefined> {
-    if (!ctx.doi) return undefined;
+  async resolve(ctx: ResolveContext): Promise<string[]> {
+    if (!ctx.doi) return [];
     const url = `https://api.crossref.org/works/${encodeURIComponent(ctx.doi)}`;
     let res: Response;
     try {
@@ -34,22 +34,17 @@ export const crossrefResolver: PdfResolver = {
         },
       });
     } catch {
-      return undefined;
+      return [];
     }
-    if (!res.ok) return undefined;
+    if (!res.ok) return [];
     const payload = (await res.json()) as CrossRefMessage;
     const links = payload.message?.link ?? [];
     // Prefer "similarity-checking" intent (full text for Turnitin etc.) then "text-mining".
     const ranked = [...links].sort((a, b) => intentScore(b) - intentScore(a));
-    for (const link of ranked) {
-      const isPdf = (link["content-type"] ?? "").toLowerCase().includes("pdf");
-      if (isPdf && link.URL) return link.URL;
-    }
+    const pdfs = ranked.filter((l) => l.URL && (l["content-type"] ?? "").toLowerCase().includes("pdf"));
     // Some publishers list the PDF without a content-type — accept any URL ending in .pdf.
-    for (const link of ranked) {
-      if (link.URL && /\.pdf(?:[?#]|$)/i.test(link.URL)) return link.URL;
-    }
-    return undefined;
+    const bare = ranked.filter((l) => l.URL && !pdfs.includes(l) && /\.pdf(?:[?#]|$)/i.test(l.URL));
+    return [...pdfs, ...bare].map((l) => l.URL!);
   },
 };
 

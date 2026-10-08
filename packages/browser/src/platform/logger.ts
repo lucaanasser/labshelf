@@ -11,11 +11,12 @@ import { bx } from "./browserApi";
 const STORAGE_KEY = "labshelf.log.ring";
 const RING_CAPACITY = 200;
 
-export class BrowserLogger implements ILogger {
-  private buffer: LogEntry[] = [];
-  private hydrated = false;
-  private hydration?: Promise<void>;
+// One ring per JS context, shared by every logger in it: each module names
+// its own logger ("background", "capture"), and per-instance buffers would
+// overwrite each other's entries in storage.
+const ring: { buffer: LogEntry[]; hydrated: boolean; hydration?: Promise<void> } = { buffer: [], hydrated: false };
 
+export class BrowserLogger implements ILogger {
   constructor(private readonly defaultModule: string = "browser") {}
 
   async log(
@@ -53,17 +54,17 @@ export class BrowserLogger implements ILogger {
 
   async recent(): Promise<LogEntry[]> {
     await this.hydrate();
-    return [...this.buffer];
+    return [...ring.buffer];
   }
 
   private async persist(entry: LogEntry): Promise<void> {
     await this.hydrate();
-    this.buffer.push(entry);
-    if (this.buffer.length > RING_CAPACITY) {
-      this.buffer.splice(0, this.buffer.length - RING_CAPACITY);
+    ring.buffer.push(entry);
+    if (ring.buffer.length > RING_CAPACITY) {
+      ring.buffer.splice(0, ring.buffer.length - RING_CAPACITY);
     }
     try {
-      await bx.storage.local.set({ [STORAGE_KEY]: this.buffer });
+      await bx.storage.local.set({ [STORAGE_KEY]: ring.buffer });
     } catch {
       // Storage may be quota-restricted; in-memory copy is still valid.
     }
@@ -84,20 +85,21 @@ export class BrowserLogger implements ILogger {
   }
 
   private hydrate(): Promise<void> {
-    if (this.hydrated) return Promise.resolve();
-    if (this.hydration) return this.hydration;
-    this.hydration = (async () => {
+    if (ring.hydrated) return Promise.resolve();
+    if (ring.hydration) return ring.hydration;
+    ring.hydration = (async () => {
       try {
         const stored = await bx.storage.local.get(STORAGE_KEY);
         const raw = stored[STORAGE_KEY];
         if (Array.isArray(raw)) {
-          this.buffer = raw as LogEntry[];
+          // Entries logged while hydrating stay after the stored ones.
+          ring.buffer = [...(raw as LogEntry[]), ...ring.buffer];
         }
       } catch {
         // ignore — fresh buffer is fine
       }
-      this.hydrated = true;
+      ring.hydrated = true;
     })();
-    return this.hydration;
+    return ring.hydration;
   }
 }

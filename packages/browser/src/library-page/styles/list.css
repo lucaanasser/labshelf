@@ -1,49 +1,109 @@
 /*
- * Paper list table. Columns: TITLE / CITE KEY / YEAR / ADDED / STATUS.
- * One row per PaperRecord. Selecting a row populates the detail pane.
+ * List pane: breadcrumb header, status tabs + subfolder chips, sortable
+ * column heads, and paper rows. Ported from the VS Code list webview
+ * (template.css.ts) — same columns, badges, drag affordances and empty state.
  */
-.list {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
+:root { --cols: 28px 22px minmax(0, 1fr) 150px 52px 170px 86px; }
+/* Narrow windows drop the Publication column before anything else gets squeezed. */
+@media (max-width: 860px) { :root { --cols: 28px 22px minmax(0, 1fr) 130px 52px 86px; } }
+
+/* ── Breadcrumb ────────────────────────────────────────────────── */
+.breadcrumb { display: flex; align-items: center; gap: 1px; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
+.crumb {
+  display: inline-flex; align-items: center; gap: 4px; flex-shrink: 1; min-width: 0;
+  padding: 2px 5px; border-radius: var(--ls-radius-sm); border: 1px solid transparent;
+  background: none; color: var(--ls-desc); font-size: 12px; cursor: pointer;
 }
+.crumb > span { overflow: hidden; text-overflow: ellipsis; }
+.crumb svg { width: 13px; height: 13px; flex-shrink: 0; opacity: .8; }
+.crumb:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.crumb.current { color: var(--ls-fg); font-weight: 600; font-size: 13px; cursor: default; flex-shrink: 0; }
+.crumb.current:hover { background: none; }
+.crumb-sep { display: inline-flex; width: 14px; height: 14px; flex-shrink: 0; opacity: .5; }
+.crumb-sep svg { width: 14px; height: 14px; }
+.list-header .ls-search { width: 260px; flex-shrink: 1; min-width: 90px; }
+.list-header .ls-icon-btn.hidden { display: none; }
+.sidebar-toggle { margin-right: 2px; }
+.app:not(.sidebar-collapsed) .sidebar-toggle { display: none; }
 
-.list thead th {
-  position: sticky;
-  top: 0;
-  background: var(--bg);
-  text-align: left;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 10px;
-  color: var(--muted);
-  font-weight: normal;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-dim);
+/* ── Filter bar: status tabs + subfolder chips ─────────────────── */
+.status-filters { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.status-tab {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 10px;
+  border: none; background: none; cursor: pointer; font-size: 11px; color: var(--ls-desc);
+  transition: background var(--ls-fast), color var(--ls-fast);
 }
-
-.list tbody td {
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--border-dim);
-  vertical-align: top;
-  color: var(--fg-dim);
+.status-tab:hover { color: var(--ls-fg); background: var(--ls-toolbar-hover); }
+.status-tab.active { color: var(--ls-fg); background: var(--ls-list-inactive-bg); font-weight: 600; }
+.status-tab .n { font-weight: 400; opacity: .7; }
+.sub-strip {
+  display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none;
+  padding-left: 10px; border-left: 1px solid var(--ls-border-soft);
 }
+.sub-strip::-webkit-scrollbar { display: none; }
+.sub-strip:empty { display: none; }
+/* While a paper is being dragged, every place it can be dropped lights up. */
+body.dragging-papers .ls-chip, body.dragging-papers .crumb:not(.current) { border-color: var(--ls-focus); border-style: dashed; }
+.drop-target { background: var(--ls-list-drop-bg) !important; outline: 1px dashed var(--ls-focus); outline-offset: -1px; }
 
-.list tbody tr {
-  cursor: pointer;
+/* ── Column heads ───────────────────────────────────────────────── */
+.col-heads {
+  display: grid; grid-template-columns: var(--cols); padding: 3px 4px; flex-shrink: 0; user-select: none;
+  border-bottom: 1px solid var(--ls-border-soft); font-size: 11px; color: var(--ls-desc); background: var(--ls-sidebar-bg);
 }
+.col-heads > div { padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col-head.sortable { cursor: pointer; display: flex; align-items: center; gap: 2px; }
+.col-head.sortable:hover { color: var(--ls-fg); }
+.sort-ind { display: none; width: 12px; height: 12px; flex-shrink: 0; }
+.sort-ind svg { width: 12px; height: 12px; }
+.col-head.sorted { color: var(--ls-fg); }
+.col-head.sorted .sort-ind { display: inline-flex; }
+.col-head.sorted.asc .sort-ind { transform: rotate(180deg); }
 
-.list tbody tr:hover { background: var(--bg-row-hover); }
-.list tbody tr[aria-selected="true"] {
-  background: var(--bg-row-selected);
-  color: var(--accent);
+/* ── Rows ───────────────────────────────────────────────────────── */
+.paper-list { flex: 1; overflow-y: auto; outline: none; }
+.paper-row { cursor: pointer; }
+.paper-row-main {
+  display: grid; grid-template-columns: var(--cols); align-items: center; padding: 5px 4px; gap: 0;
+  border-bottom: 1px solid var(--ls-border-faint);
 }
-
-.list__title { color: var(--fg); }
-.list tbody tr[aria-selected="true"] .list__title { color: var(--accent); }
-.list__authors { color: var(--muted); font-size: 11px; }
-.list__cite { color: var(--fg-dim); }
-.list__year { color: var(--muted); }
-.list__added { color: var(--muted); }
-
-.list__col-status { white-space: nowrap; }
+.paper-row-main:hover { background: var(--ls-list-hover); }
+.paper-row.cursor:not(.selected) .paper-row-main { background: var(--ls-list-inactive-bg); }
+.paper-row.selected .paper-row-main { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.paper-row.selected .paper-row-main .col-meta { color: var(--ls-list-active-fg); }
+.paper-row-main > div { padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.expand-btn {
+  display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex-shrink: 0;
+  color: var(--ls-fg); transition: transform var(--ls-fast);
+}
+.expand-btn svg { width: 16px; height: 16px; }
+.expand-btn.collapsed { transform: rotate(-90deg); }
+.paper-row-main > .expand-btn { padding: 0; overflow: visible; }
+.paper-row.selected .expand-btn { color: inherit; }
+/* A PDF-less row keeps an empty twistie cell for grid alignment, and dims the
+ * file-minus type icon so "No PDF attached" reads as a muted state. */
+.expand-btn.leaf { visibility: hidden; pointer-events: none; }
+.paper-row.no-pdf .paper-type-icon { opacity: .35; }
+.paper-type-icon { opacity: .7; display: flex; align-items: center; }
+.paper-type-icon svg { width: 13px; height: 13px; }
+.col-title { font-size: 13px; }
+.col-meta { font-size: 12px; color: var(--ls-desc); }
+.title-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.title-cell > .title-text { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.loc-chip {
+  flex-shrink: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; font-size: 10px; padding: 0 6px; border-radius: 8px; cursor: pointer;
+  color: var(--ls-desc); border: 1px solid var(--ls-border-soft);
+}
+.loc-chip:hover { color: var(--ls-fg); border-color: var(--ls-focus); }
+.paper-row.selected .loc-chip { color: inherit; border-color: currentColor; opacity: .8; }
+.paper-row.dragging { opacity: .45; }
+.paper-children { display: none; background: var(--ls-bg); }
+.paper-row.expanded .paper-children { display: block; }
+.child-row {
+  display: grid; grid-template-columns: var(--cols); align-items: center; padding: 4px 4px 4px 28px; gap: 0;
+  font-size: 12px; color: var(--ls-desc); cursor: pointer; border-bottom: 1px solid var(--ls-border-faint);
+}
+.child-row:hover { background: var(--ls-list-hover); color: var(--ls-fg); }
+.child-row > div { padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.child-row .paper-type-icon { opacity: .6; }
+.list-loading { padding: 32px 16px; color: var(--ls-desc); font-size: 12px; text-align: center; }

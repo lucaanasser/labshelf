@@ -1,102 +1,90 @@
 /**
- * Page probe injected on-demand into the active tab via chrome.scripting.executeScript.
- * Extracts every bibliographic hint the page exposes: DOI, arXiv ID, PMID, multiple
- * PDF URL candidates (citation_pdf_url meta tag, link rel=alternate, direct anchor
- * tags), and the title. The probe never picks a single answer — captureService runs
- * a resolver chain that tries each hint in priority order.
+ * Page probe injected on demand into a tab via scripting.executeScript. It only
+ * collects raw evidence — every <meta> value, PDF links and viewers, DOI links —
+ * and leaves interpretation to capture/pageFacts, which runs the same rules
+ * over HTML the background fetched itself (Scholar landing pages, publisher
+ * interstitials). Keeping the probe dumb keeps both paths identical.
  * @depends none (must not import anything — serialized via Function.toString at inject time)
  * @dependents capture/captureService
  */
 
-/** All bibliographic hints extracted from the active page DOM. */
-export interface PageProbeResult {
-  doi?: string;
-  arxivId?: string;
-  pmid?: string;
-  title?: string;
-  /** PDF URL from <meta name="citation_pdf_url"> — the Google Scholar standard. */
-  citationPdfUrl?: string;
-  /** PDF URL from <link rel="alternate" type="application/pdf">. */
-  alternatePdfUrl?: string;
-  /** First <a> tag whose href ends in .pdf — site fallback. */
-  directPdfUrl?: string;
-  /** True when the page itself is a PDF (Content-Type or path ends in .pdf). */
+/** A link or viewer on the page that may lead to the article PDF. */
+export interface RawPdfLink {
+  url: string;
+  /**
+   * embed — a PDF viewer embedded in the page (<embed>/<iframe>/<object>);
+   * alternate — <link rel="alternate" type="application/pdf">;
+   * labelled — an anchor whose text, title or attributes say "PDF";
+   * href — an anchor whose URL looks like a PDF.
+   */
+  kind: "embed" | "alternate" | "labelled" | "href";
+}
+
+/** Everything the probe saw, as plain JSON (it crosses the scripting boundary). */
+export interface RawPage {
+  pageUrl: string;
+  /** document.title, or the PDF viewer's title when the tab is a PDF. */
+  documentTitle?: string;
+  /** True when the tab is showing a PDF document itself. */
   pageIsPdf?: boolean;
-  /** The current page URL — used as last-resort PDF source when pageIsPdf. */
-  pageUrl?: string;
+  /** Lower-cased <meta name|property> → every content value, in page order. */
+  meta: Record<string, string[]>;
+  pdfLinks: RawPdfLink[];
+  /** hrefs of doi.org links — publishers print the article's own DOI this way. */
+  doiLinks: string[];
 }
 
 /**
- * Inspects the active page DOM and returns all bibliographic and PDF-source hints.
- * This function is serialized via Function.prototype.toString() and injected into
- * the page by chrome.scripting.executeScript — it MUST NOT close over any imported
- * symbols and may only use browser globals (document, location, etc).
+ * Inspects the page DOM and returns the raw evidence. Serialized via
+ * Function.prototype.toString(), so it MUST NOT close over imported symbols
+ * and may only use browser globals.
  * @usedBy capture/captureService (passed as func to scripting.executeScript)
- * @returns PageProbeResult with every detected hint.
+ * @returns RawPage
  */
-export function probe(): PageProbeResult {
-  function meta(name: string): string | undefined {
-    const el = document.querySelector<HTMLMetaElement>(
-      `meta[name="${name}" i], meta[property="${name}" i]`,
-    );
-    return el?.content?.trim() || undefined;
+export function probe(): RawPage {
+  const meta: Record<string, string[]> = {};
+  for (const el of Array.from(document.querySelectorAll<HTMLMetaElement>("meta[name], meta[property]"))) {
+    const key = (el.getAttribute("name") ?? el.getAttribute("property") ?? "").trim().toLowerCase();
+    const value = (el.content ?? "").trim();
+    if (!key || !value) continue;
+    (meta[key] ??= []).push(value);
   }
 
-  // --- Identifiers ---
-  const DOI_RE = /\b(10\.\d{4,}(?:\.\d+)*\/[^\s"',<>[\]{}|^~`#%?]+)/;
-  const ARXIV_RE = /(?:arxiv\.org\/(?:abs|pdf|html)\/|arxiv:)(\d{4}\.\d{4,5}(?:v\d+)?)/i;
+  const pdfLinks: Array<{ url: string; kind: "embed" | "alternate" | "labelled" | "href" }> = [];
+  const seen = new Set<string>();
+  const add = (raw: string | null | undefined, kind: "embed" | "alternate" | "labelled" | "href"): void => {
+    if (!raw || raw.startsWith("javascript:") || raw.startsWith("blob:") || raw.startsWith("data:")) return;
+    let url: string;
+    try { url = new URL(raw, location.href).href; } catch { return; }
+    if (!/^https?:/.test(url) || seen.has(url)) return;
+    seen.add(url);
+    pdfLinks.push({ url, kind });
+  };
 
-  const doiRaw =
-    meta("citation_doi") ??
-    meta("dc.identifier") ??
-    meta("dc.identifier.doi") ??
-    meta("prism.doi") ??
-    meta("og:doi");
-  const doi = (doiRaw && DOI_RE.exec(doiRaw)?.[1]) ?? DOI_RE.exec(location.href)?.[1];
-
-  const arxivMeta = meta("citation_arxiv_id");
-  const arxivId = arxivMeta ?? ARXIV_RE.exec(location.href)?.[1];
-
-  const pmid = meta("citation_pmid") ?? /pubmed(?:\.ncbi\.nlm\.nih\.gov)?\/(\d+)/i.exec(location.href)?.[1];
-
-  // --- Title ---
-  const title = (
-    meta("citation_title") ??
-    meta("og:title") ??
-    meta("dc.title") ??
-    document.title
-  ).trim() || undefined;
-
-  // --- PDF URL candidates ---
-  const citationPdfUrl = meta("citation_pdf_url");
-  const alternatePdfUrl = document.querySelector<HTMLLinkElement>(
-    'link[rel="alternate"][type="application/pdf"]',
-  )?.href;
-
-  // Look for the first <a href> that ends in .pdf and is on the same origin or a known publisher domain.
-  function findDirectPdfLink(): string | undefined {
-    const anchors = document.querySelectorAll<HTMLAnchorElement>('a[href]');
-    for (const a of anchors) {
-      const href = a.href;
-      if (!href) continue;
-      if (/\.pdf(?:[?#]|$)/i.test(href)) return href;
-    }
-    return undefined;
+  // A PDF viewer embedded in the page is the paper itself.
+  for (const el of Array.from(document.querySelectorAll<HTMLElement>(
+    'embed[type="application/pdf"], embed[src*=".pdf"], iframe[src*=".pdf"], iframe[src*="/pdf"], object[type="application/pdf"], object[data*=".pdf"]',
+  ))) {
+    add(el.getAttribute("src") ?? el.getAttribute("data"), "embed");
   }
-  const directPdfUrl = findDirectPdfLink();
+  for (const el of Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="alternate"][type="application/pdf"]'))) {
+    add(el.getAttribute("href"), "alternate");
+  }
+  const PDF_WORD = /(^|[^a-z])pdf([^a-z]|$)/i;
+  for (const a of Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"))) {
+    const href = a.getAttribute("href") ?? "";
+    const label = `${a.textContent ?? ""} ${a.title} ${a.getAttribute("aria-label") ?? ""} ${a.className} ${a.getAttribute("data-track-action") ?? ""}`;
+    if (a.getAttribute("type") === "application/pdf" || (PDF_WORD.test(label) && label.length < 300)) add(href, "labelled");
+    else if (/\.pdf(?:[?#]|$)|\/pdf(?:direct|ft)?\/|\/epdf\/|[?&]type=printable/i.test(href)) add(href, "href");
+  }
 
-  const pageIsPdf =
-    document.contentType === "application/pdf" || /\.pdf(?:[?#]|$)/i.test(location.pathname);
+  const doiLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="doi.org/10."]'))
+    .map((a) => a.href)
+    .slice(0, 20);
 
-  // --- Build result, omitting undefined fields for exactOptionalPropertyTypes ---
-  const r: PageProbeResult = { pageUrl: location.href };
-  if (doi) r.doi = doi;
-  if (arxivId) r.arxivId = arxivId;
-  if (pmid) r.pmid = pmid;
-  if (title) r.title = title;
-  if (citationPdfUrl) r.citationPdfUrl = citationPdfUrl;
-  if (alternatePdfUrl) r.alternatePdfUrl = alternatePdfUrl;
-  if (directPdfUrl) r.directPdfUrl = directPdfUrl;
-  if (pageIsPdf) r.pageIsPdf = true;
-  return r;
+  const pageIsPdf = document.contentType === "application/pdf";
+  const raw: RawPage = { pageUrl: location.href, meta, pdfLinks: pdfLinks.slice(0, 40), doiLinks };
+  if (document.title.trim()) raw.documentTitle = document.title.trim();
+  if (pageIsPdf) raw.pageIsPdf = true;
+  return raw;
 }

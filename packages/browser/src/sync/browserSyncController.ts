@@ -97,9 +97,6 @@ export class BrowserSyncController {
 
   // Re-populates the IDB metadata store from metadata.yaml files written by sync.
   private async rebuildMetadataCache(): Promise<void> {
-    await rebuildFromFiles(
-      (p) => this.fs.readFile(p),
-      (p) => this.fs.listDir(p),
-    );
+    await rebuildFromFiles();
   }
 }

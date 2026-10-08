@@ -1,0 +1,141 @@
+/*
+ * LabShelf design tokens for every browser surface (popup, options, library).
+ *
+ * The values mirror the VS Code "Dark Modern" / "Light Modern" themes so the
+ * browser extension reads as the same product as the LabShelf VS Code
+ * extension, whose webviews consume the matching --vscode-* variables. Each
+ * --ls-* token is named after the VS Code colour it stands in for; when the
+ * VS Code CSS changes, port it by swapping the prefix.
+ *
+ * <html data-theme="dark|light"> is set synchronously by ui/themeBoot.ts
+ * (system preference unless the user pinned one), so only two blocks exist.
+ */
+:root {
+  color-scheme: dark;
+
+  /* editor / foreground */
+  --ls-bg: #1f1f1f;                     /* editor.background */
+  --ls-fg: #cccccc;                     /* editor.foreground */
+  --ls-desc: #9d9d9d;                   /* descriptionForeground */
+  --ls-error: #f85149;                  /* errorForeground */
+  --ls-link: #4daafc;                   /* textLink.foreground */
+  --ls-focus: #0078d4;                  /* focusBorder */
+
+  /* chrome surfaces */
+  --ls-sidebar-bg: #181818;             /* sideBar.background */
+  --ls-sidebar-border: #2b2b2b;         /* sideBar.border */
+  --ls-section-fg: #cccccc;             /* sideBarSectionHeader.foreground */
+  --ls-border: #2b2b2b;                 /* panel.border */
+  --ls-border-soft: rgba(128, 128, 128, .2);
+  --ls-border-faint: rgba(128, 128, 128, .07);
+  --ls-widget-bg: #202020;              /* editorWidget.background */
+  --ls-widget-shadow: 0 0 8px 2px rgba(0, 0, 0, .36); /* widget.shadow */
+  --ls-statusbar-bg: #181818;           /* statusBar.background */
+  --ls-statusbar-fg: #cccccc;
+  --ls-statusbar-hover: rgba(255, 255, 255, .12);
+  --ls-overlay: rgba(0, 0, 0, .3);
+
+  /* lists */
+  --ls-list-hover: #2a2d2e;             /* list.hoverBackground */
+  --ls-list-active-bg: #04395e;         /* list.activeSelectionBackground */
+  --ls-list-active-fg: #ffffff;         /* list.activeSelectionForeground */
+  --ls-list-inactive-bg: #37373d;       /* list.inactiveSelectionBackground */
+  --ls-list-drop-bg: #383b3d;           /* list.dropBackground */
+  --ls-indent-guide: rgba(88, 88, 88, .4);
+
+  /* controls */
+  --ls-button-bg: #0078d4;              /* button.background */
+  --ls-button-fg: #ffffff;
+  --ls-button-hover: #026ec1;
+  --ls-button2-bg: #313131;             /* button.secondaryBackground */
+  --ls-button2-fg: #cccccc;
+  --ls-button2-hover: #3c3c3c;
+  --ls-input-bg: #313131;               /* input.background */
+  --ls-input-fg: #cccccc;
+  --ls-input-border: #3c3c3c;
+  --ls-input-placeholder: #989898;
+  --ls-toolbar-hover: rgba(90, 93, 94, .31); /* toolbar.hoverBackground */
+  --ls-toolbar-active: rgba(99, 102, 103, .31);
+  --ls-badge-bg: #616161;               /* badge.background */
+  --ls-badge-fg: #f8f8f8;
+  --ls-kbd-bg: rgba(128, 128, 128, .17); /* keybindingLabel.background */
+  --ls-kbd-border: rgba(51, 51, 51, .6);
+  --ls-kbd-bottom: rgba(68, 68, 68, .6);
+  --ls-scrollbar: rgba(121, 121, 121, .4);
+  --ls-scrollbar-hover: rgba(100, 100, 100, .7);
+
+  /* semantic (charts.*) */
+  --ls-blue: #3794ff;
+  --ls-yellow: #cca700;
+  --ls-green: #89d185;
+  --ls-find-match: rgba(234, 92, 0, .33); /* editor.findMatchHighlightBackground */
+  --ls-status-unread: var(--ls-blue);
+  --ls-status-reading: #e5c07b;
+  --ls-status-done: #4ec994;
+  --ls-on-badge: #1e1e1e;
+
+  /* type */
+  --ls-font: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif;
+  --ls-mono: Menlo, Monaco, "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  --ls-font-size: 13px;
+
+  /* shape & motion */
+  --ls-radius-sm: 3px;
+  --ls-radius: 4px;
+  --ls-radius-lg: 6px;
+  --ls-row-h: 22px;
+  --ls-fast: 100ms;
+  --ls-normal: 140ms;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ls-bg: #ffffff;
+  --ls-fg: #3b3b3b;
+  --ls-desc: #717171;
+  --ls-error: #a1260d;
+  --ls-link: #005fb8;
+  --ls-focus: #005fb8;
+  --ls-sidebar-bg: #f8f8f8;
+  --ls-sidebar-border: #e5e5e5;
+  --ls-section-fg: #3b3b3b;
+  --ls-border: #e5e5e5;
+  --ls-border-soft: rgba(128, 128, 128, .25);
+  --ls-border-faint: rgba(128, 128, 128, .1);
+  --ls-widget-bg: #f8f8f8;
+  --ls-widget-shadow: 0 0 8px 2px rgba(0, 0, 0, .16);
+  --ls-statusbar-bg: #f8f8f8;
+  --ls-statusbar-fg: #3b3b3b;
+  --ls-statusbar-hover: rgba(0, 0, 0, .12);
+  --ls-overlay: rgba(0, 0, 0, .18);
+  --ls-list-hover: #f2f2f2;
+  --ls-list-active-bg: #e8e8e8;
+  --ls-list-active-fg: #000000;
+  --ls-list-inactive-bg: #e4e6f1;
+  --ls-list-drop-bg: #d6ebff;
+  --ls-indent-guide: rgba(163, 163, 163, .4);
+  --ls-button-bg: #005fb8;
+  --ls-button-fg: #ffffff;
+  --ls-button-hover: #0258a8;
+  --ls-button2-bg: #e5e5e5;
+  --ls-button2-fg: #3b3b3b;
+  --ls-button2-hover: #cccccc;
+  --ls-input-bg: #ffffff;
+  --ls-input-fg: #3b3b3b;
+  --ls-input-border: #cecece;
+  --ls-input-placeholder: #767676;
+  --ls-toolbar-hover: rgba(184, 184, 184, .31);
+  --ls-toolbar-active: rgba(166, 166, 166, .31);
+  --ls-badge-bg: #cccccc;
+  --ls-badge-fg: #3b3b3b;
+  --ls-kbd-bg: rgba(221, 221, 221, .4);
+  --ls-kbd-border: rgba(204, 204, 204, .4);
+  --ls-kbd-bottom: rgba(187, 187, 187, .4);
+  --ls-scrollbar: rgba(100, 100, 100, .4);
+  --ls-scrollbar-hover: rgba(100, 100, 100, .7);
+  --ls-blue: #007acc;
+  --ls-yellow: #b89500;
+  --ls-green: #388a34;
+  --ls-status-reading: #c9a227;
+  --ls-status-done: #2e9e6b;
+}

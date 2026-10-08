@@ -4,7 +4,7 @@
  * the embedded PDF URL from common Sci-Hub markup patterns, and returns it.
  *
  * Mirrors and DOM patterns shift over time — this resolver is intentionally
- * lenient and returns undefined on any failure so the chain can fall through.
+ * lenient and returns an empty list on any failure so the chain can fall through.
  * @depends capture/resolvers/types
  * @dependents capture/resolvers/resolverChain
  */
@@ -12,20 +12,20 @@ import type { PdfResolver, ResolveContext } from "./types";
 
 export const sciHubResolver: PdfResolver = {
   name: "sci-hub",
-  async resolve(ctx: ResolveContext): Promise<string | undefined> {
-    if (!ctx.allowSciHub || !ctx.doi) return undefined;
+  async resolve(ctx: ResolveContext): Promise<string[]> {
+    if (!ctx.allowSciHub || !ctx.doi) return [];
     const mirror = ctx.sciHubMirror.replace(/\/+$/, "");
     const pageUrl = `${mirror}/${ctx.doi}`;
     let html: string;
     try {
       const res = await fetch(pageUrl, { redirect: "follow" });
-      if (!res.ok) return undefined;
+      if (!res.ok) return [];
       const ctype = res.headers.get("content-type") ?? "";
       // Some mirrors serve the PDF directly under /<doi> when they have it cached.
-      if (ctype.toLowerCase().includes("pdf")) return res.url;
+      if (ctype.toLowerCase().includes("pdf")) return [res.url];
       html = await res.text();
     } catch {
-      return undefined;
+      return [];
     }
 
     // Try common embed markup: <embed src="...">, <iframe src="...">, location.href = "..."
@@ -38,9 +38,9 @@ export const sciHubResolver: PdfResolver = {
     for (const re of candidates) {
       const m = re.exec(html);
       const raw = m?.[1];
-      if (raw) return normaliseSciHubUrl(raw, mirror);
+      if (raw) return [normaliseSciHubUrl(raw, mirror)];
     }
-    return undefined;
+    return [];
   },
 };
 

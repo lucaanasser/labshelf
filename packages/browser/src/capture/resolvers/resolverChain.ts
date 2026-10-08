@@ -1,69 +1,94 @@
 /**
- * Runs every resolver in priority order and returns the first successful PDF URL,
- * verifying that the URL actually serves a PDF (HEAD request, content-type check).
- * Resolvers that mutate context (pubmed → DOI) run first so later resolvers can
- * use the populated identifier.
- * @depends capture/resolvers/types, capture/resolvers/* (each resolver module)
+ * Runs every resolver in priority order and downloads their candidate URLs
+ * until one really is a PDF (capture/pdfFetcher checks the bytes). Resolvers
+ * that mutate context (pubmed → DOI) run first so later resolvers can use the
+ * populated identifier.
+ * @depends capture/resolvers/*, capture/pdfFetcher
  * @dependents capture/captureService
  */
 import type { PdfResolver, ResolveContext, ResolvedPdf } from "./types";
 import { pageHintResolver } from "./pageHintResolver";
+import { publisherResolver } from "./publisherResolver";
 import { arxivResolver } from "./arxivResolver";
 import { crossrefResolver } from "./crossrefResolver";
 import { unpaywallResolver } from "./unpaywallResolver";
 import { pubmedResolver } from "./pubmedResolver";
 import { sciHubResolver } from "./scihubResolver";
+import { fetchPdf } from "../pdfFetcher";
+import type { PdfFetchOptions } from "../pdfFetcher";
 
-// Order matters: cheaper / more reliable sources run before expensive / fragile ones.
-// pubmed runs first so its DOI side-effect benefits all later resolvers.
+// Order matters: what the page offered beats a constructed publisher URL,
+// which beats an API lookup. pubmed runs first so its DOI benefits the rest.
 const CHAIN: PdfResolver[] = [
   pubmedResolver,
   pageHintResolver,
   arxivResolver,
+  publisherResolver,
   crossrefResolver,
   unpaywallResolver,
   sciHubResolver,
 ];
 
+/** One attempt, for the capture log. */
+export interface PdfAttempt {
+  source: string;
+  url: string;
+}
+
+// A background tab costs seconds: one tab, for the site of the best blocked
+// candidate, which then tries that site's blocked candidates in order.
+const HELPER_TAB_URLS = 3;
+
 /**
- * Walks the resolver chain and returns the first PDF URL whose HEAD response
- * looks like a real PDF. Returns undefined if no resolver produced a working URL.
- * @usedBy captureService
+ * Walks the chain and returns the first candidate that downloads as a PDF.
+ * Candidates refused by a bot check are retried at the end through a real
+ * tab, when the runtime offers one. `attempts` collects every URL tried, so a
+ * failure can be explained.
+ * @usedBy capture/captureService
  */
-export async function resolvePdfUrl(ctx: ResolveContext): Promise<ResolvedPdf | undefined> {
+export async function resolvePdf(
+  ctx: ResolveContext,
+  fetchOpts: PdfFetchOptions = {},
+  attempts: PdfAttempt[] = [],
+): Promise<ResolvedPdf | undefined> {
+  const blocked: string[] = [];
+  const opts: PdfFetchOptions = { ...fetchOpts, blocked };
+  const tried = new Set<string>();
   for (const resolver of CHAIN) {
-    let url: string | undefined;
+    let urls: string[];
     try {
-      url = await resolver.resolve(ctx);
+      urls = await resolver.resolve(ctx);
     } catch {
-      url = undefined;
+      urls = [];
     }
-    if (!url) continue;
-    if (await looksLikePdf(url)) return { url, source: resolver.name };
+    for (const url of urls) {
+      if (tried.has(url)) continue;
+      tried.add(url);
+      // Page links keep the label of whoever offered them ("page", "scholar").
+      const source = resolver === pageHintResolver
+        ? ctx.pageCandidates.find((c) => c.url === url)?.source ?? resolver.name
+        : resolver.name;
+      attempts.push({ source, url });
+      const pdf = await fetchPdf(url, opts);
+      if (pdf) return { bytes: pdf.bytes, url: pdf.url, source };
+    }
+  }
+
+  if (fetchOpts.viaHelperTab && blocked.length) {
+    const site = new URL(blocked[0]!).origin;
+    const urls = blocked.filter((u) => new URL(u).origin === site).slice(0, HELPER_TAB_URLS);
+    attempts.push(...urls.map((url) => ({ source: `${sourceOf(attempts, url)} (via tab)`, url })));
+    const pdf = await fetchOpts.viaHelperTab(urls).catch(() => undefined);
+    if (pdf) return { bytes: pdf.bytes, url: pdf.url, source: sourceOf(attempts, pdf.url, urls) };
   }
   return undefined;
 }
 
-// HEAD-checks the URL; falls back to a GET range request when HEAD is rejected.
-async function looksLikePdf(url: string): Promise<boolean> {
-  try {
-    const head = await fetch(url, { method: "HEAD", redirect: "follow" });
-    if (head.ok && isPdfContentType(head.headers.get("content-type"))) return true;
-    // Some publishers reject HEAD with 405; try a 1-byte range GET.
-    if (head.status === 405 || head.status === 403) {
-      const ranged = await fetch(url, { headers: { Range: "bytes=0-3" }, redirect: "follow" });
-      if (!ranged.ok) return false;
-      // First 4 bytes of any PDF are "%PDF".
-      const text = await ranged.text();
-      if (text.startsWith("%PDF")) return true;
-      return isPdfContentType(ranged.headers.get("content-type"));
-    }
-  } catch {
-    // Network or CORS error — treat as not a PDF.
-  }
-  return false;
-}
-
-function isPdfContentType(value: string | null): boolean {
-  return !!value && value.toLowerCase().includes("application/pdf");
+// The resolver that first proposed `url` (or, for a redirected download, the
+// first of the URLs handed to the helper tab).
+function sourceOf(attempts: PdfAttempt[], url: string, fallbackFrom: string[] = []): string {
+  const direct = attempts.find((a) => a.url === url && !a.source.endsWith("(via tab)"));
+  if (direct) return direct.source;
+  const first = fallbackFrom.map((u) => attempts.find((a) => a.url === u && !a.source.endsWith("(via tab)"))).find(Boolean);
+  return first?.source ?? "page";
 }

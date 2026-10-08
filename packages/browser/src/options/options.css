@@ -1,149 +1,49 @@
 /*
- * Options page styling — terminal/brutalist aesthetic matching popup + library.
- * Section headers in uppercase, sharp borders, no rounded corners.
+ * Settings page, laid out like the VS Code extension's settings panel and the
+ * VS Code settings editor: a title, sections divided by rules, a label +
+ * description + control per setting, filled buttons. Autosaves on change.
+ * Requires ui/styles/tokens.css + base.css.
  */
-:root {
-  color-scheme: dark;
-  --bg: #0e0e10;
-  --bg-elev: #161618;
-  --fg: #f1ecdf;
-  --fg-dim: #b8b3a4;
-  --muted: #6e6a60;
-  --accent: #d39157;
-  --accent-dim: #a76f3f;
-  --ok: #6ba56b;
-  --warn: #d05750;
-  --border: #2a2823;
-  --mono: ui-monospace, "JetBrains Mono", "IBM Plex Mono", "Berkeley Mono", Menlo, Consolas, monospace;
-}
+body { min-height: 100vh; }
+.settings { max-width: 760px; margin: 0 auto; padding: 24px 32px 48px; }
 
-* { box-sizing: border-box; }
+.settings-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.settings-head .ls-brand svg { width: 22px; height: 22px; }
+.settings-head .ls-brand span { display: none; }
+.settings-head h1 { font-size: 1.4em; font-weight: 600; margin: 0; }
+.settings-saved { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ls-desc); opacity: 0; transition: opacity var(--ls-normal); }
+.settings-saved.show { opacity: 1; }
+.settings-saved svg { width: 14px; height: 14px; color: var(--ls-green); }
 
-body {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 13px;
-  background: var(--bg);
-  color: var(--fg);
-  line-height: 1.5;
-}
+.settings-section { border-top: 1px solid var(--ls-border); padding: 18px 0; }
+.settings-section h2 { font-size: 1em; font-weight: 600; margin: 0 0 6px; }
+.settings-desc { margin: 0 0 12px; font-size: 12px; color: var(--ls-desc); line-height: 1.5; }
+code { font-family: var(--ls-mono); font-size: 11px; padding: 1px 4px; border-radius: 3px; background: var(--ls-kbd-bg); }
 
-.options {
-  max-width: 720px;
-  margin: 32px auto;
-  padding: 0 24px 48px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  border: 1px solid var(--border);
-  background: var(--bg-elev);
-}
+.setting { margin: 14px 0 0; }
+.setting-label { display: block; font-weight: 600; font-size: 13px; }
+.setting-desc { font-size: 12px; color: var(--ls-desc); margin: 2px 0 6px; line-height: 1.5; }
+.setting .ls-input { max-width: 420px; margin-top: 4px; }
+.setting .setting-input-sm { max-width: 120px; }
+.setting .setting-input-md { max-width: 320px; }
+.setting.disabled { opacity: .5; pointer-events: none; }
 
-.options__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-  margin: 0 -24px;
-  padding-left: 24px;
-  padding-right: 24px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.options__title { color: var(--accent); font-size: 14px; }
-.options__title::before { content: "▮ "; }
-.options__sub { color: var(--muted); font-size: 11px; }
+.settings-status { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 8px 0 10px; }
+.settings-status svg { width: 16px; height: 16px; }
+.settings-status .ls-dot { width: 8px; height: 8px; }
+.settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.settings-seg { display: inline-flex; margin-top: 6px; border-radius: var(--ls-radius); overflow: hidden; border: 1px solid var(--ls-border-soft); }
+.settings-seg button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border: none; background: none; cursor: pointer;
+  font-size: 12px; color: var(--ls-desc); transition: background var(--ls-fast), color var(--ls-fast);
 }
+.settings-seg button svg { width: 14px; height: 14px; }
+.settings-seg button + button { border-left: 1px solid var(--ls-border-soft); }
+.settings-seg button:hover { background: var(--ls-list-hover); color: var(--ls-fg); }
+.settings-seg button.on { background: var(--ls-list-inactive-bg); color: var(--ls-fg); font-weight: 600; }
 
-.section__title {
-  font-size: 11px;
-  font-weight: 600;
-  margin: 0 0 4px;
-  color: var(--fg-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  border-bottom: 1px dashed var(--border);
-  padding-bottom: 4px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-}
-.field--row {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-}
-.field__label {
-  color: var(--fg-dim);
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-}
-
-input[type="number"], input[type="email"], input[type="url"], input[type="text"] {
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--mono);
-  font-size: 12px;
-  width: 100%;
-}
-input:focus { outline: none; border-color: var(--accent-dim); }
-
-input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--accent);
-}
-
-.btn {
-  appearance: none;
-  border: 1px solid var(--accent-dim);
-  background: transparent;
-  color: var(--accent);
-  font-family: var(--mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 6px 12px;
-  cursor: pointer;
-  align-self: flex-start;
-}
-.btn::before { content: "[ "; color: var(--accent-dim); }
-.btn::after { content: " ]"; color: var(--accent-dim); }
-.btn:hover { color: var(--fg); border-color: var(--fg-dim); }
-
-.muted { color: var(--muted); font-size: 11px; }
-
-.log {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  padding: 10px;
-  font-size: 11px;
-  font-family: var(--mono);
-  max-height: 320px;
-  overflow: auto;
-  white-space: pre-wrap;
-  color: var(--fg-dim);
-}
-
-.options__footer {
-  border-top: 1px dashed var(--border);
-  padding-top: 10px;
-  color: var(--muted);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  text-align: right;
+.settings-log {
+  margin: 0; padding: 10px 12px; max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: 11px/1.5 var(--ls-mono); color: var(--ls-desc); background: var(--ls-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius);
 }

@@ -4,28 +4,61 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>LabShelf</title>
+    <script src="../ui/themeBoot.js"></script>
+    <link rel="stylesheet" href="../ui/styles/tokens.css" />
+    <link rel="stylesheet" href="../ui/styles/base.css" />
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <main class="popup">
-      <header class="popup__header">
-        <span class="popup__title">CAPTURE</span>
-        <span id="status" class="popup__status" data-state="idle">DISCONNECTED</span>
+    <main class="popup" id="popup" data-state="loading">
+      <header class="pp-head">
+        <span class="ls-brand" id="brand"></span>
+        <div class="pp-head-actions">
+          <button class="ls-icon-btn" id="sync" type="button"></button>
+          <button class="ls-icon-btn" id="library" type="button" title="Open library"></button>
+          <button class="ls-icon-btn" id="settings" type="button" title="Settings"></button>
+        </div>
       </header>
-      <section class="popup__body">
-        <button id="capture" class="popup__btn popup__btn--primary">Save current page</button>
-        <button id="open-library" class="popup__btn">Open library</button>
-        <button id="sync-now" class="popup__btn" disabled>Sync now</button>
-        <button id="connect" class="popup__btn">Connect to Drive</button>
+
+      <section class="pp-paper" aria-live="polite">
+        <div class="pp-title" id="title">Reading this page…</div>
+        <div class="pp-meta" id="meta"></div>
+        <div class="pp-pdf" id="pdf" hidden></div>
       </section>
-      <footer class="popup__footer">
-        <small id="sync-status"></small>
-        <small id="capture-source"></small>
-      </footer>
-      <footer class="popup__footer popup__footer--meta">
-        <small id="auto-sync-meta"></small>
-        <small><a id="open-options" href="#">Settings</a></small>
-      </footer>
+
+      <form class="pp-form" id="form" hidden>
+        <label class="pp-field" title="Folder">
+          <span class="pp-field-icon" id="folderIcon"></span>
+          <select id="folder" aria-label="Folder"></select>
+          <span class="pp-field-chevron" id="folderChevron"></span>
+        </label>
+        <label class="pp-field" title="Tags">
+          <span class="pp-field-icon" id="tagsIcon"></span>
+          <input id="tags" type="text" autocomplete="off" spellcheck="false" placeholder="Tags, separated by commas" aria-label="Tags" />
+        </label>
+        <label class="pp-field pp-field-note" title="Note">
+          <span class="pp-field-icon" id="noteIcon"></span>
+          <textarea id="note" rows="1" placeholder="Add a note" aria-label="Note"></textarea>
+        </label>
+        <button class="ls-btn ls-btn-primary ls-btn-lg pp-save" id="save" type="submit"></button>
+        <div class="pp-error" id="error" role="alert" hidden></div>
+      </form>
+
+      <section class="pp-status" id="status" hidden>
+        <div class="pp-status-line">
+          <span class="pp-status-icon" id="statusIcon"></span>
+          <div class="pp-status-text">
+            <div class="pp-status-title" id="statusTitle"></div>
+            <div class="pp-status-detail" id="statusDetail"></div>
+          </div>
+        </div>
+        <div class="pp-status-actions">
+          <button class="ls-btn ls-btn-primary" id="attachPdf" type="button" hidden></button>
+          <button class="ls-btn" id="open" type="button" hidden></button>
+          <button class="ls-btn" id="tryAnyway" type="button" hidden>Try anyway</button>
+          <button class="ls-icon-btn" id="undo" type="button" title="Remove from library" hidden></button>
+        </div>
+      </section>
     </main>
     <script type="module" src="index.js"></script>
   </body>

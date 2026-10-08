@@ -1,121 +1,78 @@
 /*
- * Terminal/brutalist aesthetic for the toolbar popup.
- * Shared design language: monospace, sharp corners, bracketed labels,
- * uppercase headers, status bar at the bottom.
+ * Toolbar popup. Same product language as the library page and the VS Code
+ * extension, kept to one task: what paper is this, where does it go, save.
+ * Brand header with icon actions, the recognised paper, three compact
+ * fields (folder, tags, note) and the primary button; outcomes replace the
+ * form with a single status block. Requires ui/styles/tokens.css + base.css.
  */
-:root {
-  color-scheme: dark;
-  --bg: #0e0e10;
-  --bg-elev: #161618;
-  --fg: #f1ecdf;
-  --fg-dim: #b8b3a4;
-  --muted: #6e6a60;
-  --accent: #d39157;
-  --accent-dim: #a76f3f;
-  --ok: #6ba56b;
-  --warn: #d05750;
-  --border: #2a2823;
-  --border-dim: #1d1c19;
-  --mono: ui-monospace, "JetBrains Mono", "IBM Plex Mono", "Berkeley Mono", Menlo, Consolas, monospace;
+body { width: 340px; background: var(--ls-widget-bg); }
+/* The "No PDF found" dialog is position:fixed and does not grow the popup; a
+   short form state would clip it, so guard a minimum height while it is open. */
+body.modal-open { min-height: 250px; }
+.popup { display: flex; flex-direction: column; }
+
+.pp-head {
+  display: flex; align-items: center; justify-content: space-between; height: 38px; padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--ls-border);
 }
+.pp-head-actions { display: flex; gap: 2px; }
+.pp-head .ls-icon-btn { width: 26px; height: 26px; }
+.pp-head .ls-icon-btn[data-tone="error"] { color: var(--ls-error); opacity: 1; }
+.pp-head .ls-icon-btn.spinning svg { animation: ls-spin 1.2s linear infinite; }
+.spin { display: inline-flex; animation: ls-spin 1.2s linear infinite; }
+.spin svg { width: 14px; height: 14px; }
+@keyframes ls-spin { to { transform: rotate(360deg); } }
 
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 12px;
-  background: var(--bg);
-  color: var(--fg);
-  min-width: 320px;
-  line-height: 1.45;
+/* the recognised paper */
+.pp-paper { padding: 12px 14px 4px; display: flex; flex-direction: column; gap: 3px; }
+.pp-title {
+  font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--ls-fg); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
+.pp-title.muted { font-weight: 400; color: var(--ls-desc); }
+.pp-meta { font-size: 11px; color: var(--ls-desc); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-meta:empty { display: none; }
+.pp-pdf { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 11px; color: var(--ls-desc); }
+.pp-pdf svg { width: 13px; height: 13px; flex-shrink: 0; }
+.pp-pdf[data-tone="ok"] svg { color: var(--ls-green); }
+.pp-pdf[data-tone="warn"] svg { color: var(--ls-yellow); }
 
-.popup {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border);
+/* fields */
+.pp-form { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px 14px; }
+.pp-field {
+  position: relative; display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 8px;
+  border-radius: var(--ls-radius); border: 1px solid var(--ls-input-border); background: var(--ls-input-bg);
+  cursor: text; transition: border-color var(--ls-fast);
 }
-
-.popup__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 11px;
+.pp-field:focus-within { border-color: var(--ls-focus); }
+.pp-field-icon { display: inline-flex; color: var(--ls-desc); flex-shrink: 0; }
+.pp-field-icon svg { width: 14px; height: 14px; }
+.pp-field input, .pp-field select, .pp-field textarea {
+  flex: 1; min-width: 0; border: none; outline: none; background: none; color: var(--ls-input-fg); font-size: 12px; padding: 0;
 }
+.pp-field input::placeholder, .pp-field textarea::placeholder { color: var(--ls-input-placeholder); }
+.pp-field select { height: 26px; appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 18px; }
+.pp-field select option { background: var(--ls-widget-bg); color: var(--ls-fg); }
+.pp-field-chevron { position: absolute; right: 8px; display: inline-flex; pointer-events: none; color: var(--ls-desc); }
+.pp-field-chevron svg { width: 14px; height: 14px; }
+.pp-field-note { align-items: flex-start; }
+.pp-field-note .pp-field-icon { margin-top: 6px; }
+.pp-field textarea { resize: none; line-height: 1.4; padding: 5px 0; max-height: 96px; font-family: inherit; }
+.pp-save { margin-top: 4px; width: 100%; }
+.pp-error { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; line-height: 1.45; color: var(--ls-error); overflow-wrap: anywhere; }
+.pp-error svg { width: 13px; height: 13px; flex-shrink: 0; margin-top: 1px; }
 
-.popup__title { color: var(--accent); }
-.popup__title::before { content: "▮ "; }
-
-.popup__status { color: var(--muted); }
-.popup__status::before { content: "• "; }
-.popup__status[data-state="connected"] { color: var(--ok); }
-.popup__status[data-state="syncing"] { color: var(--accent); }
-.popup__status[data-state="error"] { color: var(--warn); }
-
-.popup__body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-}
-
-.popup__btn {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--fg);
-  font-family: var(--mono);
-  font-size: 12px;
-  text-align: left;
-  padding: 6px 10px;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.popup__btn::before { content: "[ "; color: var(--muted); }
-.popup__btn::after { content: " ]"; color: var(--muted); }
-
-.popup__btn--primary {
-  border-color: var(--accent-dim);
-  color: var(--accent);
-}
-.popup__btn--primary::before, .popup__btn--primary::after { color: var(--accent-dim); }
-
-.popup__btn:hover:not(:disabled) {
-  border-color: var(--fg-dim);
-  color: var(--fg);
-}
-
-.popup__btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.popup__footer {
-  border-top: 1px solid var(--border);
-  padding: 6px 12px;
-  color: var(--muted);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.popup__footer small { color: inherit; }
-
-.popup__footer--meta {
-  border-top: 1px dashed var(--border-dim);
-  font-size: 9px;
-}
-
-.popup__footer--meta a {
-  color: var(--accent-dim);
-  text-decoration: none;
-}
-
-.popup__footer--meta a:hover { color: var(--fg); }
+/* outcome block: saved / already in library / not a paper */
+.pp-status { display: flex; flex-direction: column; gap: 10px; padding: 10px 14px 14px; animation: ls-slide var(--ls-normal) ease-out; }
+.pp-status-line { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: var(--ls-radius-lg); background: var(--ls-bg); border: 1px solid var(--ls-border); }
+.pp-status-icon { display: inline-flex; flex-shrink: 0; margin-top: 1px; color: var(--ls-desc); }
+.pp-status-icon[data-tone="ok"] { color: var(--ls-green); }
+.pp-status-icon[data-tone="warn"] { color: var(--ls-yellow); }
+.pp-status-icon svg { width: 15px; height: 15px; }
+.pp-status-text { min-width: 0; }
+.pp-status-title { font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.pp-status-detail { font-size: 11px; line-height: 1.45; color: var(--ls-desc); overflow-wrap: anywhere; }
+.pp-status-actions { display: flex; align-items: center; gap: 6px; }
+.pp-status-actions .ls-btn { padding: 4px 10px; font-size: 12px; }
+.pp-status-actions #undo { margin-left: auto; width: 26px; height: 26px; }
+.pp-status-actions #undo:hover:not(:disabled) { color: var(--ls-error); }

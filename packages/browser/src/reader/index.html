@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" data-pdf-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>LabShelf Reader</title>
+<link rel="icon" href="../assets/icon-32.png"/>
+<script src="../ui/themeBoot.js"></script>
+<link rel="modulepreload" href="../vendor/pdfjs/build/pdf.min.mjs"/>
+<link rel="modulepreload" href="../vendor/pdfjs/web/pdf_viewer.mjs"/>
+<link rel="stylesheet" href="../ui/styles/tokens.css"/>
+<link rel="stylesheet" href="host.css"/>
+<link rel="stylesheet" href="../vendor/pdfjs/web/pdf_viewer.css"/>
+<link rel="stylesheet" href="reader.css"/>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar" aria-label="Sidebar" hidden></aside>
+  <div id="sidebar-resizer" hidden></div>
+  <main id="pdf-shell">
+    <div id="toolbar" role="toolbar" aria-label="Reader"></div>
+    <div id="find-bar" role="search"></div>
+    <div id="viewerContainer" tabindex="0"><div id="viewer" class="pdfViewer"></div></div>
+    <div id="status-pill"></div>
+    <div id="loading-msg">Loading PDF...</div>
+    <div id="error-msg" role="alert" hidden></div>
+  </main>
+</div>
+<div id="selection-toolbar" role="toolbar" aria-label="Selection"></div>
+<div id="hover-popup" role="tooltip"></div>
+<div id="cheatsheet"></div>
+<script type="module" src="index.js"></script>
+</body>
+</html>

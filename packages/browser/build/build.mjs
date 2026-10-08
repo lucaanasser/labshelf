@@ -1,6 +1,6 @@
 /**
  * Bundles the @labshelf/browser MV3 extension for chrome and firefox targets.
- * @depends esbuild, copyAssets.mjs.
+ * @depends esbuild, copyAssets.mjs, vendorReader.mjs.
  * @dependents pnpm --filter @labshelf/browser build.
  */
 import { build as esbuild } from "esbuild";
@@ -8,6 +8,7 @@ import { mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyAssets } from "./copyAssets.mjs";
+import { vendorReader } from "./vendorReader.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(here, "..");
@@ -19,6 +20,12 @@ const ENTRIES = [
   { entry: "popup/index.ts", out: "popup/index.js", format: "esm" },
   { entry: "options/index.ts", out: "options/index.js", format: "esm" },
   { entry: "library-page/index.ts", out: "library-page/index.js", format: "esm" },
+  // The PDF reader page: the shared @labshelf/reader UI over an in-page host.
+  { entry: "reader/index.ts", out: "reader/index.js", format: "esm" },
+  // Classic script: runs in <head> before the stylesheets so the theme is set pre-paint.
+  { entry: "ui/themeBoot.ts", out: "ui/themeBoot.js", format: "iife" },
+  // Content scripts are classic scripts too: no module loading in page worlds.
+  { entry: "content/scholar.ts", out: "content/scholar.js", format: "iife" },
 ];
 
 const TARGETS = ["chrome", "firefox"];
@@ -45,9 +52,12 @@ async function buildOne(target) {
         outfile: resolve(outDir, e.out),
         bundle: true,
         format: e.format,
-        target: ["chrome114", "firefox115"],
+        // pdf.js 6.3 (the reader) needs Chrome 125 / Firefox 128; the manifests declare the same minimums.
+        target: ["chrome125", "firefox128"],
         platform: "browser",
         sourcemap: true,
+        // A stylesheet imported from TS is its text (shadow-root styles in content scripts).
+        loader: { ".css": "text" },
         define: {
           "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV ?? "production"),
         },
@@ -57,6 +67,7 @@ async function buildOne(target) {
   );
 
   await copyAssets({ srcRoot, outDir, target, pkgRoot });
+  await vendorReader({ outDir, pkgRoot });
   // eslint-disable-next-line no-console
   console.log(`[labshelf-browser] built ${target} → ${outDir}`);
 }

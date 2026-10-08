@@ -3,6 +3,13 @@
   "name": "LabShelf",
   "version": "0.1.0",
   "description": "Local-first research paper manager. Syncs with the same Google Drive folder used by the LabShelf VS Code extension.",
+  "minimum_chrome_version": "125",
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
   "permissions": [
     "identity",
     "storage",
@@ -27,7 +34,25 @@
     "service_worker": "background/index.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*/*"
+      ],
+      "include_globs": [
+        "https://scholar.google.*/scholar*"
+      ],
+      "js": [
+        "content/scholar.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png"
+    },
     "default_popup": "popup/index.html",
     "default_title": "LabShelf"
   },
@@ -37,8 +62,15 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["library-page/index.html"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "library-page/index.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  }
 }

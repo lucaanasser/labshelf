@@ -7,13 +7,22 @@ export { IndexedDbFileSystem } from "./indexedDbFileSystem";
 export {
   upsertRecord,
   deleteRecord,
+  getRecord,
   listAllRecords,
   listByFolder,
   searchRecords,
   upsertFromYaml,
   rebuildFromFiles,
+  recordFromYaml,
 } from "./paperRecordStore";
-export { getDirectSubfolders, buildFolderTree, listAllFolders } from "./folderTreeStore";
+export {
+  getDirectSubfolders,
+  buildFolderTree,
+  listAllFolders,
+  pdfDirsFromKeys,
+  scanLibrary,
+  pdfDirs,
+} from "./folderTreeStore";
 export type { FolderNode } from "./folderTreeStore";
 export { getDb, resetDb } from "./idb/db";
 export type { FileRow, MetadataRow, ManifestRow, LabShelfSchema } from "./idb/schema";

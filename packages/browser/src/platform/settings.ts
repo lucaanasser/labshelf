@@ -17,6 +17,8 @@ export interface LabShelfSettings {
   contactEmail: string;
   /** Auto-sync interval in minutes; 0 disables interval sync. */
   autoSyncMinutes: number;
+  /** Collection the last capture went to; the popup and Scholar buttons default to it. */
+  lastFolder: string;
 }
 
 const STORAGE_KEY = "labshelf.settings";
@@ -26,6 +28,7 @@ const DEFAULTS: LabShelfSettings = {
   sciHubMirror: "https://sci-hub.se",
   contactEmail: "contact@labshelf.dev",
   autoSyncMinutes: 15,
+  lastFolder: "papers",
 };
 
 /**

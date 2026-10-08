@@ -2,63 +2,112 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>LabShelf — Options</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LabShelf Settings</title>
+    <script src="../ui/themeBoot.js"></script>
+    <link rel="stylesheet" href="../ui/styles/tokens.css" />
+    <link rel="stylesheet" href="../ui/styles/base.css" />
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
-    <main class="options">
-      <header class="options__header">
-        <span class="options__title">SETTINGS</span>
-        <span class="options__sub">LABSHELF</span>
+    <main class="settings">
+      <header class="settings-head">
+        <span class="ls-brand" id="brand"></span>
+        <h1>LabShelf Settings</h1>
+        <span class="settings-saved" id="savedFlag" aria-live="polite"></span>
       </header>
 
-      <section class="section">
-        <h2 class="section__title">SYNC</h2>
-        <label class="field">
-          <span class="field__label">Auto-sync interval (minutes)</span>
-          <input id="sync-interval" type="number" min="0" max="240" value="15" />
-        </label>
-        <label class="field">
-          <span class="field__label">Contact email · used by Unpaywall &amp; CrossRef</span>
-          <input id="contact-email" type="email" placeholder="you@example.com" />
-        </label>
-        <button id="save-sync" class="btn">Save sync settings</button>
-        <p id="save-sync-msg" class="muted"></p>
+      <section class="settings-section">
+        <h2>Google Drive sync</h2>
+        <p class="settings-desc">LabShelf syncs this browser's library with the same <code>LabShelf Library/</code> folder the VS Code extension uses.</p>
+        <div class="settings-status" id="connection"></div>
+        <div class="settings-actions" id="connectionActions"></div>
       </section>
 
-      <section class="section">
-        <h2 class="section__title">PDF RESOLUTION</h2>
-        <p class="muted">
-          LabShelf tries page-hints → arXiv → CrossRef → Unpaywall in order.
-          When everything else fails, an optional Sci-Hub fallback can run.
-        </p>
-        <label class="field field--row">
-          <input id="enable-scihub" type="checkbox" />
-          <span class="field__label">Enable Sci-Hub fallback</span>
-        </label>
-        <label class="field">
-          <span class="field__label">Sci-Hub mirror</span>
-          <input id="scihub-mirror" type="url" placeholder="https://sci-hub.se" />
-        </label>
-        <button id="save-pdf" class="btn">Save PDF settings</button>
-        <p id="save-pdf-msg" class="muted"></p>
+      <section class="settings-section">
+        <h2>Sync</h2>
+        <div class="setting">
+          <label class="setting-label" for="sync-interval">Auto-sync interval</label>
+          <div class="setting-desc">Minutes between background syncs. <code>0</code> disables the timer; syncing on idle and after edits still runs.</div>
+          <input id="sync-interval" class="ls-input setting-input-sm" type="number" min="0" max="240" step="1" />
+        </div>
+        <div class="setting">
+          <label class="setting-label" for="contact-email">Contact email</label>
+          <div class="setting-desc">Sent to Unpaywall and in the CrossRef User-Agent, as both services ask.</div>
+          <input id="contact-email" class="ls-input" type="email" placeholder="you@example.com" />
+        </div>
       </section>
 
-      <section class="section">
-        <h2 class="section__title">DRIVE CONNECTION</h2>
-        <p id="connection-status" class="muted">Checking…</p>
-        <button id="disconnect" class="btn">Disconnect from Drive</button>
-        <p id="disconnect-msg" class="muted"></p>
+      <section class="settings-section">
+        <h2>PDF resolution</h2>
+        <p class="settings-desc">LabShelf tries page hints → arXiv → CrossRef → Unpaywall, in order. When everything fails, an optional Sci-Hub fallback can run.</p>
+        <div class="setting">
+          <label class="ls-checkbox"><input id="enable-scihub" type="checkbox" /><span>Enable the Sci-Hub fallback</span></label>
+        </div>
+        <div class="setting" id="mirrorSetting">
+          <label class="setting-label" for="scihub-mirror">Sci-Hub mirror</label>
+          <input id="scihub-mirror" class="ls-input" type="url" placeholder="https://sci-hub.se" />
+        </div>
       </section>
 
-      <section class="section">
-        <h2 class="section__title">RECENT LOG</h2>
-        <pre id="log" class="log">loading…</pre>
+      <section class="settings-section">
+        <h2>PDF reader</h2>
+        <p class="settings-desc">The same reader as the VS Code extension, with the same settings (<code>labshelf.reader.*</code> there). Annotations, the theme chosen per paper and the reading position sync with VS Code.</p>
+        <div class="setting">
+          <label class="setting-label" for="reader-default-zoom">Default zoom</label>
+          <div class="setting-desc">Zoom applied when a paper is opened without a stored reading position, and by Reset Zoom.</div>
+          <select id="reader-default-zoom" class="ls-input setting-input-md">
+            <option value="page-width">Page width</option>
+            <option value="page-fit">Whole page</option>
+            <option value="page-actual">Actual size</option>
+            <option value="auto">Automatic</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label class="ls-checkbox"><input id="reader-restore-position" type="checkbox" /><span>Reopen each paper at the page, zoom and sidebar state where it was last read</span></label>
+        </div>
+        <div class="setting">
+          <label class="ls-checkbox"><input id="reader-toolbar-autohide" type="checkbox" /><span>Hide the reader toolbar while scrolling down</span></label>
+          <div class="setting-desc">It returns on scroll up, when the pointer nears the top, or on keyboard focus.</div>
+        </div>
+        <div class="setting">
+          <label class="ls-checkbox"><input id="reader-hover-previews" type="checkbox" /><span>Show a preview when hovering a citation, figure, equation, table or section link</span></label>
+        </div>
+        <div class="setting" id="hoverDelaySetting">
+          <label class="setting-label" for="reader-hover-delay">Hover preview delay</label>
+          <div class="setting-desc">Delay before a hover preview opens, in milliseconds (0 to 2000).</div>
+          <input id="reader-hover-delay" class="ls-input setting-input-sm" type="number" min="0" max="2000" step="50" />
+        </div>
+        <div class="setting">
+          <label class="setting-label" for="reader-citation-style">Citation style</label>
+          <div class="setting-desc">Format used by Copy with Citation.</div>
+          <select id="reader-citation-style" class="ls-input setting-input-md">
+            <option value="pandoc">Pandoc — &gt; quote, then [@key, p. 12]</option>
+            <option value="latex">LaTeX — ``quote'' \cite[p.~12]{key}</option>
+            <option value="author-year">Author-year — "quote" (Silva et al., 2021, p. 12)</option>
+            <option value="citekey">Cite key — quote @key</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label class="ls-checkbox"><input id="reader-vim-keys" type="checkbox" /><span>Enable single-key vim navigation (j/k, d/u, gg/G, /, n/N, H/L, w, t)</span></label>
+          <div class="setting-desc">Conventional shortcuts stay active.</div>
+        </div>
       </section>
 
-      <footer class="options__footer">
-        <small>LABSHELF · BROWSER EXTENSION</small>
-      </footer>
+      <section class="settings-section">
+        <h2>Appearance</h2>
+        <div class="setting">
+          <span class="setting-label">Theme</span>
+          <div class="setting-desc">The library, popup and this page follow the system by default.</div>
+          <div class="settings-seg" id="themeSeg" role="radiogroup" aria-label="Theme"></div>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2>Recent log</h2>
+        <p class="settings-desc">The last background events, for troubleshooting.</p>
+        <pre id="log" class="settings-log">Loading…</pre>
+      </section>
     </main>
     <script type="module" src="index.js"></script>
   </body>

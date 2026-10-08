@@ -1,17 +1,22 @@
 /**
- * Pure regex/string utilities for detecting DOIs, arXiv IDs, and PMIDs from
- * URLs or free-form text (e.g. clipboard contents pasted into the library page).
- * The DOM-aware sibling lives in pageProbeContentScript.ts.
+ * Pure regex/string utilities for detecting DOIs, arXiv IDs, and PMIDs in
+ * URLs, meta-tag values and free text. The DOM-aware sibling lives in
+ * pageProbeContentScript.ts; capture/pageFacts decides which source to trust.
  * @depends none
- * @dependents capture/captureService, library-page/controllers/captureController
+ * @dependents capture/pageFacts, capture/scholarCapture, content/scholarParse
  */
 
 // DOI: starts with 10. then a registrant prefix, slash, and suffix.
-const DOI_RE = /\b(10\.\d{4,}(?:\.\d+)*\/[^\s"',<>[\]{}|^~`#%?]+)/;
+const DOI_RE = /\b(10\.\d{4,}(?:\.\d+)*\/[^\s"',<>[\]{}|^`#?]+)/;
 // arXiv: new format (2301.12345) and URL forms (arxiv.org/abs/..., arxiv:...).
 const ARXIV_RE = /(?:arxiv\.org\/(?:abs|pdf|html)\/|^arxiv:|^\s*)(\d{4}\.\d{4,5}(?:v\d+)?)/i;
 // PMID: bare number in a PubMed URL, the `pmid:` scheme, or the meta value.
-const PMID_RE = /(?:pubmed(?:\.ncbi\.nlm\.nih\.gov)?\/|^pmid:|^\s*)(\d{6,9})\b/i;
+const PMID_RE = /(?:pubmed(?:\.ncbi\.nlm\.nih\.gov)?\/|^pmid:\s*|^\s*)(\d{6,9})\b/i;
+// arXiv's own DOIs (10.48550/arXiv.2301.12345) name the preprint.
+const ARXIV_DOI_RE = /^10\.48550\/arxiv\.(\d{4}\.\d{4,5})(?:v\d+)?$/i;
+
+// Path segments publishers append after the DOI in article URLs.
+const URL_TAIL_RE = /\/(?:abstract|full|fulltext|pdf|epdf|pdfdirect|html|meta|references|figures|citedby|summary)$/i;
 
 export interface DetectedIds {
   doi?: string;
@@ -20,16 +25,56 @@ export interface DetectedIds {
 }
 
 /**
+ * Normalises a DOI candidate: decodes URL escapes, drops a doi.org prefix,
+ * trailing punctuation, a ".pdf" suffix and publisher path tails.
+ * @usedBy findDoi, capture/pageFacts
+ * @returns The bare DOI, or undefined when the text holds none.
+ */
+export function cleanDoi(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  let text = raw;
+  try { text = decodeURIComponent(raw); } catch { /* keep the raw text */ }
+  let doi = DOI_RE.exec(text)?.[1];
+  if (!doi) return undefined;
+  doi = doi.replace(/[.,;:]+$/, "").replace(/\.pdf$/i, "");
+  // "(doi:10.1/x)" — drop a closing bracket only when the DOI never opened one.
+  while (/[)\]]$/.test(doi) && count(doi, "(") + count(doi, "[") < count(doi, ")") + count(doi, "]")) {
+    doi = doi.slice(0, -1).replace(/[.,;:]+$/, "");
+  }
+  while (URL_TAIL_RE.test(doi)) doi = doi.replace(URL_TAIL_RE, "");
+  return doi;
+}
+
+function count(text: string, ch: string): number {
+  return text.split(ch).length - 1;
+}
+
+/** The arXiv id named by an arXiv DOI, if `doi` is one. */
+export function arxivIdFromDoi(doi: string | undefined): string | undefined {
+  return doi ? ARXIV_DOI_RE.exec(doi)?.[1] : undefined;
+}
+
+/** arXiv id in an arxiv.org URL. */
+export function arxivIdFromUrl(url: string): string | undefined {
+  return /arxiv\.org\/(?:abs|pdf|html)\/(\d{4}\.\d{4,5})(?:v\d+)?/i.exec(url)?.[1];
+}
+
+/** PubMed id in a PubMed URL. */
+export function pmidFromUrl(url: string): string | undefined {
+  return /pubmed\.ncbi\.nlm\.nih\.gov\/(\d{6,9})\b|ncbi\.nlm\.nih\.gov\/pubmed\/(\d{6,9})\b/i.exec(url)?.slice(1).find(Boolean);
+}
+
+/**
  * Extracts identifiers from any string — URL, DOI text, "arxiv:1234.5678", "PMID: 12345".
  * Prefers arXiv over DOI when both match (arXiv landing pages embed both).
- * @usedBy capture/captureService, library-page captureController
+ * @usedBy library-page (paste-to-add), tests
  * @returns DetectedIds with at most one identifier set (the most specific match).
  */
 export function detectIdentifiers(input: string): DetectedIds {
   const trimmed = input.trim();
   const arxiv = ARXIV_RE.exec(trimmed)?.[1];
   if (arxiv) return { arxivId: arxiv };
-  const doi = DOI_RE.exec(trimmed)?.[1];
+  const doi = cleanDoi(trimmed);
   if (doi) return { doi };
   const pmid = PMID_RE.exec(trimmed)?.[1];
   if (pmid) return { pmid };

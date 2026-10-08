@@ -1,27 +1,28 @@
 /**
- * Reacts to folder CustomEvents emitted by the tree view (new / rename /
+ * Reacts to folder intents emitted by the tree and header (new / rename /
  * delete) by mutating the IndexedDB file store and the paper-record cache.
  * Folder paths are virtual in IDB — a folder exists iff at least one file row
  * starts with its prefix — so "new folder" writes a `.keep` sentinel and
  * "rename" walks all rows under the old prefix.
  *
- * Sync runs separately: every mutation here just changes the local IDB state.
- * The next sync (manual or scheduled) picks it up and propagates to Drive.
+ * Prompts use the VS Code-style input box and dialog instead of the browser's
+ * native ones. Sync runs separately: every mutation here just changes the
+ * local IDB state and asks the background to sync soon.
  *
- * @depends @labshelf/core FolderService, storage (IndexedDbFileSystem,
- *          paperRecordStore), controllers/dataController
+ * @depends @labshelf/core FolderService, storage (IndexedDbFileSystem, paperRecordStore),
+ *          ui/quickInput, ui/dialog, ui/toast, state/derive, events, controllers/dataController
  * @dependents library-page/index
  */
 import { FolderService } from "@labshelf/core";
 import type { IPaperRecordIndex } from "@labshelf/core";
-import {
-  IndexedDbFileSystem,
-  deleteRecord,
-  listAllRecords,
-  upsertRecord,
-} from "../../storage";
+import { IndexedDbFileSystem, deleteRecord, listAllRecords, upsertRecord } from "../../storage";
+import { confirmDialog } from "../../ui/dialog";
+import { inputBox } from "../../ui/quickInput";
+import { toast } from "../../ui/toast";
+import { on } from "../events";
+import { ROOT, baseName, countPapersUnder, findNode, isUnder, isValidFolderName, parentDir } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
-import { refreshFolders, refreshPapersSlice, scheduleSyncSoon } from "./dataController";
+import { errorMessage, refreshLibrary, scheduleSyncSoon } from "./dataController";
 
 const fs = new IndexedDbFileSystem();
 
@@ -34,68 +35,82 @@ const paperIndex: IPaperRecordIndex = {
 };
 const folderService = new FolderService(paperIndex, "/");
 
-function isValidName(name: string): boolean {
-  return /^[^/\\]+$/.test(name.trim()) && name.trim() !== "." && name.trim() !== "..";
+/** Attaches listeners that mutate IDB in response to folder intents. Returns a disposer. */
+export function attachFolderController(store: LibraryStore): () => void {
+  const offs = [
+    on("labshelf:new-folder", ({ parent }) => { void guard(store, () => handleNew(store, parent)); }),
+    on("labshelf:rename-folder", ({ path }) => { void guard(store, () => handleRename(store, path)); }),
+    on("labshelf:delete-folder", ({ path }) => { void guard(store, () => handleDelete(store, path)); }),
+  ];
+  return () => offs.forEach((off) => off());
 }
 
-/** Attaches listeners that mutate IDB in response to tree-view actions. */
-export function attachFolderController(store: LibraryStore): void {
-  document.addEventListener("labshelf:new-folder", (e: Event) => {
-    const { parent } = (e as CustomEvent<{ parent: string }>).detail;
-    void handleNew(store, parent);
-  });
-  document.addEventListener("labshelf:rename-folder", (e: Event) => {
-    const { path } = (e as CustomEvent<{ path: string }>).detail;
-    void handleRename(store, path);
-  });
-  document.addEventListener("labshelf:delete-folder", (e: Event) => {
-    const { path } = (e as CustomEvent<{ path: string }>).detail;
-    void handleDelete(store, path);
-  });
+async function guard(_store: LibraryStore, work: () => Promise<void>): Promise<void> {
+  try { await work(); } catch (err) { toast(errorMessage(err), "error"); }
+}
+
+/** Validation shared by new and rename: syntax plus sibling collision. */
+export function validateFolderName(store: LibraryStore, parent: string, name: string, current?: string): string | null {
+  if (!isValidFolderName(name)) return "Use a name without slashes; it cannot start with a dot.";
+  const trimmed = name.trim();
+  if (trimmed === current) return null;
+  const siblings = parent === ROOT ? store.get().folders : findNode(store.get().folders, parent)?.children ?? [];
+  if (siblings.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())) return `A folder named "${trimmed}" already exists here.`;
+  if (store.get().papers.some((p) => p.path === `${parent}/${trimmed}`)) return "A paper already uses that name here.";
+  return null;
 }
 
 async function handleNew(store: LibraryStore, parent: string): Promise<void> {
-  const name = window.prompt("New folder name");
+  const name = await inputBox({
+    title: parent === ROOT ? "New folder" : `New folder in ${baseName(parent)}`,
+    prompt: "Folder name",
+    placeholder: "e.g. Reading group",
+    validate: (v) => validateFolderName(store, parent, v),
+  });
   if (!name) return;
-  if (!isValidName(name)) {
-    store.set({ error: "Folder name must not contain slashes." });
-    return;
-  }
-  const target = `${parent}/${name.trim()}`;
+  const target = `${parent}/${name}`;
   await fs.writeFile(`${target}/.keep`, new Uint8Array());
-  await refreshFolders(store);
-  store.set({ selectedFolder: target });
+  await refreshLibrary(store);
+  store.openFolder(target);
   scheduleSyncSoon("folder.new");
 }
 
 async function handleRename(store: LibraryStore, oldPath: string): Promise<void> {
-  if (oldPath === "papers") return;
-  const current = oldPath.split("/").pop() ?? "";
-  const next = window.prompt("Rename folder", current);
-  if (!next || next.trim() === current) return;
-  if (!isValidName(next)) {
-    store.set({ error: "Folder name must not contain slashes." });
-    return;
-  }
-  const parent = oldPath.split("/").slice(0, -1).join("/");
-  const newPath = `${parent}/${next.trim()}`;
+  if (oldPath === ROOT) return;
+  const current = baseName(oldPath);
+  const parent = parentDir(oldPath);
+  const next = await inputBox({
+    title: "Rename folder",
+    prompt: "New name",
+    value: current,
+    validate: (v) => validateFolderName(store, parent, v, current),
+  });
+  if (!next || next === current) return;
+  const newPath = `${parent}/${next}`;
   await fs.moveDir(oldPath, newPath);
   await folderService.relocatePapersUnder(oldPath, newPath);
-  await Promise.all([refreshFolders(store), refreshPapersSlice(store)]);
-  if (store.get().selectedFolder.startsWith(oldPath)) {
-    store.set({ selectedFolder: newPath });
-  }
+  await refreshLibrary(store);
+  const open = store.get().folder;
+  if (isUnder(open, oldPath)) store.openFolder(newPath + open.slice(oldPath.length));
   scheduleSyncSoon("folder.rename");
 }
 
 async function handleDelete(store: LibraryStore, path: string): Promise<void> {
-  if (path === "papers") return;
-  if (!window.confirm(`Delete folder "${path}" and every paper inside it?`)) return;
+  if (path === ROOT) return;
+  const count = countPapersUnder(store.get().papers.map((p) => p.path), path);
+  const ok = await confirmDialog(
+    `Delete "${baseName(path)}"?`,
+    count > 0
+      ? `The folder and the ${count} paper${count === 1 ? "" : "s"} inside it will be removed from this library. The next sync removes them from Google Drive too.`
+      : "The folder is empty. It will be removed from this library and from Google Drive on the next sync.",
+    "Delete",
+    true,
+  );
+  if (!ok) return;
   await folderService.removePapersUnder(path);
   await fs.deleteDir(path);
-  await Promise.all([refreshFolders(store), refreshPapersSlice(store)]);
-  if (store.get().selectedFolder === path) {
-    store.set({ selectedFolder: "papers", selectedPaperId: null });
-  }
+  await refreshLibrary(store);
+  if (isUnder(store.get().folder, path)) store.openFolder(parentDir(path));
   scheduleSyncSoon("folder.delete");
+  toast(`Deleted ${baseName(path)}`, "ok");
 }

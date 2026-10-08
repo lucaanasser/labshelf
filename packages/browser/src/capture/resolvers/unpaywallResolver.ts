@@ -21,30 +21,28 @@ interface UnpaywallResponse {
 
 export const unpaywallResolver: PdfResolver = {
   name: "unpaywall",
-  async resolve(ctx: ResolveContext): Promise<string | undefined> {
-    if (!ctx.doi) return undefined;
+  async resolve(ctx: ResolveContext): Promise<string[]> {
+    if (!ctx.doi) return [];
     const email = encodeURIComponent(ctx.contactEmail);
     const url = `https://api.unpaywall.org/v2/${encodeURIComponent(ctx.doi)}?email=${email}`;
     let res: Response;
     try {
       res = await fetch(url, { headers: { Accept: "application/json" } });
     } catch {
-      return undefined;
+      return [];
     }
-    if (!res.ok) return undefined;
+    if (!res.ok) return [];
     const payload = (await res.json()) as UnpaywallResponse;
+    const out: string[] = [];
     const best = payload.best_oa_location;
-    if (best?.url_for_pdf) return best.url_for_pdf;
-    // Walk all locations, preferring publisher > repository, and only accept .pdf URLs.
-    const all = payload.oa_locations ?? [];
-    const pubFirst = [...all].sort((a, b) => hostRank(b) - hostRank(a));
-    for (const loc of pubFirst) {
-      if (loc.url_for_pdf) return loc.url_for_pdf;
+    if (best?.url_for_pdf) out.push(best.url_for_pdf);
+    // Then every other location, preferring publisher > repository.
+    const all = [...(payload.oa_locations ?? [])].sort((a, b) => hostRank(b) - hostRank(a));
+    for (const loc of all) {
+      if (loc.url_for_pdf) out.push(loc.url_for_pdf);
+      else if (loc.url && /\.pdf(?:[?#]|$)/i.test(loc.url)) out.push(loc.url);
     }
-    for (const loc of pubFirst) {
-      if (loc.url && /\.pdf(?:[?#]|$)/i.test(loc.url)) return loc.url;
-    }
-    return undefined;
+    return [...new Set(out)];
   },
 };
 

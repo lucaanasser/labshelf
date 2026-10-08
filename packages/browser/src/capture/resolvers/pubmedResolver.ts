@@ -14,16 +14,16 @@ interface EsummaryResult {
 
 export const pubmedResolver: PdfResolver = {
   name: "pubmed",
-  async resolve(ctx: ResolveContext): Promise<string | undefined> {
-    if (!ctx.pmid || ctx.doi) return undefined;
+  async resolve(ctx: ResolveContext): Promise<string[]> {
+    if (!ctx.pmid || ctx.doi) return [];
     const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${ctx.pmid}&retmode=json`;
     let res: Response;
     try {
       res = await fetch(url, { headers: { Accept: "application/json" } });
     } catch {
-      return undefined;
+      return [];
     }
-    if (!res.ok) return undefined;
+    if (!res.ok) return [];
     const payload = (await res.json()) as EsummaryResult;
     const record = payload.result?.[ctx.pmid];
     const doi = record?.articleids?.find((a) => a.idtype === "doi")?.value;
@@ -31,7 +31,7 @@ export const pubmedResolver: PdfResolver = {
       // Mutate the context so subsequent resolvers in the chain see the DOI.
       ctx.doi = doi;
     }
-    // Always return undefined: PubMed itself does not host the PDF.
-    return undefined;
+    // Always empty: PubMed itself does not host the PDF.
+    return [];
   },
 };

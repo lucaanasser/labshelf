@@ -1,0 +1,84 @@
+/*
+ * Reader page host styles: what a VS Code webview gives the reader before its own CSS loads.
+ *
+ * 1. The --vscode-* variables the reader (and VS Code's default webview stylesheet) read, mapped from the --ls-*
+ *    tokens, which already mirror VS Code Dark Modern / Light Modern (tokens.css, keyed on html[data-theme]).
+ * 2. VS Code's default webview stylesheet (vs/workbench/contrib/webview/browser/pre/index.html): scrollbars, kbd,
+ *    focus outlines, overscroll. Kept verbatim so the reader looks the same in both products.
+ * 3. Toasts, the browser counterpart of VS Code's status-bar messages and notifications.
+ *
+ * Deliberately NOT base.css: its global box-sizing reset shrinks pdf.js canvases and misaligns the text layer.
+ * Loaded before pdf_viewer.css and reader.css, which win wherever they set the same properties.
+ */
+
+:root {
+  --vscode-font-family: var(--ls-font);
+  --vscode-font-weight: normal;
+  --vscode-font-size: var(--ls-font-size);
+  --vscode-editor-font-family: var(--ls-mono);
+  --vscode-editor-background: var(--ls-bg);
+  --vscode-editor-foreground: var(--ls-fg);
+  --vscode-focusBorder: var(--ls-focus);
+  --vscode-errorForeground: var(--ls-error);
+  --vscode-scrollbarSlider-background: var(--ls-scrollbar);
+  --vscode-scrollbarSlider-hoverBackground: var(--ls-scrollbar-hover);
+  --vscode-scrollbarSlider-activeBackground: rgba(191, 191, 191, .4);
+  --vscode-textLink-foreground: var(--ls-link);
+  --vscode-textLink-activeForeground: var(--ls-link);
+  --vscode-keybindingLabel-background: var(--ls-kbd-bg);
+  --vscode-keybindingLabel-foreground: var(--ls-fg);
+  --vscode-keybindingLabel-border: var(--ls-kbd-border);
+  --vscode-keybindingLabel-bottomBorder: var(--ls-kbd-bottom);
+  --vscode-widget-shadow: rgba(0, 0, 0, .36);
+}
+:root[data-theme="light"] {
+  --vscode-scrollbarSlider-activeBackground: rgba(0, 0, 0, .6);
+  --vscode-widget-shadow: rgba(0, 0, 0, .16);
+}
+
+/* ── VS Code default webview stylesheet ─────────────────────── */
+html { scrollbar-color: var(--vscode-scrollbarSlider-background) var(--vscode-editor-background); }
+body {
+  overscroll-behavior-x: none; background-color: transparent; color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-font-family); font-weight: var(--vscode-font-weight); font-size: var(--vscode-font-size);
+  margin: 0; padding: 0 20px;
+}
+img, video { max-width: 100%; max-height: 100%; }
+a, a code { color: var(--vscode-textLink-foreground); }
+a:hover { color: var(--vscode-textLink-activeForeground); }
+a:focus, input:focus, select:focus, textarea:focus { outline: 1px solid -webkit-focus-ring-color; outline-offset: -1px; }
+kbd {
+  background-color: var(--vscode-keybindingLabel-background); color: var(--vscode-keybindingLabel-foreground);
+  border-style: solid; border-width: 1px; border-radius: 3px; border-color: var(--vscode-keybindingLabel-border);
+  border-bottom-color: var(--vscode-keybindingLabel-bottomBorder); box-shadow: inset 0 -1px 0 var(--vscode-widget-shadow);
+  vertical-align: middle; padding: 1px 3px;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-corner { background-color: var(--vscode-editor-background); }
+::-webkit-scrollbar-thumb { background-color: var(--vscode-scrollbarSlider-background); }
+::-webkit-scrollbar-thumb:hover { background-color: var(--vscode-scrollbarSlider-hoverBackground); }
+::-webkit-scrollbar-thumb:active { background-color: var(--vscode-scrollbarSlider-activeBackground); }
+
+/* ── Toasts (ui/toast.ts; same look as the library page) ────── */
+.ls-toasts {
+  position: fixed; right: 12px; bottom: 54px; z-index: 950; display: flex; flex-direction: column; gap: 6px;
+  pointer-events: none; font-family: var(--ls-font); color: var(--ls-fg);
+}
+.ls-toast {
+  box-sizing: border-box; pointer-events: auto; display: flex; align-items: flex-start; gap: 8px; width: min(380px, 90vw);
+  padding: 10px 12px; background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
+  box-shadow: var(--ls-widget-shadow); font-size: 12px; line-height: 1.45; animation: ls-slide var(--ls-normal) ease-out;
+}
+.ls-toast svg { display: block; width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; color: var(--ls-blue); }
+.ls-toast.ok svg { color: var(--ls-green); }
+.ls-toast.error svg { color: var(--ls-error); }
+.ls-toast .msg { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ls-toast .ls-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 18px; height: 18px;
+  margin: -2px -4px 0 0; padding: 0; border: none; border-radius: var(--ls-radius); background: none; color: var(--ls-fg);
+  cursor: pointer; opacity: .8;
+}
+.ls-toast .ls-icon-btn:hover { opacity: 1; background: var(--ls-toolbar-hover); }
+.ls-toast .ls-icon-btn svg { width: 12px; height: 12px; margin: 0; color: inherit; }
+@keyframes ls-slide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ls-toast { animation: none; } }
