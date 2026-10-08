@@ -12,8 +12,9 @@ import * as path from "node:path";
 import { createInterface } from "node:readline/promises";
 
 import { PAPERS_DIR, RESEARCH_DIR } from "@labshelf/core";
+import { sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
 
-import { loadConfig, resolveLibraryRoot, updateConfig, configPath, type SharedConfig } from "./app/config.js";
+import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./app/config.js";
 import { openLibrary, type AppContext } from "./app/context.js";
 import { parseArgs, stringFlag } from "./cli/args.js";
 import { runDoctor, runLibraryCommand, USAGE, UsageError, type Output } from "./cli/commands.js";
@@ -39,9 +40,9 @@ async function adoptLibrary(raw: string): Promise<string> {
   const root = path.resolve(expandHome(raw));
   const existed = await looksLikeLibrary(root);
   await ensureLibraryStructure(new LibraryRoot(root));
-  await updateConfig({ libraryRoot: root });
+  await updateSharedConfig({ libraryRoot: root });
   io.err(existed ? `Using the library at ${root}` : `Created a new library at ${root}`);
-  io.err(`Remembered in ${configPath()} (the VS Code extension reads it too).`);
+  io.err(`Remembered in ${sharedConfigPath()} (the VS Code extension reads it too).`);
   return root;
 }
 
@@ -60,7 +61,7 @@ async function askForLibrary(): Promise<string | undefined> {
   }
 }
 
-async function resolveRoot(flag: string | undefined, config: SharedConfig, interactive: boolean): Promise<{ root: string; source: string } | undefined> {
+async function resolveRoot(flag: string | undefined, config: TerminalConfig, interactive: boolean): Promise<{ root: string; source: string } | undefined> {
   const resolution = resolveLibraryRoot(flag, process.env, config);
   if (resolution.root) {
     if (await looksLikeLibrary(resolution.root)) { return { root: resolution.root, source: resolution.source }; }
@@ -130,7 +131,7 @@ async function main(argv: string[]): Promise<number> {
     io.out(USAGE);
     return 0;
   }
-  const config = await loadConfig();
+  const config = await loadTerminalConfig();
   const libraryFlag = stringFlag(args.flags, "library");
 
   if (args.command === "init") {
@@ -152,14 +153,14 @@ async function main(argv: string[]): Promise<number> {
   if (args.command === "where") {
     const paths = new LibraryRoot(resolved.root);
     io.out(`library  ${paths.root}  (from ${resolved.source})`);
-    io.out(`config   ${configPath()}`);
+    io.out(`config   ${sharedConfigPath()}`);
     io.out(`log      ${paths.layout.terminalLogPath()}`);
     io.out(`manifest ${paths.layout.manifestPath()}`);
     return 0;
   }
 
   const ctx = await openLibrary(resolved.root, {
-    config: await loadConfig(),
+    config: await loadTerminalConfig(),
     watch: tuiWanted,
     thumbnailWorkerUrl: new URL("./thumbnailWorker.mjs", import.meta.url),
   });

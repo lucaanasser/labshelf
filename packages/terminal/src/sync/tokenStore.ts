@@ -12,7 +12,8 @@ import { existsSync, promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { configDir } from "../platform/dirs.js";
+import { sharedConfigDir } from "@labshelf/core/node";
+
 import { hasCommand } from "../platform/system.js";
 
 export interface TokenData {
@@ -54,7 +55,7 @@ export function parseTokens(text: string | undefined | null): TokenData | null {
 export class FileTokenStore implements TokenStore {
   readonly kind = "file" as const;
 
-  constructor(readonly file = path.join(configDir(), "credentials.json")) {}
+  constructor(readonly file = path.join(sharedConfigDir(), "credentials.json")) {}
 
   async load(): Promise<TokenData | null> {
     try {
@@ -136,7 +137,7 @@ export class SecretServiceTokenStore implements TokenStore {
  * @returns the store
  */
 export function createTokenStore(env: NodeJS.ProcessEnv = process.env): TokenStore {
-  const file = path.join(configDir(env), "credentials.json");
+  const file = path.join(sharedConfigDir(env), "credentials.json");
   if (env["LABSHELF_TOKEN_STORE"] === "file") { return new FileTokenStore(file); }
   if (process.platform === "darwin" && existsSync("/usr/bin/security")) { return new KeychainTokenStore(); }
   if (process.platform === "linux" && hasCommand("secret-tool", env) && env["DBUS_SESSION_BUS_ADDRESS"]) {

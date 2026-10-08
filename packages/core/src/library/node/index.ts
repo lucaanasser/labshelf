@@ -2,3 +2,6 @@
 export { writeFileAtomic } from "./atomicWrite.js";
 export { NodeFileSystem } from "./nodeFileSystem.js";
 export { NodeLocalFileSystem } from "./nodeLocalFileSystem.js";
+export {
+  loadSharedConfig, readSharedLibraryRoot, sharedConfigDir, sharedConfigPath, updateSharedConfig,
+} from "./sharedConfigFile.js";

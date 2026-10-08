@@ -23,3 +23,5 @@ export {
   citeKeySlug, claimCiteKey, makeCiteKey, normalizeTags, titleKey, uniqueCiteKey, validateFolderName,
 } from "./identity/index.js";
 export type { CiteKeyMetadata } from "./identity/index.js";
+export { SHARED_CONFIG_VERSION, mergeSharedConfig, parseSharedConfig, serializeSharedConfig } from "./sharedConfig.js";
+export type { SharedConfig, SharedConfigPatch } from "./sharedConfig.js";

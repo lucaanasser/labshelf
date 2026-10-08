@@ -1,5 +1,9 @@
+import * as fs from 'node:fs';
 import * as vscode from 'vscode';
+import type { ILogger } from '@labshelf/core';
+import { readSharedLibraryRoot, sharedConfigPath, updateSharedConfig } from '@labshelf/core/node';
 import {
+  mirrorLibraryRoot,
   resolveLibraryRoot,
   persistLibraryRoot,
   ensureLibraryStructure,
@@ -19,6 +23,10 @@ function makeContext(stored?: string): vscode.ExtensionContext {
       update: jest.fn(async (key: string, value: unknown) => { state.set(key, value); }),
     },
   } as unknown as vscode.ExtensionContext;
+}
+
+function makeLogger(): ILogger & { error: jest.Mock } {
+  return { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 }
 
 const fsService = new VscodeFileSystem('/tmp/mylib/.research/tmp');
@@ -57,6 +65,50 @@ describe('resolveLibraryRoot', () => {
     const result = await resolveLibraryRoot(ctx);
     expect(result).toBeDefined();
     expect(result!.fsPath).toBe('/tmp/library');
+  });
+});
+
+describe('resolveLibraryRoot and the shared config', () => {
+  it('adopts a library set up in the terminal app when VS Code has none', async () => {
+    await updateSharedConfig({ libraryRoot: '/Users/me/FromTerminal' });
+    (vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({ type: vscode.FileType.Directory });
+    const root = await resolveLibraryRoot(makeContext());
+    expect(root?.fsPath).toBe('/Users/me/FromTerminal');
+  });
+
+  it('prefers the root VS Code stored itself', async () => {
+    await updateSharedConfig({ libraryRoot: '/Users/me/FromTerminal' });
+    (vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({ type: vscode.FileType.Directory });
+    const root = await resolveLibraryRoot(makeContext('/Users/me/FromVscode'));
+    expect(root?.fsPath).toBe('/Users/me/FromVscode');
+  });
+});
+
+// ─── mirrorLibraryRoot ────────────────────────────────────────────────────────
+
+describe('mirrorLibraryRoot', () => {
+  afterEach(() => {
+    fs.rmSync(sharedConfigPath(), { force: true, recursive: true });
+  });
+
+  it('records the root for the terminal app and keeps the keys it wrote', async () => {
+    await updateSharedConfig({ terminal: { sort: 'year' } });
+    await mirrorLibraryRoot(makeUri('/Users/me/NewLibrary'), makeLogger());
+    expect(await readSharedLibraryRoot()).toBe('/Users/me/NewLibrary');
+    expect(JSON.parse(fs.readFileSync(sharedConfigPath(), 'utf8')).terminal).toEqual({ sort: 'year' });
+  });
+
+  it('logs a failed write with the config path and does not throw', async () => {
+    // A directory in place of the file makes the atomic rename fail.
+    fs.rmSync(sharedConfigPath(), { force: true, recursive: true });
+    fs.mkdirSync(sharedConfigPath(), { recursive: true });
+    const logger = makeLogger();
+    await expect(mirrorLibraryRoot(makeUri('/Users/me/NewLibrary'), logger)).resolves.toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith(
+      'storage/libraryLocation',
+      expect.anything(),
+      expect.objectContaining({ file: sharedConfigPath(), libraryRoot: '/Users/me/NewLibrary' }),
+    );
   });
 });
 

@@ -10,11 +10,11 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { libraryLayout, paperFiles, type PaperRecord, type PaperStatus } from "@labshelf/core";
+import { sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
 
-import { configPath, type SharedConfig } from "../app/config.js";
+import type { TerminalConfig } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
 import { papersUnder, type PaperEntry, paperComparator, type SortSpec } from "../library/index.js";
-import { configDir } from "../platform/dirs.js";
 import { copyToClipboard, hasCommand, openExternal } from "../platform/system.js";
 import { resolveOAuthClient } from "../sync/driveAuth.js";
 import { createTokenStore } from "../sync/tokenStore.js";
@@ -66,7 +66,7 @@ Options:
   -h, --help, -v, --version
 `;
 
-function sortSpec(flags: ParsedArgs["flags"], config: SharedConfig): SortSpec {
+function sortSpec(flags: ParsedArgs["flags"], config: TerminalConfig): SortSpec {
   const raw = stringFlag(flags, "sort") ?? config.terminal?.sort ?? "title";
   const reverse = raw.endsWith("!") || flags["reverse"] === true;
   const key = raw.replace(/!$/, "");
@@ -300,7 +300,7 @@ async function runAuth(ctx: AppContext, sub: string | undefined, io: Output): Pr
  * @usedBy main
  * @returns the exit code (1 when something essential is missing)
  */
-export async function runDoctor(root: string | undefined, rootSource: string, config: SharedConfig, io: Output): Promise<number> {
+export async function runDoctor(root: string | undefined, rootSource: string, config: TerminalConfig, io: Output): Promise<number> {
   let essentialMissing = false;
   const line = (ok: boolean | "warn", label: string, detail: string): void => {
     io.out(`${ok === true ? "ok  " : ok === "warn" ? "warn" : "FAIL"}  ${label.padEnd(16)} ${detail}`);
@@ -308,7 +308,7 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
   const major = Number(process.versions.node.split(".")[0]);
   line(major >= 22, "node", process.version);
   if (major < 22) { essentialMissing = true; }
-  line(true, "config", `${configPath()}${config.libraryRoot ? "" : " (no libraryRoot yet)"}`);
+  line(true, "config", `${sharedConfigPath()}${config.libraryRoot ? "" : " (no libraryRoot yet)"}`);
   if (!root) {
     line(false, "library", "not configured — run `labshelf init <path>` (use the folder VS Code uses)");
     essentialMissing = true;
@@ -334,6 +334,6 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
   line(hasCommand("pdftoppm") ? true : "warn", "pdftoppm", hasCommand("pdftoppm") ? "found" : "not found — thumbnails use pdfjs (slower); brew install poppler");
   const clipboard = process.platform === "darwin" ? hasCommand("pbcopy") : hasCommand("wl-copy") || hasCommand("xclip") || hasCommand("xsel");
   line(clipboard ? true : "warn", "clipboard", clipboard ? "system clipboard" : "no clipboard tool; using OSC 52 escapes");
-  line(true, "config dir", configDir());
+  line(true, "config dir", sharedConfigDir());
   return essentialMissing ? 1 : 0;
 }

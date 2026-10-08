@@ -2481,6 +2481,7 @@
     "unresolvedTo": "../app/config.js",
     "dependencyTypes": [
       "local",
+      "type-only",
       "import"
     ],
     "rule": {
@@ -2496,20 +2497,6 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/cli/commands.ts",
-    "to": "packages/terminal/src/platform/dirs.ts",
-    "unresolvedTo": "../platform/dirs.js",
-    "dependencyTypes": [
-      "local",
       "import"
     ],
     "rule": {
@@ -2846,20 +2833,6 @@
     "from": "packages/terminal/src/sync/syncService.ts",
     "to": "packages/terminal/src/platform/nodeLockStore.ts",
     "unresolvedTo": "../platform/nodeLockStore.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/sync/tokenStore.ts",
-    "to": "packages/terminal/src/platform/dirs.ts",
-    "unresolvedTo": "../platform/dirs.js",
     "dependencyTypes": [
       "local",
       "import"

@@ -11,7 +11,6 @@ import {
   paperFiles,
   type IFileSystem,
   type IResearchDatabase,
-  type LocalFileSystem,
   type SyncResult,
   type ReaderCommandId,
 } from "@labshelf/core";
@@ -80,7 +79,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const services = await buildServices(context, root, eventBus);
       activeServices = services;
       aiService = await maybeStartAi(context, eventBus, services);
-      await ensureSyncController(root, services.fileSystem);
+      await ensureSyncController(root, services);
       return services;
     });
   } else {
@@ -112,7 +111,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     libraryRoot = root;
     activeServices = await buildServices(context, root, eventBus);
     libraryProvider.setPapersRoot(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
-    await ensureSyncController(root, activeServices.fileSystem);
+    await ensureSyncController(root, activeServices);
 
     return activeServices;
   }
@@ -120,10 +119,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Creates the sync controller once, wiring the post-sync re-index. A sync that
   // pulls files from Drive must surface in the list without a reload, so the
   // controller's onDidSync triggers reindexLibrary (edits 8-9).
-  async function ensureSyncController(root: vscode.Uri, fileSystem: LocalFileSystem): Promise<void> {
+  async function ensureSyncController(root: vscode.Uri, services: ActiveServices): Promise<void> {
+    const fileSystem = services.fileSystem;
     // Every path that activates a library root comes through here, so the watcher and the shared config follow it.
     watchLibrary(root);
-    void mirrorLibraryRoot(root);
+    void mirrorLibraryRoot(root, services.logger);
     if (syncController) {
       syncController.setLibrary(libraryLayout(root, vscode.Uri.joinPath), fileSystem);
       return;
@@ -292,7 +292,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           libraryRoot = root;
           activeServices = await buildServices(context, root, eventBus);
           libraryProvider.setPapersRoot(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
-          await ensureSyncController(root, activeServices.fileSystem);
+          await ensureSyncController(root, activeServices);
           return root;
         },
       });
@@ -472,7 +472,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       libraryRoot = root;
       activeServices = await buildServices(context, root, eventBus);
       libraryProvider.setPapersRoot(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
-      await ensureSyncController(root, activeServices.fileSystem);
+      await ensureSyncController(root, activeServices);
       vscode.window.showInformationMessage(`LabShelf: Library configured at ${root.fsPath}`);
     }),
   );

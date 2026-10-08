@@ -11,7 +11,7 @@ import * as path from "node:path";
 import { BibTeXService, PdfImportParser } from "@labshelf/core";
 import { NodeFileSystem } from "@labshelf/core/node";
 
-import type { SharedConfig } from "./config.js";
+import type { TerminalConfig } from "./config.js";
 import { FileLogger } from "./logger.js";
 import { LibraryRoot, ensureLibraryStructure, LibraryStore, LibraryWatcher, TerminalPaperService, SidecarReader } from "../library/index.js";
 import { cacheDir } from "../platform/dirs.js";
@@ -24,7 +24,7 @@ import { detectImageProtocol, type ImageProtocol } from "../tui/graphics.js";
 
 export interface AppContext {
   paths: LibraryRoot;
-  config: SharedConfig;
+  config: TerminalConfig;
   logger: FileLogger;
   store: LibraryStore;
   papers: TerminalPaperService;
@@ -40,7 +40,7 @@ export interface AppContext {
 }
 
 export interface OpenOptions {
-  config: SharedConfig;
+  config: TerminalConfig;
   env?: NodeJS.ProcessEnv;
   /** Watch the library for changes made by other apps (the TUI does; one-shot CLI commands do not). */
   watch?: boolean;

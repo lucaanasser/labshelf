@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { openLibrary, type AppContext } from "../../src/app/context";
-import type { SharedConfig } from "../../src/app/config";
+import type { TerminalConfig } from "../../src/app/config";
 import { parseArgs } from "../../src/cli/args";
 import { UsageError, runDoctor, runLibraryCommand, type Output } from "../../src/cli/commands";
 import {
@@ -83,7 +83,7 @@ interface Session {
   errText(): string;
 }
 
-async function session(papers: PaperFixture[] = PAPERS, options: { config?: SharedConfig; env?: Record<string, string>; columns?: number; collections?: string[]; prepare?: (lib: TempLibrary) => Promise<void> } = {}): Promise<Session> {
+async function session(papers: PaperFixture[] = PAPERS, options: { config?: TerminalConfig; env?: Record<string, string>; columns?: number; collections?: string[]; prepare?: (lib: TempLibrary) => Promise<void> } = {}): Promise<Session> {
   const lib = await createTempLibrary(papers);
   for (const rel of options.collections ?? []) { await lib.addCollection(rel); }
   await options.prepare?.(lib);
