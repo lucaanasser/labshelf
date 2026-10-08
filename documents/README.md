@@ -1,31 +1,20 @@
-# LabShelf Documentation
+# LabShelf documentation
 
-This folder is organized to explain the codebase in natural language, by layer and by concern.
+This folder holds what the code cannot say by itself. The rules for every change live in [../AGENTS.md](../AGENTS.md).
 
-## Structure
+| Read | When |
+|---|---|
+| [product.md](product.md) | before any UI or UX work: what LabShelf is and the principles every app follows |
+| [architecture.md](architecture.md) | before adding or moving code: packages, where code goes, runtimes, ports, design system |
+| [contracts/library-format.md](contracts/library-format.md) | before touching files on disk: library layout, `metadata.yaml`, the sidecar, shared config |
+| [contracts/sync.md](contracts/sync.md) | before touching sync, Drive or anything that coordinates apps |
+| [contracts/reader-host.md](contracts/reader-host.md) | before touching the PDF reader or a host of it |
+| [apps/](apps/README.md) | to build, run or verify an app; OAuth setup |
+| [plans/](plans/) | active plans, all written from [plans/TEMPLATE.md](plans/TEMPLATE.md); each one is deleted when it is done. [plans/CALIBRATION.md](plans/CALIBRATION.md) compares past estimates with reality |
+| [archive/](archive/README.md) | the rare finished document worth keeping |
 
-- `architecture/` — how the system is wired together and how data flows through it
-- `reference/` — module-by-module explanations of the main source folders
-- `rules/` — architectural and general coding rules to preserve while changing the codebase
-- `flows/` — end-to-end behavior descriptions for the main user journeys
-- `plans/` — implementation plans and task breakdowns
-- `specs/` — feature specs that define expected behavior in a testable way
+What does not belong here:
 
-## Reading order
-
-1. `architecture/overview.md`
-2. `rules/architecture.md`
-3. `reference/directories.md`
-4. `reference/modules.md`
-5. `flows/import-and-library.md`
-6. The relevant `specs/*.spec.yaml` file for the feature being changed
-
-## Goal
-
-The documentation in this folder is written to help a developer understand:
-
-- what each directory is for
-- which services own which responsibilities
-- how UI, commands, storage, database, and PDF ingestion fit together
-- which rules should not be broken during implementation
-- which functions are the main entry points for each behavior
+- file or function listings, constants, and anything else the code already states;
+- user manuals (the website and each app's built-in help cover them);
+- the history of how something changed (git keeps it).
