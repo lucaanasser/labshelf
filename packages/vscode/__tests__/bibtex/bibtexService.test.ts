@@ -20,7 +20,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   (vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined);
   (vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined);
-  svc = new BibTeXService(new VscodeFileSystem());
+  svc = new BibTeXService(new VscodeFileSystem('/tmp/labshelf-test/.research/tmp'));
 });
 
 describe('BibTeXService.generateBibTeX', () => {
@@ -62,6 +62,10 @@ describe('BibTeXService.generateBibTeX', () => {
   });
 });
 
+// Writes land in a temp file that is renamed over the target, so the target is the rename's second argument.
+const renameTargets = (): string[] =>
+  (vscode.workspace.fs.rename as jest.Mock).mock.calls.map(([, target]: [vscode.Uri, vscode.Uri]) => target.fsPath);
+
 describe('BibTeXService.writePaperArtifacts', () => {
   it('writes metadata.yaml and bib.bib', async () => {
     const paper = makePaper({ authors: ['Alice'], year: 2024 });
@@ -70,9 +74,7 @@ describe('BibTeXService.writePaperArtifacts', () => {
     await svc.writePaperArtifacts(folder, paper, '/src/paper.pdf');
 
     expect(vscode.workspace.fs.writeFile).toHaveBeenCalledTimes(2);
-    const paths = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls.map(
-      ([uri]: [vscode.Uri]) => uri.fsPath,
-    );
+    const paths = renameTargets();
     expect(paths.some(p => p.endsWith('metadata.yaml'))).toBe(true);
     expect(paths.some(p => p.endsWith('bib.bib'))).toBe(true);
   });
@@ -80,7 +82,8 @@ describe('BibTeXService.writePaperArtifacts', () => {
 
 describe('BibTeXService — the bib file line follows the PDF on disk', () => {
   const bibText = (): string => {
-    const call = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls.find(([uri]: [vscode.Uri]) => uri.fsPath.endsWith('bib.bib'));
+    const rename = (vscode.workspace.fs.rename as jest.Mock).mock.calls.find(([, target]: [vscode.Uri, vscode.Uri]) => target.fsPath.endsWith('bib.bib'));
+    const call = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls.find(([uri]: [vscode.Uri]) => uri.fsPath === rename![0].fsPath);
     return Buffer.from(call![1] as Uint8Array).toString('utf8');
   };
 
@@ -96,6 +99,7 @@ describe('BibTeXService — the bib file line follows the PDF on disk', () => {
 
     // No paper.pdf: stat for it rejects, the metadata sidecar still resolves.
     (vscode.workspace.fs.writeFile as jest.Mock).mockClear();
+    (vscode.workspace.fs.rename as jest.Mock).mockClear();
     (vscode.workspace.fs.stat as jest.Mock).mockImplementation(async (uri: vscode.Uri) => {
       if (uri.fsPath.endsWith('paper.pdf')) { throw new Error('EntryNotFound'); }
       return { type: vscode.FileType.File };

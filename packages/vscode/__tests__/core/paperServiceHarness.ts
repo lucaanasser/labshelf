@@ -1,8 +1,7 @@
 /** Shared fakes for the PaperService suites: an in-memory database, a stubbed parser and library-folder stat answers. */
 import * as vscode from 'vscode';
 import { PaperService } from '../../src/core/paperService';
-import type { LibraryLayout, IResearchDatabase, EventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
-import type { FileSystemService } from '../../src/storage/fileSystemService';
+import type { IFileSystem, LibraryLayout, IResearchDatabase, EventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
 
 export const PAPERS_ROOT = '/workspace/papers';
 
@@ -59,8 +58,8 @@ export function makeService(overrides: {
     on: jest.fn(),
   };
 
-  const mockFsService: Partial<FileSystemService> = {
-    ensureDirectory: jest.fn(async () => {}),
+  const mockFsService: Partial<IFileSystem> = {
+    ensureDir: jest.fn(async () => {}),
     writeText: jest.fn(async () => {}),
   };
 
@@ -87,7 +86,7 @@ export function makeService(overrides: {
   }
 
   return new PaperService(
-    mockFsService as FileSystemService,
+    mockFsService as IFileSystem,
     mockDb as IResearchDatabase,
     mockEventBus as EventBus,
     mockPaths as LibraryLayout<vscode.Uri>,

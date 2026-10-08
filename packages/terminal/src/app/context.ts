@@ -9,12 +9,12 @@
 import * as path from "node:path";
 
 import { BibTeXService, PdfImportParser } from "@labshelf/core";
+import { NodeFileSystem } from "@labshelf/core/node";
 
 import type { SharedConfig } from "./config.js";
 import { FileLogger } from "./logger.js";
 import { LibraryRoot, ensureLibraryStructure, LibraryStore, LibraryWatcher, TerminalPaperService, SidecarReader } from "../library/index.js";
 import { cacheDir } from "../platform/dirs.js";
-import { NodeFileSystem } from "../platform/nodeFileSystem.js";
 import { moveToTrash, openExternal } from "../platform/system.js";
 import { defaultRenderer, ThumbnailService } from "../preview/thumbnails.js";
 import { CliDriveAuth, resolveOAuthClient } from "../sync/driveAuth.js";

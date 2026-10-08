@@ -1,16 +1,15 @@
 /**
  * SQLite-backed implementation of IResearchDatabase that persists papers and logs.
  *
- * @depends @labshelf/core, storage/fileSystemService
+ * @depends @labshelf/core
  * @dependents extension.ts
  */
 import * as path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import * as vscode from "vscode";
 
-import type { LogEntry, PaperRecord, IResearchDatabase } from "@labshelf/core";
+import type { IFileSystem, LogEntry, PaperRecord, IResearchDatabase } from "@labshelf/core";
 import { parseTextLayerInfo } from "@labshelf/core";
-import { FileSystemService } from "../storage/fileSystemService.js";
 import { ensureAiSchema } from "./ai/aiSchema.js";
 
 type PaperRow = {
@@ -48,11 +47,11 @@ export class SqliteResearchDatabase implements IResearchDatabase {
 
   constructor(
     private readonly databasePath: vscode.Uri,
-    private readonly fileSystemService: FileSystemService,
+    private readonly fileSystem: IFileSystem,
   ) {}
 
   async initialize(): Promise<void> {
-    await this.fileSystemService.ensureDirectory(vscode.Uri.file(path.dirname(this.databasePath.fsPath)));
+    await this.fileSystem.ensureDir(path.dirname(this.databasePath.fsPath));
     this.connection = new DatabaseSync(this.databasePath.fsPath);
     this.connection.exec("PRAGMA journal_mode = WAL");
     this.connection.exec(`
@@ -248,6 +247,6 @@ export class SqliteResearchDatabase implements IResearchDatabase {
  * @usedBy extension.ts
  * @returns uninitialised IResearchDatabase backed by the file at storageUri
  */
-export async function createSqliteResearchDatabase(storageUri: vscode.Uri, fileSystemService: FileSystemService): Promise<IResearchDatabase> {
-  return new SqliteResearchDatabase(storageUri, fileSystemService);
+export async function createSqliteResearchDatabase(storageUri: vscode.Uri, fileSystem: IFileSystem): Promise<IResearchDatabase> {
+  return new SqliteResearchDatabase(storageUri, fileSystem);
 }

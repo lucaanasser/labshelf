@@ -11,7 +11,7 @@ import * as vscode from 'vscode';
 
 import type { IResearchDatabase, PaperRecord } from '@labshelf/core';
 import { createSqliteResearchDatabase } from '../../src/db/sqliteResearchDatabase';
-import { FileSystemService } from '../../src/storage/fileSystemService';
+import { makeMemoryFileSystem } from '../support/memoryFileSystem';
 
 const paper = (overrides: Partial<PaperRecord> = {}): PaperRecord => ({
   id: 'imai1986', title: 'Efficient Algorithms', path: '/lib/papers/imai1986', citeKey: 'imai1986', status: 'unread', ...overrides,
@@ -21,9 +21,7 @@ let dir: string;
 let database: IResearchDatabase;
 
 async function open(file: string): Promise<IResearchDatabase> {
-  const fsService = new FileSystemService();
-  jest.spyOn(fsService, 'ensureDirectory').mockResolvedValue(undefined);
-  const db = await createSqliteResearchDatabase(vscode.Uri.file(file), fsService);
+  const db = await createSqliteResearchDatabase(vscode.Uri.file(file), makeMemoryFileSystem());
   await db.initialize();
   return db;
 }

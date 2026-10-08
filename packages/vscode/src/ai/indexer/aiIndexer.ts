@@ -8,7 +8,7 @@
  * @dependents extension.ts wiring
  */
 import * as vscode from "vscode";
-import type { EventBus, IEmbeddingProvider, ILogger, IResearchDatabase } from "@labshelf/core";
+import type { EventBus, IEmbeddingProvider, ILogger, IResearchDatabase, LocalFileSystem } from "@labshelf/core";
 import { EVENTS, runIngestion } from "@labshelf/core";
 import type { AiMetadataStore } from "../../db/ai/aiMetadataStore.js";
 import type { SqliteVectorStore } from "../../db/ai/sqliteVectorStore.js";
@@ -25,7 +25,7 @@ export interface AiIndexerDependencies {
   extractor: PdfTextExtractor;
   // Async because a paper's folder is only known to the index: papers live in any collection folder under papers/.
   resolvePdfUri: (paperId: string) => Promise<vscode.Uri | null>;
-  fileSystem: { readBinary: (uri: vscode.Uri) => Promise<Uint8Array> };
+  fileSystem: Pick<LocalFileSystem, "readFile">;
   enqueue: (job: () => Promise<void>) => void;
 }
 
@@ -78,7 +78,7 @@ export class AiIndexer {
     if (!pdfUri) return;
     this.deps.eventBus.emit(EVENTS.AI_INDEX_STARTED, { paperId });
     try {
-      const hash = await hashFile(pdfUri, this.deps.fileSystem as never);
+      const hash = await hashFile(pdfUri, this.deps.fileSystem);
       const indexed = this.deps.metadataStore.listIndexed();
       if (indexed.get(paperId) === hash) return;
       const extracted = await this.deps.extractor.extract(paperId, pdfUri);

@@ -22,6 +22,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./dom": "./src/dom/index.ts",
+    "./node": "./src/node/index.ts",
     "./styles/*": "./src/reader/dom/styles/*",
     "./test-support/sync-fakes": "./__tests__/support/syncFakes.ts",
     "./package.json": "./package.json"

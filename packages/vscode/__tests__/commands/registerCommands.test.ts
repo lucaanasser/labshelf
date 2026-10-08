@@ -21,7 +21,7 @@ function makeRequireServices(paperService?: Partial<PaperService>, logger?: Part
   const db = { listPapers: jest.fn(async () => []), upsertPaper: jest.fn(), deletePaper: jest.fn(), appendLog: jest.fn() } as any;
   const store = { getReadingState: jest.fn(async () => null), setReadingState: jest.fn(async () => {}) } as any;
   const reindexLibrary = jest.fn(async () => ({ added: [], updated: [] }));
-  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as WorkspaceLogger, themeManager: tm, annotationManager: am, database: db, paperDataStore: store, reindexLibrary }));
+  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as WorkspaceLogger, themeManager: tm, annotationManager: am, database: db, paperDataStore: store, fileSystem: {} as any, reindexLibrary }));
 }
 
 function makeNullRequireServices(): RequireServices {

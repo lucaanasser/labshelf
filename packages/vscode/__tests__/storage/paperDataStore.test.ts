@@ -1,24 +1,10 @@
 import * as vscode from 'vscode';
-import { libraryLayout } from '@labshelf/core';
+import { libraryLayout, type IFileSystem } from '@labshelf/core';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
-import { FileSystemService } from '../../src/storage/fileSystemService';
+import { makeMemoryFileSystem } from '../support/memoryFileSystem';
 
-// In-memory FileSystemService: keeps a fsPath -> content map so tests do not
-// touch the real disk while exercising the sidecar read-modify-write paths.
-function makeFakeFs(): FileSystemService {
-  const files = new Map<string, string>();
-  const fs = new FileSystemService();
-  jest.spyOn(fs, 'ensureDirectory').mockResolvedValue(undefined);
-  jest.spyOn(fs, 'writeText').mockImplementation(async (uri, content) => {
-    files.set(uri.fsPath, content);
-  });
-  jest.spyOn(fs, 'readText').mockImplementation(async (uri) => {
-    const v = files.get(uri.fsPath);
-    if (v === undefined) { throw new Error('ENOENT'); }
-    return v;
-  });
-  jest.spyOn(fs, 'exists').mockImplementation(async (uri) => files.has(uri.fsPath));
-  return fs;
+function makeFakeFs(): IFileSystem {
+  return makeMemoryFileSystem();
 }
 
 function makeStore(): PaperDataStore {
@@ -178,7 +164,7 @@ describe('PaperDataStore', () => {
     it('loads a legacy sidecar that has no reading key', async () => {
       const fs = makeFakeFs();
       const store = new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs);
-      await fs.writeText(vscode.Uri.file('/lib/.research/papers/paper-1/data.json'), JSON.stringify({ annotations: [], theme: 'dark' }));
+      await fs.writeText('/lib/.research/papers/paper-1/data.json', JSON.stringify({ annotations: [], theme: 'dark' }));
       expect(await store.load('paper-1')).toEqual({ annotations: [], theme: 'dark' });
     });
 
@@ -186,7 +172,7 @@ describe('PaperDataStore', () => {
       const fs = makeFakeFs();
       const store = new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs);
       await fs.writeText(
-        vscode.Uri.file('/lib/.research/papers/paper-1/data.json'),
+        '/lib/.research/papers/paper-1/data.json',
         JSON.stringify({ annotations: [], theme: 'sepia', reading: { page: 'seven', scaleValue: 12 } }),
       );
       const data = await store.load('paper-1');

@@ -19,6 +19,7 @@ import {
   parsePaperMetadata,
 } from "@labshelf/core";
 import type {
+  IFileSystem,
   LibraryLayout,
   PaperRecord,
   BatchImportResult,
@@ -27,7 +28,6 @@ import type {
   ParsedPdfImport,
   TextLayerInfo,
 } from "@labshelf/core";
-import { FileSystemService } from "../storage/fileSystemService.js";
 import type { PdfTextLayerBuilder, TextLayerHooks, TextLayerOutcome } from "../pdf/searchablePdfBuilder.js";
 
 /** What happened when a paper was checked for, and possibly given, a text layer. */
@@ -59,7 +59,7 @@ export interface PaperMoveResult {
 
 export class PaperService {
   constructor(
-    private readonly fsService: FileSystemService,
+    private readonly fileSystem: IFileSystem,
     private readonly database: IResearchDatabase,
     private readonly eventBus: EventBus,
     private readonly paths: LibraryLayout<vscode.Uri>,
@@ -90,7 +90,7 @@ export class PaperService {
       (key) => this.folderExists(vscode.Uri.joinPath(parentDir, key)),
     );
     const targetFolder = vscode.Uri.joinPath(parentDir, paperId);
-    await this.fsService.ensureDirectory(targetFolder);
+    await this.fileSystem.ensureDir(targetFolder.fsPath);
 
     const targetPdf = paperFiles(targetFolder, vscode.Uri.joinPath).pdf;
     // Guard against a PDF backend that transfers (detaches) the buffer it parses:
@@ -309,7 +309,7 @@ export class PaperService {
 
   private async _statusOnDisk(paper: PaperRecord): Promise<PaperRecord["status"] | undefined> {
     try {
-      const status = parsePaperMetadata(await this.fsService.readText(vscode.Uri.file(paperFiles(paper.path, path.join).metadata)))?.["status"];
+      const status = parsePaperMetadata(await this.fileSystem.readText(paperFiles(paper.path, path.join).metadata))?.["status"];
       return isPaperStatus(status) ? status : undefined;
     } catch {
       return undefined;
@@ -325,7 +325,7 @@ export class PaperService {
   }
 
   // Authoritative presence check at action time. Uses vscode.workspace.fs
-  // directly (as _expandToPdfs does): FileSystemService.exists also reports
+  // directly (as _expandToPdfs does): IFileSystem.exists also reports
   // true for a directory, and the test double has no exists. FileType is a bit
   // flag, so a symlink to a file reports File|SymbolicLink — test the bit.
   private async _pdfExists(paper: PaperRecord): Promise<boolean> {

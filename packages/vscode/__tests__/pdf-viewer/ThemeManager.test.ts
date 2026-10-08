@@ -1,24 +1,13 @@
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { libraryLayout, PDF_THEMES, THEME_PRESETS, presetFor, toPageColors } from '@labshelf/core';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
-import { FileSystemService } from '../../src/storage/fileSystemService';
+import { makeMemoryFileSystem } from '../support/memoryFileSystem';
 
 const vscode = require('vscode');
 
 // In-memory PaperDataStore for theme-preference tests.
 function makeFakeStore(): PaperDataStore {
-  const files = new Map<string, string>();
-  const fs = new FileSystemService();
-  jest.spyOn(fs, 'ensureDirectory').mockResolvedValue(undefined);
-  jest.spyOn(fs, 'writeText').mockImplementation(async (uri: any, content: string) => {
-    files.set(uri.fsPath, content);
-  });
-  jest.spyOn(fs, 'readText').mockImplementation(async (uri: any) => {
-    const v = files.get(uri.fsPath);
-    if (v === undefined) { throw new Error('ENOENT'); }
-    return v;
-  });
-  jest.spyOn(fs, 'exists').mockImplementation(async (uri: any) => files.has(uri.fsPath));
+  const fs = makeMemoryFileSystem();
   return new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs);
 }
 

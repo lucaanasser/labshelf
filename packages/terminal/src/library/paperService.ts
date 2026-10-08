@@ -32,8 +32,8 @@ import {
   type ResolvedMetadata,
   PDF_FILE,
 } from "@labshelf/core";
+import { writeFileAtomic } from "@labshelf/core/node";
 
-import { writeFileAtomic } from "../platform/nodeFileSystem.js";
 import type { LibraryRoot } from "./libraryRoot.js";
 import { readPaperFolder, type PaperEntry } from "./libraryScanner.js";
 import type { LibraryStore } from "./libraryStore.js";

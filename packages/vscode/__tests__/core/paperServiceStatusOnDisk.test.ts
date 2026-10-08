@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
-import type { LibraryLayout, BibTeXService, EventBus, IResearchDatabase, PaperRecord, PdfImportParser } from '@labshelf/core';
+import type { IFileSystem, LibraryLayout, BibTeXService, EventBus, IResearchDatabase, PaperRecord, PdfImportParser } from '@labshelf/core';
 
 import { PaperService } from '../../src/core/paperService';
-import type { FileSystemService } from '../../src/storage/fileSystemService';
 
 // The terminal app (or a sync) can change a paper's status on disk before VS Code re-indexes it. A rewrite VS Code
 // makes for another reason must not put its stale status back.
@@ -18,14 +17,14 @@ function makeService(onDisk: string | Error) {
     listPapers: jest.fn(async () => rows.map((row) => ({ ...row }))),
     upsertPaper: jest.fn(async (paper: PaperRecord) => { rows[0] = paper; }),
   };
-  const fsService: Partial<FileSystemService> = {
+  const fsService: Partial<IFileSystem> = {
     readText: jest.fn(async () => { if (onDisk instanceof Error) { throw onDisk; } return onDisk; }),
   };
   const bibtex: Partial<BibTeXService> = {
     writePaperArtifacts: jest.fn(async (_folder: string, paper: PaperRecord) => { written.push(paper); }),
   };
   const service = new PaperService(
-    fsService as FileSystemService,
+    fsService as IFileSystem,
     db as IResearchDatabase,
     { emit: jest.fn(), on: jest.fn() } as unknown as EventBus,
     { papersRoot: () => vscode.Uri.file('/lib/papers') } as unknown as LibraryLayout<vscode.Uri>,

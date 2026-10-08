@@ -6,7 +6,7 @@ import { PdfViewerPanel, type PdfViewerDeps } from '../../src/pdf-viewer/PdfView
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
-import { FileSystemService } from '../../src/storage/fileSystemService';
+import { makeMemoryFileSystem } from '../support/memoryFileSystem';
 
 const vscode = require('vscode');
 
@@ -15,18 +15,7 @@ function nextPaperId() { return `paper-${++_paperId}`; }
 
 // In-memory PaperDataStore so PdfViewerPanel tests never touch disk.
 function makeFakeStore(): PaperDataStore {
-  const files = new Map<string, string>();
-  const fsService = new FileSystemService();
-  jest.spyOn(fsService, 'ensureDirectory').mockResolvedValue(undefined);
-  jest.spyOn(fsService, 'writeText').mockImplementation(async (uri: any, content: string) => {
-    files.set(uri.fsPath, content);
-  });
-  jest.spyOn(fsService, 'readText').mockImplementation(async (uri: any) => {
-    const v = files.get(uri.fsPath);
-    if (v === undefined) { throw new Error('ENOENT'); }
-    return v;
-  });
-  jest.spyOn(fsService, 'exists').mockImplementation(async (uri: any) => files.has(uri.fsPath));
+  const fsService = makeMemoryFileSystem();
   return new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fsService);
 }
 

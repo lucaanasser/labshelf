@@ -9,13 +9,14 @@ import {
   BibTeXService,
   libraryLayout,
   paperFiles,
+  type IFileSystem,
   type IResearchDatabase,
+  type LocalFileSystem,
   type SyncResult,
   type ReaderCommandId,
 } from "@labshelf/core";
 import { PaperService } from "./core/paperService.js";
 import { WorkspaceLogger } from "./core/logger.js";
-import { FileSystemService } from "./storage/fileSystemService.js";
 import { VscodeFileSystem } from "./storage/vscodeFileSystem.js";
 import {
   resolveLibraryRoot,
@@ -47,13 +48,16 @@ import { reindexLibrary } from "./storage/data/reindexLibrary.js";
 import { SyncController } from "./sync/adapter/syncController.js";
 import { findSimilarPapers } from "./ai/service/similarPapers.js";
 
+// The adapter belongs to one library root: its temp folder for atomic writes sits inside that root.
+const createFileSystem = (root: vscode.Uri): VscodeFileSystem =>
+  new VscodeFileSystem(libraryLayout(root, vscode.Uri.joinPath).tmpDir().fsPath);
+
 const READER_COMMANDS: readonly ReaderCommandId[] = [
   "zoomIn", "zoomOut", "zoomReset", "find", "historyBack", "historyForward", "toggleSidebar",
 ];
 
 /** Activates the extension, initializing services if a library is already configured. @usedBy vscode runtime. @returns void */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const fileSystemService = new FileSystemService();
   const eventBus = new EventBus();
 
   let activeServices: ActiveServices | null = null;
@@ -73,10 +77,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // VS Code's own progress bar, never "No folders yet", which would read as a lost library.
     const root = libraryRoot;
     activeServices = await vscode.window.withProgress({ location: { viewId: "labshelf.library" } }, async () => {
-      const services = await buildServices(context, root, fileSystemService, eventBus);
+      const services = await buildServices(context, root, eventBus);
       activeServices = services;
-      aiService = await maybeStartAi(context, fileSystemService, eventBus, services);
-      await ensureSyncController(root);
+      aiService = await maybeStartAi(context, eventBus, services);
+      await ensureSyncController(root, services.fileSystem);
       return services;
     });
   } else {
@@ -100,15 +104,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return activeServices;
     }
 
-    const root = await runLibrarySetupWizard(context, fileSystemService);
+    const root = await runLibrarySetupWizard(context, createFileSystem);
     if (!root) {
       return null;
     }
 
     libraryRoot = root;
-    activeServices = await buildServices(context, root, fileSystemService, eventBus);
+    activeServices = await buildServices(context, root, eventBus);
     libraryProvider.setPapersRoot(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
-    await ensureSyncController(root);
+    await ensureSyncController(root, activeServices.fileSystem);
 
     return activeServices;
   }
@@ -116,17 +120,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Creates the sync controller once, wiring the post-sync re-index. A sync that
   // pulls files from Drive must surface in the list without a reload, so the
   // controller's onDidSync triggers reindexLibrary (edits 8-9).
-  async function ensureSyncController(root: vscode.Uri): Promise<void> {
+  async function ensureSyncController(root: vscode.Uri, fileSystem: LocalFileSystem): Promise<void> {
     // Every path that activates a library root comes through here, so the watcher and the shared config follow it.
     watchLibrary(root);
     void mirrorLibraryRoot(root);
     if (syncController) {
-      syncController.setPaths(libraryLayout(root, vscode.Uri.joinPath));
+      syncController.setLibrary(libraryLayout(root, vscode.Uri.joinPath), fileSystem);
       return;
     }
     const controller = new SyncController(
       context,
       libraryLayout(root, vscode.Uri.joinPath),
+      fileSystem,
       eventBus,
       async () => {
         const papers = await activeServices!.paperService.listPapers();
@@ -282,12 +287,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         getLibraryRoot: () => libraryRoot ?? null,
         getSyncController: () => syncController,
         reconfigureLibrary: async () => {
-          const root = await runLibrarySetupWizard(context, fileSystemService);
+          const root = await runLibrarySetupWizard(context, createFileSystem);
           if (!root) { return undefined; }
           libraryRoot = root;
-          activeServices = await buildServices(context, root, fileSystemService, eventBus);
+          activeServices = await buildServices(context, root, eventBus);
           libraryProvider.setPapersRoot(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
-          await ensureSyncController(root);
+          await ensureSyncController(root, activeServices.fileSystem);
           return root;
         },
       });
@@ -364,7 +369,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Prompts for a name and creates the folder under `node`, or at papers/ when no node is given.
   async function createFolder(node?: LibraryNode): Promise<void> {
-    if (!(await requireServices())) { return; }
+    const services = await requireServices();
+    if (!services) { return; }
     const parent = node ? vscode.Uri.file(node.dirPath) : papersRootUri();
     if (!parent) { return; }
 
@@ -375,7 +381,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
     if (!name?.trim()) { return; }
 
-    await fileSystemService.ensureDirectory(vscode.Uri.joinPath(parent, name.trim()));
+    await services.fileSystem.ensureDir(vscode.Uri.joinPath(parent, name.trim()).fsPath);
     refreshLibraryViews();
   }
 
@@ -460,13 +466,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Configure or reconfigure the library root via the setup wizard.
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.configureLibrary", async () => {
-      const root = await runLibrarySetupWizard(context, fileSystemService);
+      const root = await runLibrarySetupWizard(context, createFileSystem);
       if (!root) { return; }
 
       libraryRoot = root;
-      activeServices = await buildServices(context, root, fileSystemService, eventBus);
+      activeServices = await buildServices(context, root, eventBus);
       libraryProvider.setPapersRoot(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
-      await ensureSyncController(root);
+      await ensureSyncController(root, activeServices.fileSystem);
       vscode.window.showInformationMessage(`LabShelf: Library configured at ${root.fsPath}`);
     }),
   );
@@ -517,7 +523,6 @@ function syncChangedLibrary(result: SyncResult): boolean {
 // extension keeps working.
 async function maybeStartAi(
   context: vscode.ExtensionContext,
-  fileSystemService: FileSystemService,
   eventBus: EventBus,
   services: ActiveServices,
 ): Promise<AiService | null> {
@@ -526,7 +531,7 @@ async function maybeStartAi(
     const result = await createAiService({
       context,
       database: services.database,
-      fileSystem: fileSystemService,
+      fileSystem: services.fileSystem,
       eventBus,
       logger: services.logger,
       pdfOpener: new NodePdfOpener(),
@@ -578,24 +583,24 @@ function createTextLayerBuilder(engine: TesseractOcrEngine | undefined): Searcha
 async function buildServices(
   context: vscode.ExtensionContext,
   root: vscode.Uri,
-  fileSystemService: FileSystemService,
   eventBus: EventBus,
 ): Promise<ActiveServices> {
   const paths = libraryLayout(root, vscode.Uri.joinPath);
-  await ensureLibraryStructure(root, fileSystemService);
-  const database = await initializeDatabase(paths.indexPath(), fileSystemService);
-  const logger = new WorkspaceLogger(fileSystemService, paths, {
+  const fileSystem = createFileSystem(root);
+  await ensureLibraryStructure(root, fileSystem);
+  const database = await initializeDatabase(paths.indexPath(), fileSystem);
+  const logger = new WorkspaceLogger(fileSystem, paths, {
     append: async (entry) => database.appendLog(entry),
   });
   const ocrEngine = createOcrEngine(context, logger);
   const pdfImportParser = new PdfImportParser(new NodePdfOpener(), { ocr: ocrEngine });
-  const bibTeXService = new BibTeXService(new VscodeFileSystem());
+  const bibTeXService = new BibTeXService(fileSystem);
   const paperService = new PaperService(
-    fileSystemService, database, eventBus, paths, pdfImportParser, bibTeXService,
+    fileSystem, database, eventBus, paths, pdfImportParser, bibTeXService,
     createTextLayerBuilder(ocrEngine),
   );
-  const paperDataStore = new PaperDataStore(paths, fileSystemService);
-  const indexer = new LibraryIndexer(paths, fileSystemService, database);
+  const paperDataStore = new PaperDataStore(paths, fileSystem);
+  const indexer = new LibraryIndexer(paths, fileSystem, database);
   await indexer.rebuild();
   // Papers imported before text layers were tracked are classified once, in the
   // background and without OCR; the verdict is saved in metadata.yaml. Papers
@@ -614,14 +619,14 @@ async function buildServices(
       eventBus,
       queueCheck: (papers) => void queueTextLayers(paperService, papers, { mode: "check", logger }),
     });
-  return { paperService, logger, themeManager, annotationManager, database, paperDataStore, reindexLibrary: reindex };
+  return { paperService, logger, themeManager, annotationManager, database, paperDataStore, fileSystem, reindexLibrary: reindex };
 }
 
 // Tries to create the SQLite database; falls back to the in-memory implementation on failure.
-async function initializeDatabase(indexPath: vscode.Uri, fileSystemService: FileSystemService): Promise<IResearchDatabase> {
+async function initializeDatabase(indexPath: vscode.Uri, fileSystem: IFileSystem): Promise<IResearchDatabase> {
   try {
     const { createSqliteResearchDatabase } = await import("./db/sqliteResearchDatabase.js");
-    const database = await createSqliteResearchDatabase(indexPath, fileSystemService);
+    const database = await createSqliteResearchDatabase(indexPath, fileSystem);
     await database.initialize();
     return database;
   } catch (error) {

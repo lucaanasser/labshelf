@@ -2364,37 +2364,9 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/app/config.ts",
-    "to": "packages/terminal/src/platform/nodeFileSystem.ts",
-    "unresolvedTo": "../platform/nodeFileSystem.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/terminal/src/app/context.ts",
     "to": "packages/terminal/src/platform/dirs.ts",
     "unresolvedTo": "../platform/dirs.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/app/context.ts",
-    "to": "packages/terminal/src/platform/nodeFileSystem.ts",
-    "unresolvedTo": "../platform/nodeFileSystem.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -2688,37 +2660,9 @@
   },
   {
     "type": "dependency",
-    "from": "packages/terminal/src/library/paperService.ts",
-    "to": "packages/terminal/src/platform/nodeFileSystem.ts",
-    "unresolvedTo": "../platform/nodeFileSystem.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/terminal/src/library/search.ts",
     "to": "packages/terminal/src/tui/text.ts",
     "unresolvedTo": "../tui/text.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/terminal/src/library/sidecars.ts",
-    "to": "packages/terminal/src/platform/nodeFileSystem.ts",
-    "unresolvedTo": "../platform/nodeFileSystem.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -2900,8 +2844,8 @@
   {
     "type": "dependency",
     "from": "packages/terminal/src/sync/syncService.ts",
-    "to": "packages/terminal/src/platform/nodeFileSystem.ts",
-    "unresolvedTo": "../platform/nodeFileSystem.js",
+    "to": "packages/terminal/src/platform/nodeLockStore.ts",
+    "unresolvedTo": "../platform/nodeLockStore.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -3246,34 +3190,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/ai/pdf/contentHash.ts",
-    "to": "packages/vscode/src/storage/fileSystemService.ts",
-    "unresolvedTo": "../../storage/fileSystemService.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/ai/pdf/pdfTextExtractor.ts",
-    "to": "packages/vscode/src/storage/fileSystemService.ts",
-    "unresolvedTo": "../../storage/fileSystemService.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/vscode/src/ai/service/aiService.ts",
     "to": "packages/vscode/src/ai/indexer/aiIndexer.ts",
     "unresolvedTo": "../indexer/aiIndexer.js",
@@ -3394,20 +3310,6 @@
     "from": "packages/vscode/src/ai/service/aiServiceFactory.ts",
     "to": "packages/vscode/src/db/sqliteResearchDatabase.ts",
     "unresolvedTo": "../../db/sqliteResearchDatabase.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/ai/service/aiServiceFactory.ts",
-    "to": "packages/vscode/src/storage/fileSystemService.ts",
-    "unresolvedTo": "../../storage/fileSystemService.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -3614,20 +3516,6 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/core/logger.ts",
-    "to": "packages/vscode/src/storage/fileSystemService.ts",
-    "unresolvedTo": "../storage/fileSystemService.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/vscode/src/core/paperService.ts",
     "to": "packages/vscode/src/pdf/searchablePdfBuilder.ts",
     "unresolvedTo": "../pdf/searchablePdfBuilder.js",
@@ -3643,37 +3531,9 @@
   },
   {
     "type": "dependency",
-    "from": "packages/vscode/src/core/paperService.ts",
-    "to": "packages/vscode/src/storage/fileSystemService.ts",
-    "unresolvedTo": "../storage/fileSystemService.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/vscode/src/db/sqliteResearchDatabase.ts",
     "to": "packages/vscode/src/db/ai/aiSchema.ts",
     "unresolvedTo": "./ai/aiSchema.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/db/sqliteResearchDatabase.ts",
-    "to": "packages/vscode/src/storage/fileSystemService.ts",
-    "unresolvedTo": "../storage/fileSystemService.js",
     "dependencyTypes": [
       "local",
       "import"
@@ -3926,20 +3786,6 @@
     "from": "packages/vscode/src/extension.ts",
     "to": "packages/vscode/src/storage/data/reindexLibrary.ts",
     "unresolvedTo": "./storage/data/reindexLibrary.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/storage/fileSystemService.ts",
-    "unresolvedTo": "./storage/fileSystemService.js",
     "dependencyTypes": [
       "local",
       "import"

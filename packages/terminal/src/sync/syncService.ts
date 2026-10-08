@@ -9,7 +9,7 @@
  * periodically while the TUI is open.
  *
  * @depends @labshelf/core (SyncEngine, SyncManifest, SyncLock, folder names, run record), sync/driveAuth,
- *          platform/nodeFileSystem, library/*
+ *          platform/nodeLockStore, library/*
  * @dependents app/context, ui/app, cli sync
  */
 import * as os from "node:os";
@@ -31,8 +31,9 @@ import {
   SYNC_PROVIDER_ID,
   syncRoots,
 } from "@labshelf/core";
+import { NodeLocalFileSystem } from "@labshelf/core/node";
 
-import { isProcessAlive, NodeLocalFileSystem, NodeLockStore } from "../platform/nodeFileSystem.js";
+import { isProcessAlive, NodeLockStore } from "../platform/nodeLockStore.js";
 import { type LibraryRoot, scanLibrary, type LibraryStore } from "../library/index.js";
 import { ReauthRequiredError, type CliDriveAuth, type LoginOptions } from "./driveAuth.js";
 

@@ -25,13 +25,14 @@ jest.mock('@labshelf/core', () => ({
 }));
 
 import { SyncController } from '../../src/sync/adapter/syncController';
+import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
 
 function context(): vscode.ExtensionContext {
   return { subscriptions: [], secrets: { get: async () => undefined } } as unknown as vscode.ExtensionContext;
 }
 
 function makeController(root: string): SyncController {
-  return new SyncController(context(), libraryLayout(vscode.Uri.file(root), vscode.Uri.joinPath), new EventBus(), async () => new Map());
+  return new SyncController(context(), libraryLayout(vscode.Uri.file(root), vscode.Uri.joinPath), new VscodeFileSystem(path.join(root, '.research', 'tmp')), new EventBus(), async () => new Map());
 }
 
 function lockFile(root: string): string {
@@ -73,7 +74,7 @@ describe('SyncController and the cross-app sync lock', () => {
     controller.dispose();
   });
 
-  it('syncs against the new library after setPaths, not the one it was built with', async () => {
+  it('syncs against the new library after setLibrary, not the one it was built with', async () => {
     const other = fs.mkdtempSync(path.join(os.tmpdir(), 'labshelf-lock-other-'));
     fs.mkdirSync(path.join(other, '.research', 'sync'), { recursive: true });
     try {
@@ -81,7 +82,7 @@ describe('SyncController and the cross-app sync lock', () => {
       const listSpy = jest.spyOn(provider, 'list');
       const controller = makeController(root);
 
-      controller.setPaths(libraryLayout(vscode.Uri.file(other), vscode.Uri.joinPath));
+      controller.setLibrary(libraryLayout(vscode.Uri.file(other), vscode.Uri.joinPath), new VscodeFileSystem(path.join(other, '.research', 'tmp')));
       await controller.sync('manual');
 
       expect(listSpy).toHaveBeenCalled();
@@ -105,8 +106,11 @@ describe('SyncController and the cross-app sync lock', () => {
     await controller.sync('manual');
 
     expect(fs.existsSync(lockFile(root))).toBe(false);
+    // Atomic write: the content goes to a temp file that is renamed to the record's path.
+    const renamed = (vscode.workspace.fs.rename as jest.Mock).mock.calls
+      .find(([, target]) => (target as vscode.Uri).fsPath.endsWith('google-drive.last.json'));
     const lastRun = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls
-      .find(([uri]) => (uri as vscode.Uri).fsPath.endsWith('google-drive.last.json'));
+      .find(([uri]) => (uri as vscode.Uri).fsPath === (renamed?.[0] as vscode.Uri | undefined)?.fsPath);
     expect(lastRun).toBeDefined();
     expect(JSON.parse(Buffer.from(lastRun![1] as Uint8Array).toString('utf8'))).toMatchObject({ app: 'vscode', providerId: 'fake' });
     controller.dispose();

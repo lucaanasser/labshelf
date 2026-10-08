@@ -8,7 +8,7 @@
  */
 import { createHash } from "node:crypto";
 import * as vscode from "vscode";
-import { FileSystemService } from "../../storage/fileSystemService.js";
+import type { LocalFileSystem } from "@labshelf/core";
 
 /**
  * Computes a SHA-1 hex digest of the file at `uri`.
@@ -18,8 +18,8 @@ import { FileSystemService } from "../../storage/fileSystemService.js";
  */
 export async function hashFile(
   uri: vscode.Uri,
-  fileSystem: FileSystemService,
+  fileSystem: Pick<LocalFileSystem, "readFile">,
 ): Promise<string> {
-  const bytes = await fileSystem.readBinary(uri);
+  const bytes = await fileSystem.readFile(uri.fsPath);
   return createHash("sha1").update(bytes).digest("hex");
 }

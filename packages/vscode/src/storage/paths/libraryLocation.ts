@@ -2,14 +2,13 @@
  * Persists, resolves, and sets up the central LabShelf library directory using VS Code globalState, mirrored in the
  * config file shared with the terminal app so both open the same library.
  *
- * @depends storage/fileSystemService, storage/paths/sharedConfig
+ * @depends storage/paths/sharedConfig
  * @dependents extension.ts, storage/index.ts, storage/paths/index.ts
  */
 import * as vscode from "vscode";
 
-import { libraryLayout } from "@labshelf/core";
+import { libraryLayout, type IFileSystem } from "@labshelf/core";
 
-import type { FileSystemService } from "../fileSystemService.js";
 import { readSharedLibraryRoot, writeSharedLibraryRoot } from "./sharedConfig.js";
 
 const LIBRARY_ROOT_KEY = "labshelf.libraryRoot";
@@ -67,20 +66,21 @@ export async function mirrorLibraryRoot(uri: vscode.Uri): Promise<void> {
  * @usedBy extension.ts, storage/paths/libraryLocation.ts (runLibrarySetupWizard)
  * @returns void
  */
-export async function ensureLibraryStructure(root: vscode.Uri, fsService: FileSystemService): Promise<void> {
+export async function ensureLibraryStructure(root: vscode.Uri, fileSystem: IFileSystem): Promise<void> {
   for (const dir of libraryLayout(root, vscode.Uri.joinPath).requiredDirs()) {
-    await fsService.ensureDirectory(dir);
+    await fileSystem.ensureDir(dir.fsPath);
   }
 }
 
 /**
- * Runs the first-use folder-picker wizard and creates the library structure at the chosen location.
+ * Runs the first-use folder-picker wizard and creates the library structure at the chosen location, through the
+ * file system the factory returns for the chosen root.
  * @usedBy extension.ts
  * @returns the configured library root URI, or undefined if the user cancelled
  */
 export async function runLibrarySetupWizard(
   context: vscode.ExtensionContext,
-  fsService: FileSystemService,
+  createFileSystem: (root: vscode.Uri) => IFileSystem,
 ): Promise<vscode.Uri | undefined> {
   const folders = await vscode.window.showOpenDialog({
     canSelectFiles: false,
@@ -111,8 +111,9 @@ export async function runLibrarySetupWizard(
   const libraryRoot = vscode.Uri.joinPath(baseFolderUri, name.trim());
 
   try {
-    await fsService.ensureDirectory(libraryRoot);
-    await ensureLibraryStructure(libraryRoot, fsService);
+    const fileSystem = createFileSystem(libraryRoot);
+    await fileSystem.ensureDir(libraryRoot.fsPath);
+    await ensureLibraryStructure(libraryRoot, fileSystem);
     await persistLibraryRoot(context, libraryRoot);
     return libraryRoot;
   } catch (error) {

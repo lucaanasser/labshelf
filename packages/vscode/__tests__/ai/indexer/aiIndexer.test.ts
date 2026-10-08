@@ -19,7 +19,7 @@ function makeIndexer(resolvePdfUri: AiIndexerDependencies["resolvePdfUri"]) {
     metadataStore: { listIndexed: jest.fn(() => new Map()), upsert: jest.fn() },
     extractor: { extract: jest.fn(async () => ({})) },
     resolvePdfUri,
-    fileSystem: { readBinary: jest.fn(async () => new Uint8Array([1, 2, 3])) },
+    fileSystem: { readFile: jest.fn(async () => new Uint8Array([1, 2, 3])) },
     enqueue: (job: () => Promise<void>) => { jobs.push(job()); },
   };
   const indexer = new AiIndexer(deps as unknown as AiIndexerDependencies);
@@ -34,7 +34,7 @@ describe("AiIndexer PDF resolution", () => {
     await indexer.rebuildAll();
     await drain();
 
-    expect(deps.fileSystem.readBinary).toHaveBeenCalledWith(nested);
+    expect(deps.fileSystem.readFile).toHaveBeenCalledWith(nested.fsPath);
     expect(deps.extractor.extract).toHaveBeenCalledWith("p1", nested);
     expect(deps.metadataStore.upsert).toHaveBeenCalled();
   });
@@ -45,7 +45,7 @@ describe("AiIndexer PDF resolution", () => {
     await indexer.rebuildAll();
     await drain();
 
-    expect(deps.fileSystem.readBinary).not.toHaveBeenCalled();
+    expect(deps.fileSystem.readFile).not.toHaveBeenCalled();
     expect(deps.eventBus.emit).not.toHaveBeenCalled();
   });
 });

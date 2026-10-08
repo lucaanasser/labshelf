@@ -12,6 +12,7 @@ import {
   type PdfImportParser,
   type ResolvedMetadata,
 } from "@labshelf/core";
+import { NodeFileSystem } from "@labshelf/core/node";
 
 import { readPaperFolder } from "../../src/library/libraryScanner";
 import { LibraryStore } from "../../src/library/libraryStore";
@@ -19,7 +20,6 @@ import {
   TerminalPaperService,
   identifiersIn,
 } from "../../src/library/paperService";
-import { NodeFileSystem } from "../../src/platform/nodeFileSystem";
 import {
   cleanupTempDirs,
   createTempLibrary,

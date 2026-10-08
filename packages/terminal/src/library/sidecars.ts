@@ -6,8 +6,8 @@
 import { promises as fs } from "node:fs";
 
 import { PaperDataStore, type PaperData, type SidecarPort } from "@labshelf/core";
+import { writeFileAtomic } from "@labshelf/core/node";
 
-import { writeFileAtomic } from "../platform/nodeFileSystem.js";
 import { LibraryRoot } from "./libraryRoot.js";
 
 /** SidecarPort over the library's .research/papers folder. */

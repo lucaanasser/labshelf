@@ -71,6 +71,13 @@ module.exports = {
       from: { path: "^packages/core/src/", pathNot: ["/(node|dom)/", "/__tests__/"] },
       to: { dependencyTypes: BUILTINS },
     },
+    {
+      name: "browser-no-node-core",
+      comment: "The browser extension never imports core's node/ code (node:* does not exist in a browser).",
+      severity: "error",
+      from: { path: "^packages/browser/" },
+      to: { path: ["^packages/core/src/node/", "^packages/core/src/.*/node/"] },
+    },
     ...indexOnlyRules(),
   ],
   options: {

@@ -6,7 +6,7 @@ import type { WorkspaceLogger } from "../core/logger.js";
 import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
 import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import { type IResearchDatabase, type PaperRecord, type PaperStatus, type BatchImportResult, isSafeExternalUrl, paperFiles } from "@labshelf/core";
+import { type IFileSystem, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type PaperStatus, type BatchImportResult, isSafeExternalUrl, paperFiles } from "@labshelf/core";
 import { fetchMetadataForPaper, offerMetadataFetch, resolveMissingMetadata } from "./fetchMetadata.js";
 import { announceImport, importWithProgress } from "./importProgress.js";
 import { queueTextLayers } from "./textLayerQueue.js";
@@ -21,6 +21,8 @@ export type ActiveServices = {
   annotationManager: AnnotationManager;
   database: IResearchDatabase;
   paperDataStore: PaperDataStore;
+  // The adapter of this library root; its temp folder for atomic writes is inside the root.
+  fileSystem: IFileSystem & LocalFileSystem;
   // Rebuilds the index from disk and emits the resulting paper events. Bound in
   // extension.ts over the live database, indexer and event bus.
   reindexLibrary: () => Promise<ReindexSummary>;

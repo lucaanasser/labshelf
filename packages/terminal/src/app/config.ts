@@ -5,14 +5,15 @@
  *
  * Resolution order for the library: --library flag, LABSHELF_LIBRARY, config.json, none (the TUI then offers setup).
  *
- * @depends platform/dirs, platform/nodeFileSystem
+ * @depends platform/dirs
  * @dependents main, cli/commands, app/context
  */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { writeFileAtomic } from "@labshelf/core/node";
+
 import { configDir, expandHome } from "../platform/dirs.js";
-import { writeFileAtomic } from "../platform/nodeFileSystem.js";
 
 export type SortKey = "title" | "year" | "author" | "status" | "modified";
 

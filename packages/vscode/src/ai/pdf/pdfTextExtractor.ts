@@ -8,14 +8,13 @@
  * @dependents indexer/aiIndexer.ts
  */
 import * as vscode from "vscode";
-import type { ExtractedPdfText, PdfDocumentLike, PdfDocumentOpener } from "@labshelf/core";
+import type { ExtractedPdfText, LocalFileSystem, PdfDocumentLike, PdfDocumentOpener } from "@labshelf/core";
 import { detectSections } from "@labshelf/core";
-import { FileSystemService } from "../../storage/fileSystemService.js";
 
 export class PdfTextExtractor {
   constructor(
     private readonly opener: PdfDocumentOpener,
-    private readonly fileSystem: FileSystemService,
+    private readonly fileSystem: Pick<LocalFileSystem, "readFile">,
   ) {}
 
   /**
@@ -26,7 +25,7 @@ export class PdfTextExtractor {
    * @returns Extracted text with paperId metadata.
    */
   async extract(paperId: string, pdfUri: vscode.Uri): Promise<ExtractedPdfText> {
-    const bytes = await this.fileSystem.readBinary(pdfUri);
+    const bytes = await this.fileSystem.readFile(pdfUri.fsPath);
     const document = await this.opener.open(bytes);
     try {
       const pages = await collectPageTexts(document);

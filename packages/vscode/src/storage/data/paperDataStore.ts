@@ -11,10 +11,10 @@ import {
   normalizePaperData as normalize,
   serializePaperData,
   type PaperData,
+  type IFileSystem,
   type LibraryLayout,
   type ReadingState,
 } from "@labshelf/core";
-import { FileSystemService } from "../fileSystemService.js";
 
 // The sidecar format is shared with the browser extension, which keeps the same file at IndexedDB appdata/<id>/data.json.
 export type { PaperData };
@@ -26,7 +26,7 @@ export type { PaperData };
 export class PaperDataStore {
   constructor(
     private readonly layout: LibraryLayout<vscode.Uri>,
-    private readonly fsService: FileSystemService,
+    private readonly fileSystem: IFileSystem,
   ) {}
 
   // Every mutator is load-modify-save on one JSON file. The reader saves the reading position while
@@ -59,12 +59,12 @@ export class PaperDataStore {
    * @returns PaperData containing annotations and theme
    */
   async load(paperId: string): Promise<PaperData> {
-    const uri = this.dataPath(paperId);
-    if (!(await this.fsService.exists(uri))) {
+    const file = this.dataPath(paperId).fsPath;
+    if (!(await this.fileSystem.exists(file))) {
       return emptyData();
     }
     try {
-      const parsed = JSON.parse(await this.fsService.readText(uri)) as unknown;
+      const parsed = JSON.parse(await this.fileSystem.readText(file)) as unknown;
       return normalize(parsed);
     } catch {
       return emptyData();
@@ -77,8 +77,8 @@ export class PaperDataStore {
    * @returns void
    */
   async save(paperId: string, data: PaperData): Promise<void> {
-    await this.fsService.ensureDirectory(this.dataDir(paperId));
-    await this.fsService.writeText(this.dataPath(paperId), serializePaperData(data));
+    await this.fileSystem.ensureDir(this.dataDir(paperId).fsPath);
+    await this.fileSystem.writeText(this.dataPath(paperId).fsPath, serializePaperData(data));
   }
 
   /**

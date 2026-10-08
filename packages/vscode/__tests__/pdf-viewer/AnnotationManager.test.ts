@@ -1,22 +1,11 @@
 import * as vscode from 'vscode';
 import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
-import { FileSystemService } from '../../src/storage/fileSystemService';
+import { makeMemoryFileSystem } from '../support/memoryFileSystem';
 import { EventBus, EVENTS, libraryLayout } from '@labshelf/core';
 
 function makeFakeStore(): PaperDataStore {
-  const files = new Map<string, string>();
-  const fs = new FileSystemService();
-  jest.spyOn(fs, 'ensureDirectory').mockResolvedValue(undefined);
-  jest.spyOn(fs, 'writeText').mockImplementation(async (uri, content) => {
-    files.set(uri.fsPath, content);
-  });
-  jest.spyOn(fs, 'readText').mockImplementation(async (uri) => {
-    const v = files.get(uri.fsPath);
-    if (v === undefined) { throw new Error('ENOENT'); }
-    return v;
-  });
-  jest.spyOn(fs, 'exists').mockImplementation(async (uri) => files.has(uri.fsPath));
+  const fs = makeMemoryFileSystem();
   return new PaperDataStore(libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath), fs);
 }
 

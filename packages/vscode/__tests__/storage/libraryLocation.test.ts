@@ -5,7 +5,7 @@ import {
   ensureLibraryStructure,
   runLibrarySetupWizard,
 } from '../../src/storage/paths/libraryLocation';
-import { FileSystemService } from '../../src/storage/fileSystemService';
+import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
 
 function makeUri(fsPath: string): vscode.Uri {
   return vscode.Uri.file(fsPath);
@@ -21,7 +21,8 @@ function makeContext(stored?: string): vscode.ExtensionContext {
   } as unknown as vscode.ExtensionContext;
 }
 
-const fsService = new FileSystemService();
+const fsService = new VscodeFileSystem('/tmp/mylib/.research/tmp');
+const createFileSystem = () => fsService;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -93,7 +94,7 @@ describe('runLibrarySetupWizard', () => {
   it('returns undefined when user cancels folder dialog', async () => {
     (vscode.window.showOpenDialog as jest.Mock).mockResolvedValue(undefined);
     const ctx = makeContext();
-    const result = await runLibrarySetupWizard(ctx, fsService);
+    const result = await runLibrarySetupWizard(ctx, createFileSystem);
     expect(result).toBeUndefined();
     expect(ctx.globalState.update).not.toHaveBeenCalled();
   });
@@ -102,7 +103,7 @@ describe('runLibrarySetupWizard', () => {
     (vscode.window.showOpenDialog as jest.Mock).mockResolvedValue([makeUri('/tmp')]);
     (vscode.window.showInputBox as jest.Mock).mockResolvedValue(undefined);
     const ctx = makeContext();
-    const result = await runLibrarySetupWizard(ctx, fsService);
+    const result = await runLibrarySetupWizard(ctx, createFileSystem);
     expect(result).toBeUndefined();
     expect(ctx.globalState.update).not.toHaveBeenCalled();
   });
@@ -113,7 +114,7 @@ describe('runLibrarySetupWizard', () => {
     (vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined);
     const ctx = makeContext();
 
-    const result = await runLibrarySetupWizard(ctx, fsService);
+    const result = await runLibrarySetupWizard(ctx, createFileSystem);
 
     expect(result).toBeDefined();
     expect(result!.fsPath).toContain('MyLibrary');
@@ -129,7 +130,7 @@ describe('runLibrarySetupWizard', () => {
     (vscode.workspace.fs.createDirectory as jest.Mock).mockRejectedValue(new Error('EACCES'));
     const ctx = makeContext();
 
-    const result = await runLibrarySetupWizard(ctx, fsService);
+    const result = await runLibrarySetupWizard(ctx, createFileSystem);
 
     expect(result).toBeUndefined();
     expect(vscode.window.showErrorMessage).toHaveBeenCalled();

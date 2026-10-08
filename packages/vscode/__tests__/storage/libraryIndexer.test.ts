@@ -1,29 +1,29 @@
 import * as vscode from 'vscode';
 import { LibraryIndexer } from '../../src/storage/data/libraryIndexer';
-import { FileSystemService } from '../../src/storage/fileSystemService';
+import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
 import { InMemoryResearchDatabase, libraryLayout, type LibraryLayout } from '@labshelf/core';
 
-// Fake FileSystemService backed by an in-memory map. readDirectory/readText are
-// keyed by fsPath; directories are listed by their declared entries.
+// Fake VscodeFileSystem backed by an in-memory map. listEntries/readText are
+// keyed by absolute path; directories are listed by their declared entries.
 function makeFakeFs(opts: {
   files?: Record<string, string>;
   dirs?: Record<string, Array<[string, number]>>;
-}): FileSystemService {
+}): VscodeFileSystem {
   const files = new Map(Object.entries(opts.files ?? {}));
   const dirs = new Map(Object.entries(opts.dirs ?? {}));
-  const fs = new FileSystemService();
-  jest.spyOn(fs, 'ensureDirectory').mockResolvedValue(undefined);
-  jest.spyOn(fs, 'writeText').mockImplementation(async (uri, content) => {
-    files.set(uri.fsPath, content);
+  const fs = new VscodeFileSystem('/lib/.research/tmp');
+  jest.spyOn(fs, 'ensureDir').mockResolvedValue(undefined);
+  jest.spyOn(fs, 'writeText').mockImplementation(async (target, content) => {
+    files.set(target, content);
   });
-  jest.spyOn(fs, 'readText').mockImplementation(async (uri) => {
-    const v = files.get(uri.fsPath);
-    if (v === undefined) { throw new Error('ENOENT ' + uri.fsPath); }
+  jest.spyOn(fs, 'readText').mockImplementation(async (target) => {
+    const v = files.get(target);
+    if (v === undefined) { throw new Error('ENOENT ' + target); }
     return v;
   });
-  jest.spyOn(fs, 'exists').mockImplementation(async (uri) => files.has(uri.fsPath));
-  jest.spyOn(fs, 'readDirectory').mockImplementation(async (uri) => {
-    return (dirs.get(uri.fsPath) ?? []) as Array<[string, vscode.FileType]>;
+  jest.spyOn(fs, 'exists').mockImplementation(async (target) => files.has(target));
+  jest.spyOn(fs, 'listEntries').mockImplementation(async (target) => {
+    return (dirs.get(target) ?? []) as Array<[string, vscode.FileType]>;
   });
   return fs;
 }
@@ -175,7 +175,7 @@ describe('LibraryIndexer — metadata.yaml that is not a mapping', () => {
 describe('LibraryIndexer — hasPdf derived from the folder listing', () => {
   const SYMLINK = vscode.FileType.SymbolicLink;
 
-  function fsWith(entries: Array<[string, number]>): { paths: LibraryLayout<vscode.Uri>; fs: FileSystemService; db: InMemoryResearchDatabase } {
+  function fsWith(entries: Array<[string, number]>): { paths: LibraryLayout<vscode.Uri>; fs: VscodeFileSystem; db: InMemoryResearchDatabase } {
     const paths = libraryLayout(vscode.Uri.file('/lib'), vscode.Uri.joinPath);
     const fs = makeFakeFs({
       files: { '/lib/papers/p/metadata.yaml': 'title: P\n' },
@@ -200,11 +200,11 @@ describe('LibraryIndexer — hasPdf derived from the folder listing', () => {
     const { paths, fs, db } = fsWith([['metadata.yaml', F], ['paper.pdf', F]]);
     await db.initialize();
     (vscode.workspace.fs.stat as jest.Mock).mockClear();
-    const readDirectory = fs.readDirectory as unknown as jest.Mock;
-    readDirectory.mockClear();
+    const listEntries = fs.listEntries as unknown as jest.Mock;
+    listEntries.mockClear();
     await new LibraryIndexer(paths, fs, db).rebuild();
     // papers/ and the one paper folder — the PDF presence reuses that listing.
-    expect(readDirectory).toHaveBeenCalledTimes(2);
+    expect(listEntries).toHaveBeenCalledTimes(2);
     expect(vscode.workspace.fs.stat).not.toHaveBeenCalled();
   });
 });

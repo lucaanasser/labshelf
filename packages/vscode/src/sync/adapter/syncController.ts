@@ -17,12 +17,12 @@ import {
 } from "@labshelf/core";
 import type {
   EventBus,
+  LocalFileSystem,
   SyncResult,
   FolderNameMaps,
   SyncLockInfo,
 } from "@labshelf/core";
 import { GoogleDriveAuth } from "../auth/googleDriveAuth.js";
-import { VscodeLocalFileSystem } from "./vscodeLocalFileSystem.js";
 import { isProcessAlive, NodeLockStore } from "./nodeLockStore.js";
 
 const DEBOUNCE_MS = 30_000;
@@ -33,7 +33,7 @@ export type SyncReason = "manual" | "auto";
 
 export class SyncController implements vscode.Disposable {
   private readonly auth: GoogleDriveAuth;
-  private readonly localFs: VscodeLocalFileSystem;
+  private localFs: LocalFileSystem;
   private readonly statusBar: vscode.StatusBarItem;
   private readonly _onDidChangeStatus = new vscode.EventEmitter<void>();
   readonly onDidChangeStatus: vscode.Event<void> = this._onDidChangeStatus.event;
@@ -50,12 +50,13 @@ export class SyncController implements vscode.Disposable {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private paths: LibraryLayout<vscode.Uri>,
+    localFs: LocalFileSystem,
     eventBus: EventBus,
     /** Returns a paperId → title map used to name Drive folders. */
     private readonly getPaperTitles?: () => Promise<Map<string, string>>,
   ) {
     this.auth = new GoogleDriveAuth(context);
-    this.localFs = new VscodeLocalFileSystem();
+    this.localFs = localFs;
 
     this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
     this.statusBar.command = "labshelf.sync.now";
@@ -72,8 +73,9 @@ export class SyncController implements vscode.Disposable {
   }
 
   /** Points the controller at another library, so the lock, manifest and synced folders follow a reconfigured root. */
-  setPaths(paths: LibraryLayout<vscode.Uri>): void {
+  setLibrary(paths: LibraryLayout<vscode.Uri>, localFs: LocalFileSystem): void {
     this.paths = paths;
+    this.localFs = localFs;
   }
 
   /** Loads persisted auth state and starts periodic sync if already authenticated. @usedBy extension. @returns void */
