@@ -157,6 +157,7 @@ async function openApp(): Promise<void> {
   ctx = await openLibrary(root, {
     config: { version: 1 },
     watch: false,
+    thumbnailWorkerUrl: new URL("file:///unused/thumbnailWorker.mjs"),
     env: { ...process.env, XDG_CONFIG_HOME: tmp, XDG_CACHE_HOME: tmp, LABSHELF_TOKEN_STORE: "file", LABSHELF_IMAGES: "off" },
   });
   term = new FakeTerminal();

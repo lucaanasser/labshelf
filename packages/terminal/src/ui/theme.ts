@@ -46,13 +46,11 @@ export const theme = {
   key: c({ fg: 3, bold: true }),
   popupBorder: c({ fg: 4 }),
   popupTitle: c({ fg: 4, bold: true }),
-  match: c({ fg: 3, bold: true }),
   mode: {
     NORMAL: c({ fg: 4, reverse: true, bold: true }),
     VISUAL: c({ fg: 5, reverse: true, bold: true }),
     FILTER: c({ fg: 3, reverse: true, bold: true }),
     SEARCH: c({ fg: 2, reverse: true, bold: true }),
-    INPUT: c({ fg: 6, reverse: true, bold: true }),
   } as Record<string, Style>,
   status: {
     unread: c({ dim: true }),

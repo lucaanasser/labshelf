@@ -16,7 +16,7 @@ const MAX_BYTES = 2 * 1024 * 1024;
 export class FileLogger implements ILogger {
   private queue: Promise<void> = Promise.resolve();
 
-  constructor(private readonly file: string, private readonly echo?: (entry: LogEntry) => void) {}
+  constructor(private readonly file: string) {}
 
   log(level: LogEntry["level"], module: string, message: string, context: Record<string, unknown> = {}, stack?: string): Promise<void> {
     const entry: LogEntry = {
@@ -27,7 +27,6 @@ export class FileLogger implements ILogger {
       context,
       ...(stack ? { stack } : {}),
     };
-    this.echo?.(entry);
     // Serialized so concurrent writers never interleave half lines.
     this.queue = this.queue.then(() => this.append(entry)).catch(() => undefined);
     return this.queue;
@@ -50,9 +49,3 @@ export class FileLogger implements ILogger {
     await fs.appendFile(this.file, JSON.stringify(entry) + "\n");
   }
 }
-
-/** Logger that drops everything; used before a library is open. */
-export const nullLogger: ILogger = {
-  log: async () => undefined,
-  error: async () => undefined,
-};

@@ -21,7 +21,7 @@ import { resolveOAuthClient } from "../sync/driveAuth.js";
 import { createTokenStore } from "../sync/tokenStore.js";
 import { detectImageProtocol } from "../tui/graphics.js";
 import { fit, stringWidth } from "../tui/text.js";
-import { formatBytes, paperLink, relativeTime, shortAuthors, venueLine } from "../ui/format.js";
+import { formatBytes, paperLink, relativeTime, venueLine } from "../ui/format.js";
 import { STATUS_GLYPH } from "../ui/theme.js";
 import { stringFlag, type ParsedArgs } from "./args.js";
 

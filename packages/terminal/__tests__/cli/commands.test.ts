@@ -96,7 +96,7 @@ async function session(papers: PaperFixture[] = PAPERS, options: { config?: Shar
     ...(process.env["PATH"] ? { PATH: process.env["PATH"] } : {}),
     ...(options.env ?? {}),
   };
-  const ctx = await openLibrary(lib.root, { config: options.config ?? { version: 1 }, env, watch: false });
+  const ctx = await openLibrary(lib.root, { config: options.config ?? { version: 1 }, env, watch: false, thumbnailWorkerUrl: new URL("file:///unused/thumbnailWorker.mjs") });
   opened.push(ctx);
   const out: string[] = [];
   const err: string[] = [];
