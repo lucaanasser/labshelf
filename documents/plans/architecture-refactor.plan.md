@@ -133,7 +133,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S1.1 | Delete `packages/latex` | S0.4 | M · dead-code-cleaner | A1 (partly) | [ ] |
+| S1.1 | Delete `packages/latex` | S0.4 | M · dead-code-cleaner | A1 (partly) | [x] |
 | S1.2 | Core dead code | S0.4 | M · dead-code-cleaner | knip clean for core | [x] |
 | S1.3 | AI dead code | S0.4, Q3 | M · dead-code-cleaner | knip clean for ai | [x] |
 | S1.4 | Reader dead code | S0.4 | M · dead-code-cleaner | knip clean for reader | [x] |
@@ -713,4 +713,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-08 S0.5 done: the VS Code package gets a `dev` script that watches the host and the reader bundle; `pnpm dev:vscode` runs both. The ignored `packages/*/coverage/` folders are deleted.
 - 2026-10-08 S1.2–S1.7 done (Q2: the four resolvers and `titleMatch.ts` stay for pdf-finding.plan.md; Q3, Q4, Q5 delete). Kept because still used: `rewritePath` (unexported), `HeldSyncLock` (unexported from the barrel), `scorePageDifficulty` and `extractTerms` in ai (the ingestion difficulty score calls them; only their barrel exports went), `shortAuthors` in the terminal. Reader constants are unexported where only their own file uses them. IndexedDB version 2 drops the `byHash` and `byFolder` indexes. A pre-existing VS Code `index.sqlite` without the later `papers` columns must be deleted once; it is a rebuildable cache.
 - 2026-10-08 S1.8 done: B1 `SyncController.setPaths` repoints the controller when the root changes and `labshelf.configureLibrary` calls `ensureSyncController`; B4 the ONNX path and the model download are gone (the hash provider is built directly, `degradedMode` and the two model events deleted); B5 `CliDriveAuth.authenticate()` keeps stored tokens or runs the login flow with the options the composition root passes. Each has a test.
-- 2026-10-08 S1.1 open: deleting `packages/latex` (needs `rm -rf` of its `node_modules` and `dist`) was denied by the permission classifier; the user runs it, then removes the `knip.json` entry, the README line and the lockfile entry.
+- 2026-10-08 S1.1 done: `packages/latex`, its `knip.json` entry, its README mention and its lockfile entry are gone.

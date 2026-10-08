@@ -39,11 +39,6 @@
         "__tests__/**/*.ts"
       ]
     },
-    "packages/latex": {
-      "project": [
-        "src/**/*.ts"
-      ]
-    },
     "packages/vscode": {
       "entry": [
         "src/extension.ts",

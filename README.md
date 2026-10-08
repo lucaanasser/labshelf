@@ -27,6 +27,6 @@ packages/terminal/   terminal app
 documents/           architecture, contracts between apps, setup, plans
 ```
 
-Until [the architecture refactor plan](documents/plans/architecture-refactor.plan.md) is done, `packages/ai` and `packages/reader` still exist outside `core`, and `packages/latex` is an empty stub.
+Until [the architecture refactor plan](documents/plans/architecture-refactor.plan.md) is done, `packages/ai` and `packages/reader` still exist outside `core`.
 
 Start with [documents/README.md](documents/README.md). Rules for contributors and coding agents are in [AGENTS.md](AGENTS.md).
