@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@labshelf/core": "workspace:*",
-    "@labshelf/reader": "workspace:*",
     "idb": "^8.0.0",
     "pdfjs-dist": "~6.3.289",
     "webextension-polyfill": "^0.12.0",

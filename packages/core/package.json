@@ -8,6 +8,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "pdfjs-dist": "~6.3.289",
     "yaml": "^2.7.1"
   },
   "devDependencies": {
@@ -20,6 +21,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./dom": "./src/dom/index.ts",
+    "./styles/*": "./src/reader/dom/styles/*",
     "./test-support/sync-fakes": "./__tests__/support/syncFakes.ts",
     "./package.json": "./package.json"
   }

@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@labshelf/core": "workspace:*",
-    "@labshelf/reader": "workspace:*",
     "@napi-rs/canvas": "^1.0.9",
     "pdfjs-dist": "~6.3.289"
   },

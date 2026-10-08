@@ -1,14 +1,11 @@
 /**
  * Read access to the per-paper sidecars (.research/papers/<id>/data.json) the readers write: annotations, theme and
- * reading position. The format and the store come from @labshelf/reader, the same code the VS Code and browser readers
+ * reading position. The format and the store come from @labshelf/core, the same code the VS Code and browser readers
  * use, so the terminal never writes a sidecar the other apps cannot read.
- *
- * @depends @labshelf/reader (PaperDataStore, SidecarPort), platform/nodeFileSystem, library/libraryPaths
- * @dependents app/context, ui/app (preview Notes tab), cli show/notes
  */
 import { promises as fs } from "node:fs";
 
-import { PaperDataStore, type PaperData, type SidecarPort } from "@labshelf/reader";
+import { PaperDataStore, type PaperData, type SidecarPort } from "@labshelf/core";
 
 import { writeFileAtomic } from "../platform/nodeFileSystem.js";
 import { LibraryPaths } from "./libraryPaths.js";

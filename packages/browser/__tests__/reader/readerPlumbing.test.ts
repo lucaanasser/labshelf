@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { READER_SHELL_BODY } from "@labshelf/reader";
+import { READER_SHELL_BODY } from "@labshelf/core";
 
 jest.mock("webextension-polyfill", () => ({ runtime: { getURL: (p: string) => `chrome-extension://ext/${p}` } }));
 

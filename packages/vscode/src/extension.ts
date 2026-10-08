@@ -7,8 +7,10 @@ import {
   InMemoryResearchDatabase,
   PdfImportParser,
   BibTeXService,
+  type IResearchDatabase,
+  type SyncResult,
+  type ReaderCommandId,
 } from "@labshelf/core";
-import type { IResearchDatabase, SyncResult } from "@labshelf/core";
 import { PaperService } from "./core/paperService.js";
 import { WorkspaceLogger } from "./core/logger.js";
 import { FileSystemService } from "./storage/fileSystemService.js";
@@ -27,7 +29,6 @@ import { ListWebviewPanel } from "./ui/list/index.js";
 import { SettingsWebviewPanel } from "./ui/settings/index.js";
 import { PdfViewerPanel } from "./pdf-viewer/PdfViewerPanel.js";
 import { registerCommands, resolvePaper, ensurePaperPdf } from "./commands/registerCommands.js";
-import type { ReaderCommandId } from "@labshelf/reader";
 import { registerAiCommands } from "./commands/registerAiCommands.js";
 import { announceImport, importWithProgress } from "./commands/importProgress.js";
 import type { ActiveServices } from "./commands/registerCommands.js";

@@ -1,17 +1,18 @@
 /**
  * Entry of the reader page (reader/index.html?paper=<id>[&page=<n>]): the browser extension's counterpart of the VS Code
- * reader panel. It starts the very same reader UI (@labshelf/reader startReader) with boot parameters built here
+ * reader panel. It starts the very same reader UI (startReader from @labshelf/core/dom) with boot parameters built here
  * (pdf.js from the extension's vendor/pdfjs/, the PDF bytes from IndexedDB) and an in-page host that keeps the paper's
  * annotations, reader theme and reading position in its synced sidecar.
- *
- * @depends @labshelf/reader (startReader, PaperDataStore, protocol), reader/browserReaderHost, reader/inPageTransport,
- *          reader/idbSidecarPort, reader/readerPrefsStore, reader/readerTabs, storage, platform/*, ui/theme, ui/toast
- * @dependents reader/index.html
  */
-import { PROTOCOL_VERSION, PaperDataStore, type EffectiveTheme, type HostToWebview, type ReaderBootParams } from "@labshelf/reader";
-import { startReader } from "@labshelf/reader/src/webview/reader";
-import { PerfMarks } from "@labshelf/reader/src/webview/ui/pdfLoader";
-import type { PaperRecord } from "@labshelf/core";
+import {
+  PROTOCOL_VERSION,
+  PaperDataStore,
+  type EffectiveTheme,
+  type HostToWebview,
+  type ReaderBootParams,
+  type PaperRecord,
+} from "@labshelf/core";
+import { startReader, PerfMarks } from "@labshelf/core/dom";
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";
 import type { RuntimeMessage } from "../platform/runtimeMessages";

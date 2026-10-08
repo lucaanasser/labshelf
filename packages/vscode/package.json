@@ -506,7 +506,7 @@
     "watch": "node build/host.mjs --watch",
     "watch:webview": "node build/reader.mjs --watch",
     "dev": "node build/host.mjs --watch & node build/reader.mjs --watch & wait",
-    "typecheck": "tsc --noEmit -p ./",
+    "typecheck": "tsc --noEmit -p ./ && tsc --noEmit -p tsconfig.webview.json",
     "vscode:prepublish": "node build/host.mjs --production && node build/reader.mjs --production",
     "lint": "node ../../scripts/run-eslint.mjs",
     "test": "jest",
@@ -521,7 +521,6 @@
   },
   "dependencies": {
     "@labshelf/core": "workspace:*",
-    "@labshelf/reader": "workspace:*",
     "@napi-rs/canvas": "^1.0.9",
     "@thednp/dommatrix": "^3.0.4",
     "pdf-lib": "^1.17.1",

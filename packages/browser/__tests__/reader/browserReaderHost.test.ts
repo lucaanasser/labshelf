@@ -1,5 +1,4 @@
-import type { PaperRecord } from "@labshelf/core";
-import { DEFAULT_READER_PREFS, PaperDataStore, type HostToWebview, type SidecarPort } from "@labshelf/reader";
+import { type PaperRecord, DEFAULT_READER_PREFS, PaperDataStore, type HostToWebview, type SidecarPort } from "@labshelf/core";
 import { BrowserReaderHost, type ReaderHostDeps } from "../../src/reader/browserReaderHost";
 
 const paper = { id: "p1", citeKey: "imai1986", title: "Efficient Algorithms", authors: ["Hiroshi Imai", "Takao Asano"], year: 1986, path: "papers/x/p1" } as unknown as PaperRecord;

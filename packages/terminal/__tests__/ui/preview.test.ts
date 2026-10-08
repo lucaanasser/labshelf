@@ -1,5 +1,4 @@
-import type { Annotation, PaperRecord, PaperStatus } from "@labshelf/core";
-import type { PaperData } from "@labshelf/reader";
+import type { Annotation, PaperRecord, PaperStatus, PaperData } from "@labshelf/core";
 
 import type { CollectionNode, LibrarySnapshot, PaperEntry } from "../../src/library/libraryScanner";
 import { stringWidth } from "../../src/tui/text";

@@ -1,25 +1,21 @@
 /**
- * Bundles the PDF reader webview runtime into dist/reader/reader.{js,css}. The reader's source lives in the shared
- * @labshelf/reader package (also bundled by the browser extension); src/webview/main.ts is its VS Code entry.
- * @depends esbuild, @labshelf/reader.
- * @dependents pnpm --filter @labshelf/vscode build:webview | watch:webview | vscode:prepublish.
+ * Bundles the PDF reader webview runtime into dist/reader/reader.{js,css}. The reader UI lives in @labshelf/core/dom
+ * (also bundled by the browser extension); src/reader/main.ts is its VS Code entry.
  */
 import { build, context } from "esbuild";
 import { mkdir, rm } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(here, "..");
 const outDir = resolve(pkgRoot, "dist", "reader");
-const readerRoot = dirname(createRequire(import.meta.url).resolve("@labshelf/reader/package.json"));
 
 const watch = process.argv.includes("--watch");
 const production = process.argv.includes("--production");
 
 const options = {
-  entryPoints: { reader: resolve(readerRoot, "src/webview/main.ts") },
+  entryPoints: { reader: resolve(pkgRoot, "src/reader/main.ts") },
   outdir: outDir,
   bundle: true,
   format: "esm",
@@ -33,7 +29,7 @@ const options = {
   minify: production,
   // External maps do not resolve through the webview resource scheme.
   sourcemap: production ? false : "inline",
-  tsconfig: resolve(readerRoot, "src/webview/tsconfig.json"),
+  tsconfig: resolve(pkgRoot, "tsconfig.webview.json"),
   logLevel: "info",
 };
 

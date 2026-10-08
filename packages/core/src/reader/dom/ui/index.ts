@@ -1,0 +1,28 @@
+/** Public surface of the reader UI pieces that the reader entry point assembles. */
+export { AnnotationsTab } from "./annotationsTab.js";
+export { Cheatsheet } from "./cheatsheet.js";
+export { CitationResolver } from "./citationResolver.js";
+export type { ReaderContext } from "./context.js";
+export { DestPreview } from "./destPreview.js";
+export { byId } from "./dom.js";
+export { FindBar } from "./findBar.js";
+export { FloatResolver } from "./floatResolver.js";
+export { installTextLayerFocusGuard } from "./focusGuard.js";
+export { HostBridge, type ReaderTransport } from "./hostBridge.js";
+export { HoverPreview } from "./hoverPreview.js";
+export { Keyboard } from "./keyboard.js";
+export { NavHistory } from "./navHistory.js";
+export { OutlineTab } from "./outlineTab.js";
+export { PageTextCache } from "./pageText.js";
+export { describeLoadError, loadPdf, PerfMarks, type PdfSourceHooks } from "./pdfLoader.js";
+export { closePopover, isPopoverOpen } from "./popover.js";
+export { ReadingStateReporter } from "./readingStateReporter.js";
+export { SelectionBubble } from "./selectionBubble.js";
+export { Sidebar } from "./sidebar.js";
+export { StatusPill } from "./statusPill.js";
+export { ThemeController } from "./theme.js";
+export { openThemePopover } from "./themePopover.js";
+export { ThumbnailsTab } from "./thumbnailsTab.js";
+export { Toolbar } from "./toolbar.js";
+export { createViewer } from "./viewerSetup.js";
+export { ZoomController } from "./zoomController.js";

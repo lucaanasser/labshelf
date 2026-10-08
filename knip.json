@@ -21,18 +21,10 @@
         "__tests__/**/*.ts"
       ]
     },
-    "packages/reader": {
-      "entry": [
-        "__tests__/**/*.ts"
-      ],
-      "project": [
-        "src/**/*.ts",
-        "__tests__/**/*.ts"
-      ]
-    },
     "packages/vscode": {
       "entry": [
         "src/extension.ts",
+        "src/reader/main.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
       ],

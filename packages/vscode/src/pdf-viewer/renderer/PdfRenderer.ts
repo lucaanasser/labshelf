@@ -1,23 +1,20 @@
 /**
  * Generates the HTML shell of the PDF reader webview: CSP, pdf.js asset preloads, structural containers, the inert JSON boot block and the bundled runtime (dist/reader).
- * All behaviour lives in the bundle built from @labshelf/reader (src/webview/main.ts) by build/reader.mjs; the body
+ * All behaviour lives in the bundle built from src/reader/main.ts and @labshelf/core/dom by build/reader.mjs; the body
  * skeleton is the shared READER_SHELL_BODY, which the browser extension's reader page uses too.
- *
- * @depends pdf-viewer/ThemeManager.ts, @labshelf/reader, @labshelf/core
- * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/PdfRenderer.ts (re-export shim), pdf-viewer/renderer/index.ts, pdf-viewer/index.ts
  */
 import * as vscode from "vscode";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { PdfTheme } from "@labshelf/core";
-import { ThemeManager } from "../ThemeManager.js";
 import {
+  type PdfTheme,
   PROTOCOL_VERSION,
   READER_SHELL_BODY,
   type EffectiveTheme,
   type ReaderBootParams,
   type ReaderPrefs,
-} from "@labshelf/reader";
+} from "@labshelf/core";
+import { ThemeManager } from "../ThemeManager.js";
 
 export interface RenderParams {
   webview: vscode.Webview;

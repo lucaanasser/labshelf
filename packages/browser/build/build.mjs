@@ -20,7 +20,7 @@ const ENTRIES = [
   { entry: "popup/index.ts", out: "popup/index.js", format: "esm" },
   { entry: "options/index.ts", out: "options/index.js", format: "esm" },
   { entry: "library-page/index.ts", out: "library-page/index.js", format: "esm" },
-  // The PDF reader page: the shared @labshelf/reader UI over an in-page host.
+  // The PDF reader page: the shared reader UI from @labshelf/core/dom over an in-page host.
   { entry: "reader/index.ts", out: "reader/index.js", format: "esm" },
   // Classic script: runs in <head> before the stylesheets so the theme is set pre-paint.
   { entry: "ui/themeBoot.ts", out: "ui/themeBoot.js", format: "iife" },

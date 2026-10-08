@@ -3,9 +3,8 @@ import * as http from "node:http";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { PaperDataStore } from "@labshelf/reader";
+import { PaperDataStore, type RemoteProvider, type SyncLockInfo, type SyncResult, type SyncRunRecord } from "@labshelf/core";
 import { stringify } from "yaml";
-import type { RemoteProvider, SyncLockInfo, SyncResult, SyncRunRecord } from "@labshelf/core";
 
 import { LibraryStore } from "../../src/library/libraryStore";
 import { NodeSidecarPort } from "../../src/library/sidecars";

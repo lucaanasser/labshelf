@@ -3,12 +3,11 @@
  * Annotations, the per-paper reader theme and the reading position go to the paper's sidecar (shared format, synced
  * with VS Code through the appdata namespace); clipboard, links, downloads and notifications go through injected
  * platform functions, so the whole dispatch runs under jest.
- *
- * @depends @labshelf/reader (protocol, PaperDataStore, citation and markdown formatting), @labshelf/core (types only)
- * @dependents reader/index
  */
-import type { Annotation, PaperRecord, PdfTheme } from "@labshelf/core";
 import {
+  type Annotation,
+  type PaperRecord,
+  type PdfTheme,
   formatAnnotationsMarkdown,
   formatQuoteWithCitation,
   isPdfTheme,
@@ -20,7 +19,7 @@ import {
   type PaperDataStore,
   type ReaderPrefs,
   type WebviewToHost,
-} from "@labshelf/reader";
+} from "@labshelf/core";
 
 export type NoticeKind = "info" | "ok" | "error";
 

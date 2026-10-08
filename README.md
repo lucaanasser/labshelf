@@ -27,6 +27,4 @@ packages/terminal/   terminal app
 documents/           architecture, contracts between apps, setup, plans
 ```
 
-Until [the architecture refactor plan](documents/plans/architecture-refactor.plan.md) is done, `packages/reader` still exists outside `core`.
-
 Start with [documents/README.md](documents/README.md). Rules for contributors and coding agents are in [AGENTS.md](AGENTS.md).

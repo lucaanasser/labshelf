@@ -1,10 +1,8 @@
 /**
  * Copies what the reader page loads at runtime into the per-target dist folder:
  * - pdf.js (legacy build, the one the VS Code reader uses) into vendor/pdfjs/{build,web,cmaps,standard_fonts,wasm,iccs};
- * - the shared reader stylesheet from @labshelf/reader into reader/reader.css.
+ * - the shared reader stylesheet from @labshelf/core into reader/reader.css.
  * pdf_viewer.mjs goes through esbuild (es2023): its `v`-flag regex makes the addons-linter behind `web-ext lint` fail.
- * @depends esbuild, pdfjs-dist, @labshelf/reader.
- * @dependents build.mjs.
  */
 import { transform } from "esbuild";
 import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
@@ -28,7 +26,6 @@ async function copyDir(src, dst, skip = new Set()) {
 export async function vendorReader({ outDir, pkgRoot }) {
   const require = createRequire(join(pkgRoot, "package.json"));
   const pdfjsRoot = dirname(require.resolve("pdfjs-dist/package.json"));
-  const readerRoot = dirname(require.resolve("@labshelf/reader/package.json"));
   const vendor = join(outDir, "vendor", "pdfjs");
 
   await mkdir(join(vendor, "build"), { recursive: true });
@@ -46,5 +43,5 @@ export async function vendorReader({ outDir, pkgRoot }) {
   await copyDir(join(pdfjsRoot, "wasm"), join(vendor, "wasm"), SKIP_WASM);
 
   await mkdir(join(outDir, "reader"), { recursive: true });
-  await copyFile(join(readerRoot, "src/webview/styles/reader.css"), join(outDir, "reader/reader.css"));
+  await copyFile(require.resolve("@labshelf/core/styles/reader.css"), join(outDir, "reader/reader.css"));
 }

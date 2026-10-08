@@ -1,6 +1,6 @@
 /**
  * Bundles @labshelf/terminal into dist/labshelf.mjs (the `labshelf` command) and dist/thumbnailWorker.mjs.
- * @labshelf/core and @labshelf/reader are bundled from source; pdfjs-dist and the native canvas stay external and are
+ * @labshelf/core is bundled from source; pdfjs-dist and the native canvas stay external and are
  * loaded from node_modules at run time, only when a PDF is parsed or rendered.
  *
  * Google OAuth credentials: src/sync/googleDriveCredentials.ts is gitignored. When it is missing, the VS Code

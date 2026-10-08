@@ -98,42 +98,42 @@
       "count": 1
     }
   },
-  "packages/core/src/sync/core/treeScan.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/reader/src/webview/logic/captions.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/reader/src/webview/logic/referenceList.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/reader/src/webview/reader.ts": {
+  "packages/core/src/reader/dom/reader.ts": {
     "max-lines-per-function": {
       "count": 2
     }
   },
-  "packages/reader/src/webview/ui/hoverPreview.ts": {
+  "packages/core/src/reader/dom/ui/hoverPreview.ts": {
     "max-lines": {
       "count": 1
     }
   },
-  "packages/reader/src/webview/ui/pdfLoader.ts": {
+  "packages/core/src/reader/dom/ui/pdfLoader.ts": {
     "max-lines-per-function": {
       "count": 1
     }
   },
-  "packages/reader/src/webview/ui/toolbar.ts": {
+  "packages/core/src/reader/dom/ui/toolbar.ts": {
     "max-lines-per-function": {
       "count": 1
     }
   },
-  "packages/reader/src/webview/ui/viewerSetup.ts": {
+  "packages/core/src/reader/dom/ui/viewerSetup.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/src/reader/logic/captions.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/src/reader/logic/referenceList.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/src/sync/core/treeScan.ts": {
     "max-lines-per-function": {
       "count": 1
     }

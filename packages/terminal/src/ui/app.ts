@@ -16,8 +16,7 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import type { PaperRecord, PaperStatus } from "@labshelf/core";
-import { formatAnnotationsMarkdown, type PaperData } from "@labshelf/reader";
+import { type PaperRecord, type PaperStatus, formatAnnotationsMarkdown, type PaperData } from "@labshelf/core";
 
 import type { SortKey } from "../app/config.js";
 import type { AppContext } from "../app/context.js";

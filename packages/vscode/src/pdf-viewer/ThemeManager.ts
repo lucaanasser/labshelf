@@ -1,9 +1,6 @@
 /**
  * Maps VS Code color themes to PDF viewer themes and persists per-paper theme preferences via PaperDataStore.
- * Theme colours themselves live in pdf-viewer/shared/themePresets.ts (page pixels) and webview/styles/reader.css (chrome).
- *
- * @depends pdf-viewer/config.ts, storage/data/paperDataStore.ts, @labshelf/core
- * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/renderer/PdfRenderer.ts, pdf-viewer/index.ts, extension.ts, commands/registerCommands.ts (types only)
+ * Theme colours themselves live in core's reader/themePresets.ts (page pixels) and reader/dom/styles/reader.css (chrome).
  */
 import * as vscode from "vscode";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";

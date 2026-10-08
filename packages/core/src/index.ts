@@ -13,3 +13,4 @@ export * from "./io/index.js";
 export * from "./sync/index.js";
 export * from "./library/index.js";
 export * from "./ai/index.js";
+export * from "./reader/index.js";

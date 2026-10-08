@@ -1,20 +1,18 @@
 /**
  * Owns the per-paper sidecar JSON (.research/papers/<id>/data.json), the authoritative source for annotations, theme preferences and the reading position.
- *
- * @depends @labshelf/core, @labshelf/reader (sidecar format), storage/fileSystemService
- * @dependents extension.ts, pdf-viewer/AnnotationManager.ts, pdf-viewer/ThemeManager.ts, storage/data/index.ts, storage/data/libraryIndexer.ts, storage/data/migrateSidecars.ts, storage/index.ts, commands/registerCommands.ts (types only)
  */
 import * as vscode from "vscode";
 import { randomUUID } from "crypto";
 
-import type { Annotation, PdfTheme } from "@labshelf/core";
 import {
+  type Annotation,
+  type PdfTheme,
   emptyPaperData as emptyData,
   normalizePaperData as normalize,
   serializePaperData,
   type PaperData,
   type ReadingState,
-} from "@labshelf/reader";
+} from "@labshelf/core";
 import { FileSystemService } from "../fileSystemService.js";
 
 // The sidecar format is shared with the browser extension, which keeps the same file at IndexedDB appdata/<id>/data.json.

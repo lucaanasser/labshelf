@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { PaperDataStore, normalizePaperData, serializePaperData } from "@labshelf/reader";
+import { PaperDataStore, normalizePaperData, serializePaperData } from "@labshelf/core";
 
 import { NodeSidecarPort, SidecarReader } from "../../src/library/sidecars";
 import { cleanupTempDirs, createTempLibrary, listFiles, setMtime } from "../fixtures/library";

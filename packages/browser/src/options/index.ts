@@ -5,10 +5,6 @@
  * connect / sync / disconnect actions, edits the PDF reader preferences (the
  * browser twin of VS Code's labshelf.reader.* settings), exposes the theme
  * preference shared by every surface, and renders the recent log buffer.
- *
- * @depends platform/browserApi, platform/logger, platform/settings, platform/runtimeMessages, reader/readerPrefsStore,
- *          ui/dom, ui/icons, ui/theme, @labshelf/reader (ReaderPrefs)
- * @dependents options/index.html
  */
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";
@@ -18,7 +14,7 @@ import type { RuntimeMessage, RuntimeResponse, SyncStatusData } from "../platfor
 import { $, el, esc } from "../ui/dom";
 import { icon } from "../ui/icons";
 import { applyTheme, getThemePref, onThemeChange, setThemePref } from "../ui/theme";
-import type { CitationStyle, ReaderPrefs, ZoomPreset } from "@labshelf/reader";
+import type { CitationStyle, ReaderPrefs, ZoomPreset } from "@labshelf/core";
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/readerPrefsStore";
 import type { ThemePref } from "../ui/theme";
 

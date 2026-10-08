@@ -1,11 +1,8 @@
 /**
  * Reader preferences for the browser extension: the same settings VS Code keeps under labshelf.reader.*, stored in
  * bx.storage.local and validated with the shared normalizer. The options page edits them; open reader tabs follow live.
- *
- * @depends platform/browserApi, @labshelf/reader (normalizeReaderPrefs)
- * @dependents reader/index, options/index
  */
-import { normalizeReaderPrefs, type ReaderPrefs } from "@labshelf/reader";
+import { normalizeReaderPrefs, type ReaderPrefs } from "@labshelf/core";
 import { bx } from "../platform/browserApi";
 
 export const READER_PREFS_KEY = "labshelf.readerPrefs";

@@ -6,8 +6,7 @@
  * @depends ui/theme, ui/format, tui/text, library/*
  * @dependents ui/render
  */
-import type { Annotation, PaperRecord } from "@labshelf/core";
-import { cleanQuote, type PaperData } from "@labshelf/reader";
+import { type Annotation, type PaperRecord, cleanQuote, type PaperData } from "@labshelf/core";
 
 import type { CollectionNode, LibrarySnapshot, PaperEntry } from "../library/libraryScanner.js";
 import type { Style } from "../tui/screen.js";

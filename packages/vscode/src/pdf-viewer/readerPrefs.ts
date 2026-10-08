@@ -1,11 +1,8 @@
 /**
  * Reads the `labshelf.reader.*` settings into the ReaderPrefs shape shared with the reader webview.
- *
- * @depends @labshelf/reader (normalizeReaderPrefs)
- * @dependents pdf-viewer/PdfViewerPanel.ts
  */
 import * as vscode from "vscode";
-import { normalizeReaderPrefs, type ReaderPrefs } from "@labshelf/reader";
+import { normalizeReaderPrefs, type ReaderPrefs } from "@labshelf/core";
 
 export const READER_CONFIG_SECTION = "labshelf.reader";
 
