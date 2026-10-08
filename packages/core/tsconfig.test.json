@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "types": [
+      "jest",
+      "node"
+    ],
+    "noEmit": false,
+    "rootDir": ".",
+    "paths": {
+      "@labshelf/core": [
+        "./src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "__tests__/**/*"
+  ]
+}

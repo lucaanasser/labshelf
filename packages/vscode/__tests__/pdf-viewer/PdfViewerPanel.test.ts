@@ -101,20 +101,20 @@ describe('PdfViewerPanel', () => {
     (panel.webview.postMessage as jest.Mock).mock.calls.map((c) => c[0]).filter((m) => m.type === type);
 
   describe('createOrShow', () => {
-    it('creates a script-enabled panel beside the editor by default', () => {
+    it('creates a script-enabled panel in the active group by default', () => {
       const { paper } = open();
       expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(
         'labshelfPdf',
         paper.title,
-        vscode.ViewColumn.Two,
+        vscode.ViewColumn.Active,
         expect.objectContaining({ enableScripts: true, retainContextWhenHidden: true }),
       );
     });
 
-    it('opens in the active group when labshelf.reader.openBeside is false', () => {
-      vscode.workspace._config['labshelf.reader'] = { openBeside: false };
+    it('opens beside the editor when labshelf.reader.openBeside is true', () => {
+      vscode.workspace._config['labshelf.reader'] = { openBeside: true };
       open();
-      expect((vscode.window.createWebviewPanel as jest.Mock).mock.calls.at(-1)[2]).toBe(vscode.ViewColumn.Active);
+      expect((vscode.window.createWebviewPanel as jest.Mock).mock.calls.at(-1)[2]).toBe(vscode.ViewColumn.Two);
     });
 
     it('never enables the VS Code find widget, which would swallow Ctrl+F', () => {

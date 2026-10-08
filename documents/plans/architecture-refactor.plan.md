@@ -119,8 +119,8 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S0.1 | Commit the working tree | — | user · `commit-splitter` (L) | clean tree | [ ] |
-| S0.2 | Core gets its own test suite | S0.1 | M · module-splitter | A7 for core | [ ] |
+| S0.1 | Commit the working tree | — | user · `commit-splitter` (L) | clean tree | [x] |
+| S0.2 | Core gets its own test suite | S0.1 | M · module-splitter | A7 for core | [x] |
 | S0.3 | Consume core from source; VS Code host on esbuild | S0.2 | H · main thread | builds and tests green, extension host run passes | [ ] |
 | S0.4 | Add ESLint, dependency-cruiser, knip, runtime tsconfigs (warnings) | S0.3 | M · implementer | checks run in `pnpm -r lint` | [ ] |
 | S0.5 | Fix root scripts, drop `coverage/` | S0.1 | L · implementer (haiku) | `pnpm dev:vscode` resolves | [ ] |
@@ -706,3 +706,5 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - **R6** The IndexedDB version bump (S1.6) runs on users' browsers. — Removing indexes is a safe upgrade, but test the upgrade from the current version.
 
 ## 8. Log
+- 2026-10-08 S0.1 done: working tree committed as 8 commits (`889043c`..`1e8a74b`), tree clean.
+- 2026-10-08 S0.2 done in two parts. Part 1: core has its own jest config and runs 12 test suites (127 tests) mirroring `src/`. Part 2 (moving `syncDiff`, `syncEngine`, `syncApply`, `syncManifest`, `libraryFolderNames`, `helpers` and `sync/fakes.ts`) waits for the `exports` map of S0.3, because `syncControllerLock.test.ts` in VS Code shares `FakeRemoteProvider` and needs a core test-support subpath. Also fixed the stale `PdfViewerPanel` default-column test.
