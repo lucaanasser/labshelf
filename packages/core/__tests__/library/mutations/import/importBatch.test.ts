@@ -71,9 +71,23 @@ describe("importPdfs", () => {
     await h.fs.writeText(`${INBOX}/bad.pdf`, "<html>no</html>");
     const [good] = await writePdfs(h, ["good.pdf"]);
     const progress: Array<[number, number, string]> = [];
-    const outcomes = await importPdfs(h.ctx, makeImportDeps(), [`${INBOX}/bad.pdf`, good!], PAPERS, (p) => progress.push([p.index, p.total, p.input]));
+    const outcomes = await importPdfs(h.ctx, makeImportDeps(), [`${INBOX}/bad.pdf`, good!], PAPERS, {
+      onProgress: (p) => progress.push([p.index, p.total, p.input]),
+    });
     expect(outcomes.map((o) => o.status)).toEqual(["failed", "added"]);
     expect(progress).toEqual([[1, 2, `${INBOX}/bad.pdf`], [2, 2, good]]);
+  });
+
+  it("hands over each outcome as its file finishes, before the next one starts", async () => {
+    const h = makeHarness();
+    const files = await writePdfs(h, ["a.pdf", "b.pdf"]);
+    const events: string[] = [];
+    const outcomes = await importPdfs(h.ctx, makeImportDeps(), files, PAPERS, {
+      onProgress: (p) => events.push(`start ${p.index}`),
+      onOutcome: async (outcome) => { events.push(`done ${outcome.status}`); },
+    });
+    expect(events).toEqual(["start 1", "done added", "start 2", "done duplicate"]);
+    expect(outcomes).toHaveLength(2);
   });
 });
 

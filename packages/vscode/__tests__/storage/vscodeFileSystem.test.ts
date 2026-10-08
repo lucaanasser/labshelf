@@ -81,7 +81,7 @@ describe('VscodeFileSystem reads', () => {
     expect(await makeFs().exists('/lib/missing')).toBe(false);
   });
 
-  it('listDir returns names and listEntries the types; both give [] on error', async () => {
+  it('listDir returns names and listEntries the types; both give [] for a missing folder', async () => {
     wfs['readDirectory']!.mockResolvedValueOnce([['a.pdf', vscode.FileType.File], ['sub', vscode.FileType.Directory]]);
     expect(await makeFs().listDir('/lib')).toEqual(['a.pdf', 'sub']);
     wfs['readDirectory']!.mockResolvedValueOnce([['a.pdf', vscode.FileType.File]]);
@@ -89,6 +89,12 @@ describe('VscodeFileSystem reads', () => {
     wfs['readDirectory']!.mockRejectedValue(notFound());
     expect(await makeFs().listDir('/lib/missing')).toEqual([]);
     expect(await makeFs().listEntries('/lib/missing')).toEqual([]);
+  });
+
+  it('listDir throws for a folder it may not read, so an import can report it', async () => {
+    wfs['readDirectory']!.mockRejectedValue(Object.assign(new Error('NoPermissions'), { code: 'NoPermissions' }));
+    await expect(makeFs().listDir('/lib/locked')).rejects.toThrow('NoPermissions');
+    expect(await makeFs().listEntries('/lib/locked')).toEqual([]);
   });
 
   it('stat reports file and folder types strictly, and undefined on error', async () => {
@@ -117,5 +123,27 @@ describe('VscodeFileSystem.deleteFile', () => {
   it('still throws every other error', async () => {
     wfs['delete']!.mockRejectedValue(Object.assign(new Error('NoPermissions'), { code: 'NoPermissions' }));
     await expect(makeFs().deleteFile('/lib/locked.pdf')).rejects.toThrow('NoPermissions');
+  });
+});
+
+describe('VscodeFileSystem library operations', () => {
+  it('renames without overwriting', async () => {
+    await makeFs().rename('/lib/papers/ml', '/lib/papers/ML');
+    expect(wfs['rename']).toHaveBeenCalledWith(vscode.Uri.file('/lib/papers/ml'), vscode.Uri.file('/lib/papers/ML'), { overwrite: false });
+  });
+
+  it('trashes a folder recursively through the platform trash', async () => {
+    await makeFs().trash('/lib/papers/p1');
+    expect(wfs['delete']).toHaveBeenCalledWith(vscode.Uri.file('/lib/papers/p1'), { recursive: true, useTrash: true });
+  });
+
+  it('passes a trash failure on', async () => {
+    wfs['delete']!.mockRejectedValue(new Error('NoPermissions'));
+    await expect(makeFs().trash('/lib/papers/p1')).rejects.toThrow('NoPermissions');
+  });
+
+  it('creates a folder with mkdir', async () => {
+    await makeFs().mkdir('/lib/papers/New');
+    expect(wfs['createDirectory']).toHaveBeenCalledWith(vscode.Uri.file('/lib/papers/New'));
   });
 });

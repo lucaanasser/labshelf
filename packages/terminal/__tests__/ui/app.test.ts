@@ -1607,7 +1607,7 @@ describe("App rename (r)", () => {
     typeText("ML");
     press("enter");
     await idle();
-    expect(app.message?.text).toBe('"ML" already exists');
+    expect(app.message?.text).toBe('"ML" already exists there');
     expect(await exists(folderDir("Physics"))).toBe(true);
   });
 

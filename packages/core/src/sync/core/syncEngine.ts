@@ -3,7 +3,7 @@
  * diff against the manifest, apply operations, and persist.
  */
 import type { RemoteProvider, RemoteNamespace } from "../provider/remoteProvider.js";
-import type { LocalFileSystem } from "../../ports/index.js";
+import type { ILogger, LocalFileSystem } from "../../ports/index.js";
 import type {
   NamespaceResult,
   SyncResult,
@@ -36,6 +36,8 @@ export interface SyncEngineDeps {
   clock?: () => Date;
   /** Optional name translation for the 'library' namespace. */
   libraryFolderNames?: FolderNameMaps;
+  /** Receives warnings about local folders the scan had to skip. */
+  logger?: ILogger;
 }
 
 const NAMESPACES: RemoteNamespace[] = ["library", "appdata"];
@@ -65,7 +67,7 @@ export class SyncEngine {
       ? createLibraryFolderNamer({ provider, manifest, ...(names ? { titles: names.remoteToLocal } : {}) })
       : undefined;
     const remoteTree = await scanRemoteTree(provider, root.id, resolver, names?.remoteToLocal, namer);
-    const localTree = await scanLocalTree(fs, roots[ns]);
+    const localTree = await scanLocalTree(fs, roots[ns], this.deps.logger);
 
     // The manifest only means "deleted on the other side" for the remote it was built against. Another account or
     // OAuth client (Drive's drive.file and appDataFolder are private to each) or a replaced Drive folder shows up as a

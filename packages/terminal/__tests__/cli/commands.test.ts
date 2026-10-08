@@ -336,6 +336,16 @@ describe("add", () => {
     await expect(s.run("add", "--to", "Nowhere", "x.pdf")).rejects.toThrow(new UsageError('No collection "Nowhere"'));
   });
 
+  it("exits 1 and reports a symlinked PDF as skipped", async () => {
+    const s = await session();
+    const real = path.join(s.lib.root, "real.pdf");
+    const link = path.join(s.lib.root, "link.pdf");
+    await fs.writeFile(real, "%PDF-1.4\n");
+    await fs.symlink(real, link);
+    expect(await s.run("add", link)).toBe(1);
+    expect(s.errText()).toContain(`skipped ${link}`);
+  });
+
   it("exits 1 and reports each failure on stderr (a path that is not a file and holds no identifier)", async () => {
     const s = await session();
     expect(await s.run("add", path.join(s.lib.root, "does-not-exist.pdf"))).toBe(1);

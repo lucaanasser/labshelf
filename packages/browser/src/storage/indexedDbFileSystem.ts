@@ -1,24 +1,19 @@
 /**
- * LocalFileSystem implementation backed by the "files" IndexedDB store.
- * Directories are virtual — they emerge from path prefixes, no sentinel rows
- * are written. Implements the LocalFileSystem interface from @labshelf/core so
- * the SyncEngine can drive it without modification.
- * @depends idb/db, @labshelf/core sha256Hex, LocalFileSystem, LocalStat
- * @dependents sync/browserSyncController (Phase 4), storage/index
+ * The library file system over the "files" IndexedDB store: keys are POSIX paths, and directories are the prefixes of
+ * keys. Serves both the sync engine and the library mutations.
  */
-import type { LocalFileSystem, LocalStat } from "@labshelf/core";
+import type { LibraryFileSystem, LocalStat } from "@labshelf/core";
 import { sha256Hex } from "@labshelf/core";
+import { belowDir, deleteTree, renameTree } from "./idbFileTree";
 import { getDb } from "./idb/db";
 
-export class IndexedDbFileSystem implements LocalFileSystem {
+export class IndexedDbFileSystem implements LibraryFileSystem {
   async listDir(dirPath: string): Promise<string[]> {
     const db = await getDb();
     const prefix = dirPath ? `${dirPath}/` : "";
     // Collect all keys that start with the prefix, then extract the first
     // child component (file name or sub-directory name).
-    const range = prefix
-      ? IDBKeyRange.bound(prefix, `${prefix}￿`, false, true)
-      : undefined;
+    const range = prefix ? belowDir(dirPath) : undefined;
     const keys = await db.getAllKeys("files", range);
     const seen = new Set<string>();
     for (const key of keys) {
@@ -54,9 +49,7 @@ export class IndexedDbFileSystem implements LocalFileSystem {
       return { isFile: true, isDirectory: false, mtimeMs: row.mtime, size: row.bytes.length };
     }
     // Treat as a directory if any key begins with targetPath + "/"
-    const prefix = `${targetPath}/`;
-    const range = IDBKeyRange.bound(prefix, `${prefix}￿`, false, true);
-    const firstKey = await db.getKey("files", range);
+    const firstKey = await db.getKey("files", belowDir(targetPath));
     if (firstKey !== undefined) {
       return { isFile: false, isDirectory: true, mtimeMs: 0, size: 0 };
     }
@@ -67,44 +60,30 @@ export class IndexedDbFileSystem implements LocalFileSystem {
     // Directories are implicit in the IDB file store; no sentinel needed.
   }
 
-  /** Deletes all files whose path starts with the given directory prefix. */
-  async deleteDir(dirPath: string): Promise<void> {
-    const db = await getDb();
-    const prefix = `${dirPath}/`;
-    const range = IDBKeyRange.bound(prefix, `${prefix}￿`, false, true);
-    const tx = db.transaction("files", "readwrite");
-    let cursor = await tx.store.openCursor(range);
-    while (cursor) {
-      await cursor.delete();
-      cursor = await cursor.continue();
-    }
-    await tx.done;
+  async exists(targetPath: string): Promise<boolean> {
+    return (await this.stat(targetPath)) !== undefined;
   }
 
-  /**
-   * Re-keys every file row under `oldDir` so its path lives under `newDir`.
-   * The hash and bytes are preserved, so the next sync only sees a rename
-   * (delete-at-old + write-at-new) and the merge logic stays simple.
-   */
-  async moveDir(oldDir: string, newDir: string): Promise<void> {
-    const db = await getDb();
-    const prefix = `${oldDir}/`;
-    const range = IDBKeyRange.bound(prefix, `${prefix}￿`, false, true);
-    const tx = db.transaction("files", "readwrite");
-    const rewrites: Array<{ path: string; bytes: Uint8Array; mtime: number; hash: string }> = [];
-    let cursor = await tx.store.openCursor(range);
-    while (cursor) {
-      const row = cursor.value;
-      rewrites.push({
-        path: `${newDir}/${row.path.slice(prefix.length)}`,
-        bytes: row.bytes,
-        mtime: row.mtime,
-        hash: row.hash,
-      });
-      await cursor.delete();
-      cursor = await cursor.continue();
-    }
-    for (const r of rewrites) await tx.store.put(r);
-    await tx.done;
+  async writeText(filePath: string, text: string): Promise<void> {
+    await this.writeFile(filePath, new TextEncoder().encode(text));
+  }
+
+  async readText(filePath: string): Promise<string> {
+    return new TextDecoder().decode(await this.readFile(filePath));
+  }
+
+  /** Fails when the destination exists. */
+  rename(from: string, to: string): Promise<void> {
+    return renameTree(from, to);
+  }
+
+  /** The browser has no trash: the delete is permanent, and the next sync propagates it. */
+  trash(target: string): Promise<void> {
+    return deleteTree(target);
+  }
+
+  /** A folder is only its files, so an empty one is kept alive by a zero-byte `.keep`. */
+  async mkdir(dir: string): Promise<void> {
+    await this.writeFile(`${dir}/.keep`, new Uint8Array());
   }
 }

@@ -148,9 +148,12 @@ export async function runLibraryCommand(ctx: AppContext, args: ParsedArgs, io: O
       let failed = 0;
       for (const outcome of outcomes) {
         if (outcome.status === "added") {
-          io.out(`added  ${outcome.paper.id}  ${outcome.paper.title}${outcome.needsReview ? "  (metadata unconfirmed)" : ""}`);
+          io.out(`added  ${outcome.record.id}  ${outcome.record.title}${outcome.needsReview ? "  (metadata unconfirmed)" : ""}`);
         } else if (outcome.status === "duplicate") {
           io.out(`exists ${outcome.existingId}  (${outcome.input})`);
+        } else if (outcome.status === "skipped") {
+          failed++;
+          io.err(`skipped ${outcome.input}`);
         } else {
           failed++;
           io.err(`failed ${outcome.input}: ${outcome.error}`);

@@ -1,30 +1,15 @@
 /**
- * Creates a paper entry in IndexedDB from resolved metadata and, when one was
- * found, the PDF bytes. Mirrors the VS Code PaperService.addPaperFromUri flow
- * adapted for the browser. A paper without a PDF is still a full entry
- * (metadata.yaml + bib.bib): the VS Code index treats any folder holding a
- * metadata.yaml as a paper, and the PDF can be attached later.
- *          storage/indexedDbFileSystem, storage/paperRecordStore
+ * Adds a paper to the IndexedDB library from resolved metadata and, when one was found, the PDF bytes, and attaches a
+ * PDF to a paper already there. A paper without a PDF is still a full entry: any folder holding a metadata.yaml is a paper.
  */
-import type { IFileSystem, PaperRecord, ResolvedMetadata } from "@labshelf/core";
+import type { PaperRecord, ResolvedMetadata } from "@labshelf/core";
 import { BibTeXService, PDF_FILE, PAPERS_DIR, claimCiteKey, makeCiteKey, normalizeTags } from "@labshelf/core";
+import { BrowserLogger } from "../platform/logger";
 import { IndexedDbFileSystem } from "../storage/indexedDbFileSystem";
+import { createLibraryMutations } from "../storage/libraryMutations";
 import { listAllRecords, upsertRecord } from "../storage/paperRecordStore";
 
-// Wraps IndexedDbFileSystem to satisfy the IFileSystem text interface expected by BibTeXService.
-class IdbTextAdapter implements IFileSystem {
-  constructor(private readonly idb: IndexedDbFileSystem) {}
-  async ensureDir(_path: string): Promise<void> {}
-  async writeText(path: string, text: string): Promise<void> {
-    await this.idb.writeFile(path, new TextEncoder().encode(text));
-  }
-  async readText(path: string): Promise<string> {
-    return new TextDecoder().decode(await this.idb.readFile(path));
-  }
-  async exists(path: string): Promise<boolean> {
-    return (await this.idb.stat(path)) !== undefined;
-  }
-}
+const mutations = createLibraryMutations(new BrowserLogger("capture"));
 
 /** What the user attached while saving. */
 export interface PaperExtras {
@@ -80,7 +65,7 @@ export async function addPaper(
   };
 
   if (pdfBytes) await idb.writeFile(`${folderPath}/${PDF_FILE}`, pdfBytes);
-  await new BibTeXService(new IdbTextAdapter(idb)).writePaperArtifacts(folderPath, paper, PDF_FILE);
+  await new BibTeXService(idb).writePaperArtifacts(folderPath, paper, PDF_FILE);
   await upsertRecord(paper, folderPath);
 
   return paper;
@@ -108,6 +93,5 @@ export async function attachPdfToPaper(
     return { record, written: false };
   }
   await idb.writeFile(pdfPath, bytes);
-  await new BibTeXService(new IdbTextAdapter(idb)).writePaperArtifacts(record.path, record, PDF_FILE);
-  return { record, written: true };
+  return { record: await mutations.recordPdfAttached(record), written: true };
 }

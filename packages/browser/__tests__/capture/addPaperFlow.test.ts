@@ -2,25 +2,8 @@ import type { PaperRecord } from "@labshelf/core";
 
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
 
-// A minimal in-memory stand-in for the IndexedDB file system, so attachPdfToPaper
-// runs its real write + artifact-rewrite path without a database.
-const mockFiles = new Map<string, Uint8Array>();
-jest.mock("../../src/storage/indexedDbFileSystem", () => ({
-  IndexedDbFileSystem: class {
-    async writeFile(path: string, bytes: Uint8Array): Promise<void> { mockFiles.set(path, bytes); }
-    async readFile(path: string): Promise<Uint8Array> {
-      const b = mockFiles.get(path);
-      if (!b) throw new Error(`not found: ${path}`);
-      return b;
-    }
-    async stat(path: string): Promise<{ isFile: boolean; isDirectory: boolean; mtimeMs: number; size: number } | undefined> {
-      const file = mockFiles.get(path);
-      if (file) return { isFile: true, isDirectory: false, mtimeMs: 0, size: file.length };
-      for (const k of mockFiles.keys()) if (k.startsWith(`${path}/`)) return { isFile: false, isDirectory: true, mtimeMs: 0, size: 0 };
-      return undefined;
-    }
-  },
-}));
+// The real IndexedDbFileSystem runs over a Map-backed store, so attachPdfToPaper exercises its real write path.
+jest.mock("../../src/storage/idb/db", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
 
 let mockRecords: PaperRecord[] = [];
 jest.mock("../../src/storage/paperRecordStore", () => ({
@@ -30,10 +13,11 @@ jest.mock("../../src/storage/paperRecordStore", () => ({
 
 import { addPaper, attachPdfToPaper } from "../../src/capture/addPaperFlow";
 import { safeFolder } from "../../src/capture/captureService";
+import { fakeFiles, putFile, textAt } from "../support/fakeIdb";
 
 describe("addPaper", () => {
   const meta = { authors: ["Ann Lee"], year: 2020, title: "Attention" };
-  beforeEach(() => { mockFiles.clear(); mockRecords = []; });
+  beforeEach(() => { fakeFiles.clear(); mockRecords = []; });
 
   it("normalises the tags it stores", async () => {
     const paper = await addPaper(undefined, meta, "x", "papers", { tags: ["NLP", "nlp", " Deep   Learning "] });
@@ -48,7 +32,7 @@ describe("addPaper", () => {
   });
 
   it("skips a folder that exists without a cached record", async () => {
-    mockFiles.set("papers/lee2020attention/metadata.yaml", new Uint8Array());
+    putFile("papers/lee2020attention/metadata.yaml", "");
     const paper = await addPaper(undefined, meta, "x");
     expect(paper.id).toBe("lee2020attentiona");
   });
@@ -68,34 +52,43 @@ describe("attachPdfToPaper", () => {
   const record = (over: Partial<PaperRecord> = {}): PaperRecord =>
     ({ id: "smith2020deep", title: "Deep", citeKey: "smith2020deep", path: "papers/smith2020deep", status: "unread", ...over });
 
-  beforeEach(() => { mockFiles.clear(); mockRecords = []; });
+  beforeEach(() => { fakeFiles.clear(); mockRecords = []; });
 
   it("writes paper.pdf and rewrites the artifacts when the paper had none", async () => {
     mockRecords = [record()];
+    putFile("papers/smith2020deep/metadata.yaml", "title: Deep\nstatus: unread\n");
     const result = await attachPdfToPaper("smith2020deep", PDF);
     expect(result.written).toBe(true);
     expect(result.record.id).toBe("smith2020deep");
-    expect(mockFiles.get("papers/smith2020deep/paper.pdf")).toBe(PDF);
-    expect(mockFiles.has("papers/smith2020deep/metadata.yaml")).toBe(true);
-    expect(mockFiles.has("papers/smith2020deep/bib.bib")).toBe(true);
+    expect(fakeFiles.get("papers/smith2020deep/paper.pdf")?.bytes).toBe(PDF);
+    expect(fakeFiles.has("papers/smith2020deep/metadata.yaml")).toBe(true);
+    expect(fakeFiles.has("papers/smith2020deep/bib.bib")).toBe(true);
   });
 
   it("refuses to overwrite a PDF that is already there and rewrites nothing", async () => {
     mockRecords = [record()];
     const existing = new Uint8Array([1, 2, 3]);
-    mockFiles.set("papers/smith2020deep/paper.pdf", existing);
+    putFile("papers/smith2020deep/paper.pdf", existing);
     const result = await attachPdfToPaper("smith2020deep", PDF);
     expect(result.written).toBe(false);
-    expect(mockFiles.get("papers/smith2020deep/paper.pdf")).toBe(existing);
-    expect(mockFiles.has("papers/smith2020deep/metadata.yaml")).toBe(false);
+    expect(fakeFiles.get("papers/smith2020deep/paper.pdf")?.bytes).toBe(existing);
+    expect(fakeFiles.has("papers/smith2020deep/metadata.yaml")).toBe(false);
   });
 
   it("writes at the record's current path even when it moved since the id was captured", async () => {
     mockRecords = [record({ path: "papers/Thesis/smith2020deep" })];
+    putFile("papers/Thesis/smith2020deep/metadata.yaml", "title: Deep\nstatus: unread\n");
     const result = await attachPdfToPaper("smith2020deep", PDF);
     expect(result.written).toBe(true);
-    expect(mockFiles.has("papers/Thesis/smith2020deep/paper.pdf")).toBe(true);
-    expect(mockFiles.has("papers/smith2020deep/paper.pdf")).toBe(false);
+    expect(fakeFiles.has("papers/Thesis/smith2020deep/paper.pdf")).toBe(true);
+    expect(fakeFiles.has("papers/smith2020deep/paper.pdf")).toBe(false);
+  });
+
+  it("keeps the status on disk when the cached status is stale", async () => {
+    mockRecords = [record({ status: "unread" })];
+    putFile("papers/smith2020deep/metadata.yaml", "title: Deep\nstatus: done\ncitekey: smith2020deep\n");
+    await attachPdfToPaper("smith2020deep", PDF);
+    expect(textAt("papers/smith2020deep/metadata.yaml")).toMatch(/status: done/);
   });
 
   it("throws when the record is gone", async () => {

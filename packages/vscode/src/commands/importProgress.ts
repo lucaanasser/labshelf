@@ -1,51 +1,70 @@
 /**
- * Visual feedback for paper imports, shared by every way of adding a paper
- * (command, sidebar drop, "Add here"). Reading a PDF, running OCR and asking
- * the registries can take ten seconds or more per file; without feedback that
- * is indistinguishable from a hang.
+ * Runs every way of adding papers (command, sidebar drop, "Add here") with visible progress and one summary: reading a
+ * PDF, running OCR and asking the registries can take ten seconds or more per file, indistinguishable from a hang.
  */
+import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { BatchImportResult, ILogger } from "@labshelf/core";
-import type { ImportProgress, PaperService } from "../core/paperService.js";
+import { summarizeImport } from "@labshelf/core";
+import type { ILogger, ImportOutcome, ImportProgress } from "@labshelf/core";
+import type { PaperImporter, PaperService, PaperTextLayers } from "../core/index.js";
+import { offerMetadataFetch } from "./fetchMetadata.js";
 import { queueTextLayers } from "./textLayerQueue.js";
 
 const LIBRARY_VIEW_ID = "labshelf.library";
 
-/**
- * Imports the given PDFs while showing a notification that names the file in
- * progress, plus the library view's own progress bar, since the sidebar is
- * where the user is looking for the paper to appear.
- * @returns the BatchImportResult of the import
- */
-export async function importWithProgress(
-  paperService: PaperService,
-  uris: vscode.Uri[],
-  targetParentDir?: vscode.Uri,
-  logger?: ILogger,
-): Promise<BatchImportResult> {
-  const result = await runImport(paperService, uris, targetParentDir);
-  // Scanned papers gain their text layer after they appear in the library:
-  // reading every page can take a minute, which is too long to hold an import.
-  // With automatic OCR off they are still checked, so the list can flag them.
-  const autoOcr = vscode.workspace.getConfiguration("labshelf").get<boolean>("ocr.makeSearchable", true);
-  void queueTextLayers(paperService, result.success, { logger, mode: autoOcr ? "ocr" : "check" });
-  return result;
+export interface ImportServices {
+  importer: PaperImporter;
+  textLayers: PaperTextLayers;
+  paperService: PaperService;
+  logger: ILogger;
 }
 
-function runImport(
-  paperService: PaperService,
+/**
+ * Imports the picked files and folders into targetDir (papers/ when absent), announces the outcome and offers a
+ * metadata lookup for papers no registry confirmed.
+ * @returns the outcome of each input
+ */
+export async function importPapers(
+  services: ImportServices,
   uris: vscode.Uri[],
-  targetParentDir?: vscode.Uri,
-): Thenable<BatchImportResult> {
+  targetDir?: string,
+): Promise<ImportOutcome[]> {
+  const outcomes = await importWithProgress(services, uris, targetDir);
+  announceImport(outcomes);
+  const unconfirmed = outcomes.flatMap((outcome) => (outcome.status === "added" && outcome.needsReview ? [outcome.record] : []));
+  await offerMetadataFetch(services.paperService, unconfirmed);
+  return outcomes;
+}
+
+/**
+ * Imports while a notification names the file in progress, plus the library view's own progress bar, since the
+ * sidebar is where the user looks for the paper to appear.
+ * @returns the outcome of each input
+ */
+export async function importWithProgress(
+  services: Pick<ImportServices, "importer" | "textLayers" | "logger">,
+  uris: vscode.Uri[],
+  targetDir?: string,
+): Promise<ImportOutcome[]> {
+  const outcomes = await runImport(services.importer, uris, targetDir);
+  // Scanned papers gain their text layer after they appear: reading every page can take a minute, too long to hold an
+  // import. With automatic OCR off they are still checked, so the list can flag them.
+  const autoOcr = vscode.workspace.getConfiguration("labshelf").get<boolean>("ocr.makeSearchable", true);
+  const added = outcomes.flatMap((outcome) => (outcome.status === "added" ? [outcome.record] : []));
+  void queueTextLayers(services.textLayers, added, { logger: services.logger, mode: autoOcr ? "ocr" : "check" });
+  return outcomes;
+}
+
+function runImport(importer: PaperImporter, uris: vscode.Uri[], targetDir?: string): Thenable<ImportOutcome[]> {
   return vscode.window.withProgress({ location: { viewId: LIBRARY_VIEW_ID } }, () =>
     vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: "LabShelf", cancellable: false },
       (progress) => {
         progress.report({ message: "Preparing import…" });
-        return paperService.addPapersFromUris(uris, targetParentDir, (step) => {
-          // No increment for the first file: reporting one, even zero, turns the
-          // spinner into a bar stuck at 0% for the whole of a single import.
+        return importer.importPaths(uris.map((uri) => uri.fsPath), targetDir, (step) => {
+          // No increment for the first file: reporting one, even zero, turns the spinner into a bar stuck at 0% for
+          // the whole of a single import.
           progress.report({
             message: describeStep(step),
             ...(step.index > 1 ? { increment: 100 / step.total } : {}),
@@ -56,40 +75,15 @@ function runImport(
   );
 }
 
-/**
- * Confirms a finished import by naming what was added: the extracted title is
- * the proof that the paper was recognised, not merely copied.
- * @returns void
- */
-export function announceImport(result: BatchImportResult): void {
-  const message = describeResult(result);
-  if (message) {
-    void vscode.window.showInformationMessage(`LabShelf: ${message}`);
-  }
+/** Shows the one import summary every app words the same way. */
+export function announceImport(outcomes: ImportOutcome[]): void {
+  const summary = summarizeImport(outcomes);
+  const show = summary.level === "warn" ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
+  void show(`LabShelf: ${summary.text}`);
 }
 
-/**
- * Builds the progress line for one step of the import.
- * @returns e.g. `Importing 2 of 5: "paper.pdf" — reading and identifying…`
- */
+/** @returns the progress line for one step, e.g. `Importing 2 of 5: "paper.pdf" — reading and identifying…` */
 export function describeStep(step: ImportProgress): string {
   const counter = step.total > 1 ? ` ${step.index} of ${step.total}` : "";
-  return `Importing${counter}: "${step.fileName}" — reading and identifying the paper…`;
-}
-
-/**
- * Builds the confirmation text for a finished import.
- * @returns the message, or undefined when nothing was imported
- */
-export function describeResult(result: BatchImportResult): string | undefined {
-  const count = result.success.length;
-  if (count === 0) {
-    return undefined;
-  }
-  const review = result.needsReview?.length ?? 0;
-  const reviewNote = review > 0 ? ` (${review} could not be identified and need${review === 1 ? "s" : ""} review)` : "";
-  if (count === 1) {
-    return `Added "${result.success[0]!.title}"${reviewNote}`;
-  }
-  return `${count} papers imported${reviewNote}`;
+  return `Importing${counter}: "${path.basename(step.input)}" — reading and identifying the paper…`;
 }

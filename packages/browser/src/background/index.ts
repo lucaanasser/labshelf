@@ -23,7 +23,7 @@ import {
   safeFolder, saveOrAsk, summarizeAttempts,
 } from "../capture/index";
 import type { CaptureDraft, SaveDecision, SavedPaper } from "../capture/index";
-import { IndexedDbFileSystem, buildFolderTree, deleteRecord, listAllRecords, pdfDirs } from "../storage";
+import { IndexedDbFileSystem, buildFolderTree, createLibraryMutations, listAllRecords, pdfDirs } from "../storage";
 import type { FolderNode } from "../storage";
 import { ROOT, parentDir } from "../library-page/state/derive";
 import { hashForFolder } from "../library-page/router";
@@ -37,6 +37,7 @@ import { installBadgeUpdater } from "./badgeUpdater";
 import { PDF_FILE } from "@labshelf/core";
 
 const log = new BrowserLogger("background");
+const mutations = createLibraryMutations(log);
 const auth = new BrowserDriveAuth();
 const sync = new BrowserSyncController(auth);
 
@@ -185,8 +186,8 @@ async function handle(msg: RuntimeMessage): Promise<unknown> {
     case "paper.remove": {
       const record = (await listAllRecords()).find((r) => r.id === msg.id);
       if (!record) return { removed: false };
-      await deleteRecord(record.id);
-      await new IndexedDbFileSystem().deleteDir(record.path);
+      const { done, failed } = await mutations.trashPapers([{ id: record.id, path: record.path }]);
+      if (!done.length) throw new Error(failed[0]?.error ?? "The paper could not be removed.");
       forgetPaper(record.id);
       void debouncer.schedule("paper.remove");
       broadcastChanged("remove", record.id);

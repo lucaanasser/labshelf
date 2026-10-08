@@ -1,13 +1,14 @@
 /** Registers all user-facing extension commands against the VS Code command registry */
 import * as vscode from "vscode";
 
-import type { PaperService } from "../core/paperService.js";
+import type { PaperImporter, PaperService, PaperTextLayers } from "../core/index.js";
 import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
 import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import { type IFileSystem, type ILogger, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type PaperStatus, type BatchImportResult, isSafeExternalUrl, paperFiles } from "@labshelf/core";
-import { fetchMetadataForPaper, offerMetadataFetch, resolveMissingMetadata } from "./fetchMetadata.js";
-import { announceImport, importWithProgress } from "./importProgress.js";
+import { type IFileSystem, type ILogger, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type MutationContext, type PaperStatus, isSafeExternalUrl, paperFiles } from "@labshelf/core";
+import { fetchMetadataForPaper, resolveMissingMetadata } from "./fetchMetadata.js";
+import { importPapers } from "./importProgress.js";
+import { removePapers } from "./removePapers.js";
 import { queueTextLayers } from "./textLayerQueue.js";
 import type { ReindexSummary } from "../storage/data/reindexLibrary.js";
 
@@ -15,6 +16,10 @@ const LOG_MODULE = "commands/registerCommands";
 
 export type ActiveServices = {
   paperService: PaperService;
+  importer: PaperImporter;
+  textLayers: PaperTextLayers;
+  // The ports every core library mutation runs over, for this library root.
+  mutations: MutationContext;
   logger: ILogger;
   themeManager: ThemeManager;
   annotationManager: AnnotationManager;
@@ -51,7 +56,7 @@ export function registerCommands(
           return;
         }
 
-        await runBatchImport(services.paperService, services.logger, selected);
+        await importPapers(services, selected);
       });
     }),
     // Called with paper ids from the list panel, or with nothing from the palette.
@@ -63,7 +68,7 @@ export function registerCommands(
           ? await papersByIds(services.paperService, Array.isArray(target) ? target : [target])
           : [await pickPaper(services.paperService, "Make a scanned paper searchable (OCR)")].filter(isPaper);
         if (papers.length > 0) {
-          await queueTextLayers(services.paperService, papers, { logger: services.logger, announceAll: true });
+          await queueTextLayers(services.textLayers, papers, { logger: services.logger, announceAll: true });
         }
       });
     }),
@@ -74,7 +79,7 @@ export function registerCommands(
         // Papers that already have text are skipped in a fraction of a second
         // each; papers saved without a PDF have nothing to read and are left out.
         const papers = (await services.paperService.listPapers()).filter((p) => p.hasPdf !== false);
-        await queueTextLayers(services.paperService, papers, { logger: services.logger });
+        await queueTextLayers(services.textLayers, papers, { logger: services.logger });
         const checked = await services.paperService.listPapers();
         void vscode.window.showInformationMessage(`LabShelf: ${describeLibraryTextLayers(checked)}`);
       });
@@ -191,17 +196,7 @@ export function registerCommands(
         if (!paper) {
           return;
         }
-        const choice = await vscode.window.showWarningMessage(
-          `Remove "${paper.title}" from library?`,
-          { modal: true },
-          "Remove only",
-          "Remove + delete files",
-        );
-        if (!choice) {
-          return;
-        }
-        await services.paperService.deletePaper(paper.id, choice === "Remove + delete files");
-        vscode.window.setStatusBarMessage(`LabShelf: removed "${paper.title}"`, 3000);
+        await removePapers(services.paperService, [paper]);
       });
     }),
   );
@@ -322,41 +317,6 @@ async function openPaperPdf(paper: PaperRecord): Promise<void> {
 async function openPaperPdfExternal(paper: PaperRecord): Promise<void> {
   const pdf = paperFiles(vscode.Uri.file(paper.path), vscode.Uri.joinPath).pdf;
   await vscode.commands.executeCommand("vscode.open", pdf);
-}
-
-// Runs a batch import for the given URIs with a notification progress indicator, logging and surfacing any failures.
-async function runBatchImport(
-  paperService: PaperService,
-  logger: ILogger,
-  uris: vscode.Uri[],
-): Promise<void> {
-  const result = await importWithProgress(paperService, uris, undefined, logger);
-
-  if (result.failed.length > 0) {
-    await logger.log("WARN", LOG_MODULE, "Batch import had failures", {
-      failed: result.failed,
-    });
-    vscode.window.showWarningMessage(`LabShelf: ${buildResultMessage(result)}`);
-  } else {
-    announceImport(result);
-  }
-
-  await offerMetadataFetch(paperService, result.needsReview ?? []);
-}
-
-// Builds a human-readable summary string from a BatchImportResult (e.g. "3 papers imported, 1 failed").
-function buildResultMessage(result: BatchImportResult): string {
-  const parts: string[] = [];
-  if (result.success.length > 0) {
-    parts.push(`${result.success.length} paper${result.success.length === 1 ? "" : "s"} imported`);
-  }
-  if (result.failed.length > 0) {
-    parts.push(`${result.failed.length} failed`);
-  }
-  if (result.skipped.length > 0) {
-    parts.push(`${result.skipped.length} skipped`);
-  }
-  return parts.join(", ") || "Nothing to import";
 }
 
 // Wraps an async command action with error logging and a user-facing error message on failure.

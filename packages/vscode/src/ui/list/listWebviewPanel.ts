@@ -4,7 +4,8 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { PDF_FILE, isUnderDir, paperFiles } from '@labshelf/core';
-import type { PaperService } from '../../core/paperService.js';
+import type { PaperService } from '../../core/index.js';
+import { removePapers } from '../../commands/removePapers.js';
 import type { TextLayerJob } from '../../commands/textLayerQueue.js';
 import type { Annotation, EventBus, PaperRecord } from '@labshelf/core';
 import { listAllCollectionFolders, readCollectionFolders } from '../library/collectionFolders.js';
@@ -302,31 +303,16 @@ export class ListWebviewPanel {
   }
 
   private async _setTags(ids: string[], add: string[], remove: string[]): Promise<void> {
-    const drop = new Set(remove.map((t) => t.toLowerCase()));
-    const all = await this._deps.paperService.listPapers();
-    for (const id of ids) {
-      const paper = all.find((p) => p.id === id);
-      if (!paper) { continue; }
-      const tags = (paper.tags ?? []).filter((t) => !drop.has(t.toLowerCase())).concat(add);
-      await this._deps.paperService.updatePaperFields(id, { tags });
+    const outcome = await this._deps.paperService.editTags(ids, add, remove);
+    const first = outcome.failed[0];
+    if (first) {
+      vscode.window.showErrorMessage(`LabShelf: ${outcome.failed.length} paper(s) kept their tags — ${first.error}`);
     }
   }
 
   private async _deletePapers(ids: string[]): Promise<void> {
     const all = await this._deps.paperService.listPapers();
-    const papers = ids.map((id) => all.find((p) => p.id === id)).filter((p): p is PaperRecord => !!p);
-    if (papers.length === 0) { return; }
-    const what = papers.length === 1 ? `"${papers[0]!.title}"` : `${papers.length} papers`;
-    const choice = await vscode.window.showWarningMessage(
-      `Remove ${what} from library?`,
-      { modal: true },
-      'Remove only',
-      'Remove + delete files',
-    );
-    if (!choice) { return; }
-    for (const paper of papers) {
-      await this._deps.paperService.deletePaper(paper.id, choice === 'Remove + delete files');
-    }
+    await removePapers(this._deps.paperService, ids.map((id) => all.find((p) => p.id === id)).filter((p): p is PaperRecord => !!p));
   }
 
   // Accepts only directories inside papers/ from webview messages.
@@ -476,10 +462,10 @@ export class ListWebviewPanel {
     const result = await this._deps.paperService.movePapers(paperIds, targetDir);
     if (result.failed.length > 0) {
       const first = result.failed[0]?.error ?? 'unknown error';
-      vscode.window.showErrorMessage(`LabShelf: ${result.moved.length} moved, ${result.failed.length} failed — ${first}`);
-    } else if (result.moved.length > 0) {
+      vscode.window.showErrorMessage(`LabShelf: ${result.done.length} moved, ${result.failed.length} failed — ${first}`);
+    } else if (result.done.length > 0) {
       const where = this._nodeFor(targetDir).label;
-      vscode.window.setStatusBarMessage(`LabShelf: ${result.moved.length} paper(s) moved to ${where}`, 3000);
+      vscode.window.setStatusBarMessage(`LabShelf: ${result.done.length} paper(s) moved to ${where}`, 3000);
     }
   }
 

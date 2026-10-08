@@ -1,17 +1,10 @@
 /**
- * Reacts to folder intents emitted by the tree and header (new / rename /
- * delete) by mutating the IndexedDB file store and the paper-record cache.
- * Folder paths are virtual in IDB — a folder exists iff at least one file row
- * starts with its prefix — so "new folder" writes a `.keep` sentinel and
- * "rename" walks all rows under the old prefix.
- *
- * Prompts use the VS Code-style input box and dialog instead of the browser's
- * native ones. Sync runs separately: every mutation here just changes the
- * local IDB state and asks the background to sync soon.
+ * Reacts to folder intents from the tree and header (new, rename, delete) through the core library mutations.
+ * Prompts use the in-page input box and dialog; sync runs separately and is only asked to run soon.
  */
-import { FolderService, validateFolderName } from "@labshelf/core";
-import type { IPaperRecordIndex } from "@labshelf/core";
-import { IndexedDbFileSystem, deleteRecord, listAllRecords, upsertRecord } from "../../storage";
+import { validateFolderName } from "@labshelf/core";
+import { BrowserLogger } from "../../platform/logger";
+import { createLibraryMutations } from "../../storage";
 import { confirmDialog } from "../../ui/dialog";
 import { inputBox } from "../../ui/quickInput";
 import { toast } from "../../ui/toast";
@@ -20,16 +13,7 @@ import { ROOT, baseName, countPapersUnder, findNode, isUnder, parentDir } from "
 import type { LibraryStore } from "../state/libraryStore";
 import { errorMessage, refreshLibrary, scheduleSyncSoon } from "./dataController";
 
-const fs = new IndexedDbFileSystem();
-
-// Adapter from paperRecordStore free functions to the IPaperRecordIndex
-// surface FolderService expects.
-const paperIndex: IPaperRecordIndex = {
-  listPapers: () => listAllRecords(),
-  upsertPaper: (p) => upsertRecord(p, p.path),
-  deletePaper: (id) => deleteRecord(id),
-};
-const folderService = new FolderService(paperIndex, "/");
+const mutations = createLibraryMutations(new BrowserLogger("library-page"));
 
 /** Attaches listeners that mutate IDB in response to folder intents. Returns a disposer. */
 export function attachFolderController(store: LibraryStore): () => void {
@@ -65,8 +49,7 @@ async function handleNew(store: LibraryStore, parent: string): Promise<void> {
     validate: (v) => folderNameProblem(store, parent, v),
   });
   if (!name) return;
-  const target = `${parent}/${name}`;
-  await fs.writeFile(`${target}/.keep`, new Uint8Array());
+  const target = await mutations.createFolder(parent, name);
   await refreshLibrary(store);
   store.openFolder(target);
   scheduleSyncSoon("folder.new");
@@ -83,9 +66,7 @@ async function handleRename(store: LibraryStore, oldPath: string): Promise<void>
     validate: (v) => folderNameProblem(store, parent, v, current),
   });
   if (!next || next === current) return;
-  const newPath = `${parent}/${next}`;
-  await fs.moveDir(oldPath, newPath);
-  await folderService.relocatePapersUnder(oldPath, newPath);
+  const newPath = await mutations.renameFolder(oldPath, next);
   await refreshLibrary(store);
   const open = store.get().folder;
   if (isUnder(open, oldPath)) store.openFolder(newPath + open.slice(oldPath.length));
@@ -104,8 +85,7 @@ async function handleDelete(store: LibraryStore, path: string): Promise<void> {
     true,
   );
   if (!ok) return;
-  await folderService.removePapersUnder(path);
-  await fs.deleteDir(path);
+  await mutations.trashFolder(path);
   await refreshLibrary(store);
   if (isUnder(store.get().folder, path)) store.openFolder(parentDir(path));
   scheduleSyncSoon("folder.delete");

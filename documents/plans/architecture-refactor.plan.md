@@ -50,6 +50,9 @@ When this plan is done, delete it and the note at the top of `architecture.md`.
   - **BC17** a name collision on a move or rename says `"<name>" already exists there` in every app (S4.1);
   - **BC18** the import folder walk skips dot entries, sorts the paths and logs folders it cannot read (S4.1);
   - **BC19** symlinks are not followed: a symlinked PDF or folder is skipped on import, and a symlinked `paper.pdf` counts as no PDF (S4.1).
+  - **BC20** VS Code has one import flow for every entry point: each offers the metadata lookup for unconfirmed papers, an empty import says `No PDF found there`, and a picked non-PDF file fails with `Not a PDF file` (S4.2);
+  - **BC21** the terminal `add` command prints `skipped <input>` and exits 1 for a skipped input (S4.2);
+  - **BC22** the browser background `paper.remove` reports a failed delete instead of claiming success (S4.2).
 
 Open questions (each one blocks only the steps named):
 
@@ -194,7 +197,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
 | S4.1 | Library mutations in core over a file-system port | S3.7 | H · main thread | core tests for each mutation | [x] |
-| S4.2 | Apps use the core mutations (BC3) | S4.1 | H+M · refactor-step | BC3 test; app services reduced to glue | [ ] |
+| S4.2 | Apps use the core mutations (BC3) | S4.1 | H+M · refactor-step | BC3 test; app services reduced to glue | [x] |
 
 ### Session 6 — library model and search
 
@@ -738,3 +741,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-08 16:14 S3.5 done: the shared config schema and merge rules are in `core/src/library/sharedConfig.ts`, the XDG path and atomic file update in `library/node/sharedConfigFile.ts`. The terminal keeps only its preferences and `resolveLibraryRoot` (which still expands `~` and relative roots; VS Code accepts only absolute ones, as the contract says). VS Code logs a failed mirror of `libraryRoot` and mirrors once, from `ensureSyncController`; an unchanged update skips the write. Dependency-cruiser baseline 278 → 276.
 - 2026-10-08 16:20 S3.6 done: `core/src/logging/` has the entry format and a `Logger` that fans out to `LogSink` ports (`ports/logSink.ts`) and never rejects; `logging/node/fileLogSink.ts` appends through a queue and rotates to `.1` at 2 MiB. The terminal and VS Code loggers are gone; VS Code builds its logger in `core/extensionLogger.ts` (file plus SQLite sinks, sink failures to `console.error`), the terminal drops sink failures on purpose because the TUI owns the screen. BC10 has tests. Non-`Error` values are logged without a synthetic stack. `library-format.md` names the rotation file.
 - 2026-10-08 16:44 S4.1 done: `core/src/library/mutations/` holds the paper field, move, trash, folder, import, import-summary and text-layer verdict functions over the `LibraryFileSystem` port (`ports/libraryFileSystem.ts`: the two existing ports plus `rename`, `trash`, `mkdir`); `NodeLibraryFileSystem` is in `@labshelf/core/node` with an injected trash. Mutations write disk only and return what changed; apps update their index afterwards. `library/` does not import `io/`: the artifact writer and the PDF parser are structural ports. BC13–BC19 added to D7 (asked while mapping); each has a core test. The apps still use their own copies until S4.2. Core 723 tests.
+- 2026-10-08 17:01 S4.2 done: the three apps mutate the library through core. VS Code `PaperService` is glue (684 → 218 lines) beside `paperImporter.ts` and `paperTextLayers.ts`; the folder commands left `extension.ts` for `commands/folderCommands.ts`; one `importPapers` flow and `summarizeImport` replace the three message builders; `BatchImportResult` is gone. The terminal service is glue in `library/papers/` (529 → 219), with network imports in `networkImport.ts`; its 1,148-line test file is split into glue tests. The browser's `IndexedDbFileSystem` implements `LibraryFileSystem` (`mkdir` writes the `.keep` sentinel, `trash` deletes), `storage/libraryMutations.ts` applies results to the record cache, and both `IdbTextAdapter` copies are gone. BC3 tests: foreign key kept, only status written, on-disk status kept on PDF attach. BC20–BC22 added to D7. `importPaths` reports each outcome as it finishes so VS Code lists papers one by one. Sync's tree scan skips and logs an unreadable folder, but no app passes a logger to the sync engine yet: S5.1 wires it. Pre-existing size violations untouched apart from 1–10 lines on terminal `cli/commands.ts` and its test and browser `background/index.ts` (S10.2, S10.6).

@@ -4,13 +4,11 @@
  * pdfjs takes ownership of the `data` array it is given and detaches it, so a
  * caller that parses a PDF before copying it to disk ends up writing zero
  * bytes — producing a library entry whose viewer fails with "The PDF file is
- * empty, i.e. its size is zero bytes."
+ * empty, i.e. its size is zero bytes." The import's own guard against a
+ * consumed buffer is tested with the core import.
  */
 
-import * as vscode from 'vscode';
-import { PaperService } from '../../src/core/paperService';
 import { NodePdfOpener } from '../../src/pdf/nodePdfOpener';
-import type { IFileSystem, LibraryLayout, IResearchDatabase, EventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pdfjsMock = require('../../__mocks__/pdfjs-dist-legacy.js');
@@ -53,67 +51,5 @@ describe('NodePdfOpener buffer ownership', () => {
 
     expect(seen[0]).not.toBe(bytes);
     expect(Array.from(seen[0]!.slice(0, 4))).toEqual([3, 3, 3, 3]);
-  });
-});
-
-describe('PaperService.addPaperFromUri byte safety', () => {
-  function makeService(parse: PdfImportParser['parse']): {
-    service: PaperService;
-    writeFile: jest.Mock;
-  } {
-    const mockDb: Partial<IResearchDatabase> = {
-      upsertPaper: jest.fn(async () => {}),
-      listPapers: jest.fn(async () => []),
-    };
-    const mockEventBus: Partial<EventBus> = { emit: jest.fn(), on: jest.fn() };
-    const mockFsService: Partial<IFileSystem> = { ensureDir: jest.fn(async () => {}) };
-    const mockPaths: Partial<LibraryLayout<vscode.Uri>> = {
-      papersRoot: jest.fn(() => vscode.Uri.file('/workspace/papers')),
-    };
-    const mockBibTeX: Partial<BibTeXService> = { writePaperArtifacts: jest.fn(async () => {}) };
-
-    const service = new PaperService(
-      mockFsService as IFileSystem,
-      mockDb as IResearchDatabase,
-      mockEventBus as EventBus,
-      mockPaths as LibraryLayout<vscode.Uri>,
-      { parse } as PdfImportParser,
-      mockBibTeX as BibTeXService,
-    );
-
-    return { service, writeFile: vscode.workspace.fs.writeFile as jest.Mock };
-  }
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    // No library folder exists yet, so cite keys are free.
-    (vscode.workspace.fs.stat as jest.Mock).mockRejectedValue(new Error('ENOENT'));
-    (vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined);
-    (vscode.workspace.fs.readFile as jest.Mock).mockResolvedValue(new Uint8Array(2048).fill(9));
-  });
-
-  it('copies the full PDF into the library', async () => {
-    const { service, writeFile } = makeService(
-      jest.fn(async () => ({ title: 'Paper', citeKey: 'paper2024', authors: [] })) as never,
-    );
-
-    await service.addPaperFromUri(vscode.Uri.file('/docs/paper.pdf'));
-
-    const written = writeFile.mock.calls.at(-1)?.[1] as Uint8Array;
-    expect(written.byteLength).toBe(2048);
-  });
-
-  it('fails loudly instead of storing a zero-byte paper.pdf', async () => {
-    const { service, writeFile } = makeService(
-      jest.fn(async (bytes: Uint8Array) => {
-        detach(bytes);
-        return { title: 'Paper', citeKey: 'paper2024', authors: [] };
-      }) as never,
-    );
-
-    await expect(service.addPaperFromUri(vscode.Uri.file('/docs/paper.pdf'))).rejects.toThrow(
-      /consumed during parsing/i,
-    );
-    expect(writeFile).not.toHaveBeenCalled();
   });
 });

@@ -11,7 +11,7 @@
 import * as vscode from "vscode";
 
 import type { ILogger, PaperRecord } from "@labshelf/core";
-import type { MakeSearchableResult, PaperService } from "../core/paperService.js";
+import type { MakeSearchableResult, PaperTextLayers } from "../core/index.js";
 import type { TextLayerProgress } from "../pdf/searchablePdfBuilder.js";
 
 const LOG_MODULE = "commands/textLayerQueue";
@@ -49,7 +49,7 @@ const listeners = new Set<(jobs: TextLayerJob[]) => void>();
  * @returns a promise settled when these papers have been processed
  */
 export function queueTextLayers(
-  paperService: PaperService,
+  textLayers: PaperTextLayers,
   papers: PaperRecord[],
   options: TextLayerQueueOptions = {},
 ): Promise<void> {
@@ -64,7 +64,7 @@ export function queueTextLayers(
       continue;
     }
     pending.set(paper.id, mode);
-    tail = tail.then(() => runJob(paperService, paper, options)).catch(() => undefined);
+    tail = tail.then(() => runJob(textLayers, paper, options)).catch(() => undefined);
   }
   notify();
   return tail;
@@ -106,14 +106,14 @@ function notify(): void {
   }
 }
 
-async function runJob(paperService: PaperService, paper: PaperRecord, options: TextLayerQueueOptions): Promise<void> {
+async function runJob(textLayers: PaperTextLayers, paper: PaperRecord, options: TextLayerQueueOptions): Promise<void> {
   // Read at start, not at queue time: an explicit request may have upgraded it.
   const mode = pending.get(paper.id) ?? options.mode ?? "ocr";
   try {
     if (mode === "check") {
-      await runCheck(paperService, paper, options);
+      await runCheck(textLayers, paper, options);
     } else {
-      await runOcr(paperService, paper, options);
+      await runOcr(textLayers, paper, options);
     }
   } finally {
     pending.delete(paper.id);
@@ -122,8 +122,8 @@ async function runJob(paperService: PaperService, paper: PaperRecord, options: T
   }
 }
 
-async function runCheck(paperService: PaperService, paper: PaperRecord, options: TextLayerQueueOptions): Promise<void> {
-  const updated = await paperService.checkTextLayer(paper.id).catch(() => undefined);
+async function runCheck(textLayers: PaperTextLayers, paper: PaperRecord, options: TextLayerQueueOptions): Promise<void> {
+  const updated = await textLayers.checkTextLayer(paper.id).catch(() => undefined);
   if (updated?.textLayer?.state === "failed") {
     await options.logger?.log("WARN", LOG_MODULE, "Text layer check failed", {
       paperId: paper.id,
@@ -132,11 +132,11 @@ async function runCheck(paperService: PaperService, paper: PaperRecord, options:
   }
 }
 
-async function runOcr(paperService: PaperService, paper: PaperRecord, options: TextLayerQueueOptions): Promise<void> {
+async function runOcr(textLayers: PaperTextLayers, paper: PaperRecord, options: TextLayerQueueOptions): Promise<void> {
   const progress = new LazyProgress(paper.title);
   let result: MakeSearchableResult;
   try {
-    result = await paperService.makeSearchable(paper.id, {
+    result = await textLayers.makeSearchable(paper.id, {
       onProgress: (step) => {
         reading.set(paper.id, { paperId: paper.id, phase: "reading", page: step.index, total: step.total });
         notify();

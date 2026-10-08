@@ -10,5 +10,4 @@ export { ANNOTATION_TYPES, ANNOTATION_COLORS, isAnnotationColor } from "./annota
 export type { Annotation, AnnotationPosition, AnnotationType, AnnotationColor } from "./annotation.js";
 export { PDF_THEMES, isPdfTheme } from "./pdfTheme.js";
 export type { PdfTheme } from "./pdfTheme.js";
-export type { BatchImportResult } from "./batchImport.js";
 export type { LogEntry } from "./logEntry.js";

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { describeLibraryTextLayers, ensurePaperPdf, registerCommands } from '../../src/commands/registerCommands';
 import type { ActiveServices, RequireServices } from '../../src/commands/registerCommands';
-import type { PaperService } from '../../src/core/paperService';
+import type { PaperService } from '../../src/core';
 import type { ILogger, PaperRecord } from '@labshelf/core';
 
 // The OCR queue is driven by its own unit test; here we only need to observe
@@ -13,14 +13,14 @@ jest.mock('../../src/commands/textLayerQueue', () => ({
 import { queueTextLayers } from '../../src/commands/textLayerQueue';
 
 function makeRequireServices(paperService?: Partial<PaperService>, logger?: Partial<ILogger>): RequireServices {
-  const ps = paperService ?? { listPapers: jest.fn(async () => []), addPapersFromUris: jest.fn(), regenerateBibTeX: jest.fn(async () => 0), reconcilePdf: jest.fn(async () => undefined) };
+  const ps = paperService ?? { listPapers: jest.fn(async () => []), regenerateBibTeX: jest.fn(async () => 0), reconcilePdf: jest.fn(async () => undefined) };
   const lg = logger ?? { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
   const tm = { getThemeForPaper: jest.fn(async () => 'auto'), setThemeForPaper: jest.fn(async () => {}), getEffectiveTheme: jest.fn(() => 'dark'), mapVsCodeTheme: jest.fn(() => 'dark'), onVsCodeThemeChange: jest.fn(() => ({ dispose: jest.fn() })), dispose: jest.fn() } as any;
   const am = { createHighlight: jest.fn(), createNote: jest.fn(), getAnnotationsByPaper: jest.fn(async () => []), deleteAnnotation: jest.fn(), updateAnnotation: jest.fn(), validatePosition: jest.fn() } as any;
   const db = { listPapers: jest.fn(async () => []), upsertPaper: jest.fn(), deletePaper: jest.fn(), appendLog: jest.fn() } as any;
   const store = { getReadingState: jest.fn(async () => null), setReadingState: jest.fn(async () => {}) } as any;
   const reindexLibrary = jest.fn(async () => ({ added: [], updated: [] }));
-  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as ILogger, themeManager: tm, annotationManager: am, database: db, paperDataStore: store, fileSystem: {} as any, reindexLibrary }));
+  return jest.fn(async () => ({ paperService: ps as PaperService, logger: lg as ILogger, themeManager: tm, annotationManager: am, database: db, paperDataStore: store, fileSystem: {} as any, importer: {} as any, textLayers: {} as any, mutations: {} as any, reindexLibrary }));
 }
 
 function makeNullRequireServices(): RequireServices {

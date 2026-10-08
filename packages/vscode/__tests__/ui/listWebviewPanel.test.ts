@@ -24,9 +24,11 @@ interface Harness {
 function open(folder?: LibraryNode, extra: Partial<ListPanelDeps> = {}): Harness {
   const paperService = {
     listPapers: jest.fn(async () => [paper('p1', `${ROOT}/A`), paper('p2', `${ROOT}/A/B`), paper('p3', ROOT)]),
-    movePapers: jest.fn(async (ids: string[]) => ({ moved: ids, failed: [] })),
+    movePapers: jest.fn(async (ids: string[]) => ({ done: ids, failed: [], moves: [] })),
     updatePaperStatus: jest.fn(async () => undefined),
-    deletePaper: jest.fn(async () => true),
+    trashPapers: jest.fn(async (ids: string[]) => ({ done: ids, failed: [] })),
+    removeFromIndex: jest.fn(async () => {}),
+    editTags: jest.fn(async (ids: string[]) => ({ done: ids, failed: [] })),
   };
   const bus = { on: jest.fn(), off: jest.fn() };
   const onDidNavigate = jest.fn();
@@ -138,7 +140,7 @@ describe('ListWebviewPanel', () => {
   it('reports move failures', async () => {
     const h = open();
     await h.fire({ command: 'ready' });
-    h.paperService['movePapers']!.mockResolvedValue({ moved: [], failed: [{ id: 'p1', error: 'exists' }] });
+    h.paperService['movePapers']!.mockResolvedValue({ done: [], failed: [{ id: 'p1', error: 'exists' }], moves: [] });
 
     await h.fire({ command: 'movePapers', paperIds: ['p1'], targetDir: `${ROOT}/A` });
     expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('exists'));
@@ -178,7 +180,7 @@ describe('ListWebviewPanel', () => {
         { ...paper('p1', ROOT), hasPdf: true },
         { ...paper('p2', ROOT), hasPdf: false },
       ]),
-      movePapers: jest.fn(), updatePaperStatus: jest.fn(), deletePaper: jest.fn(),
+      movePapers: jest.fn(), updatePaperStatus: jest.fn(), trashPapers: jest.fn(),
     };
     const h = open(undefined, { paperService } as unknown as Partial<ListPanelDeps>);
     await h.fire({ command: 'ready' });
@@ -190,6 +192,35 @@ describe('ListWebviewPanel', () => {
     // The panel still forwards the request; the host guard (ensurePaperPdf) decides.
     await h.fire({ command: 'openPdf', paperId: 'p2' });
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith('labshelf.openPdfViewer', 'p2');
+  });
+
+  it('routes tag edits to the service in one batch', async () => {
+    const h = open();
+    await h.fire({ command: 'ready' });
+    await h.fire({ command: 'setTags', paperIds: ['p1', 'p2'], add: ['nlp'], remove: ['old'] });
+    expect(h.paperService['editTags']).toHaveBeenCalledWith(['p1', 'p2'], ['nlp'], ['old']);
+  });
+
+  it('shows a failed trash and keeps the paper', async () => {
+    (vscode.window.showWarningMessage as jest.Mock).mockResolvedValueOnce('Remove + delete files');
+    const h = open();
+    await h.fire({ command: 'ready' });
+    h.paperService['trashPapers']!.mockResolvedValue({ done: [], failed: [{ id: 'p1', error: 'EPERM' }] });
+
+    await h.fire({ command: 'deletePaper', paperId: 'p1' });
+
+    expect(h.paperService['trashPapers']).toHaveBeenCalledWith(['p1']);
+    expect(h.paperService['removeFromIndex']).not.toHaveBeenCalled();
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('LabShelf: Could not move "Title p1" to the trash — EPERM');
+  });
+
+  it('removes from the list only when asked to keep the files', async () => {
+    (vscode.window.showWarningMessage as jest.Mock).mockResolvedValueOnce('Remove only');
+    const h = open();
+    await h.fire({ command: 'ready' });
+    await h.fire({ command: 'deletePaper', paperId: 'p1' });
+    expect(h.paperService['removeFromIndex']).toHaveBeenCalledWith('p1');
+    expect(h.paperService['trashPapers']).not.toHaveBeenCalled();
   });
 
   it('detaches its event listeners on dispose', async () => {

@@ -1,7 +1,7 @@
 /**
  * Enumerate the local and remote file trees of a namespace into path-keyed maps consumed by the diff.
  */
-import type { LocalFileSystem } from "../../ports/index.js";
+import type { ILogger, LocalFileSystem } from "../../ports/index.js";
 import type { TreeNode } from "./syncTypes.js";
 import type { RemoteFile, RemoteProvider } from "../provider/remoteProvider.js";
 import type { RemotePathResolver } from "../provider/remotePathResolver.js";
@@ -13,17 +13,27 @@ function joinPath(prefix: string, name: string): string {
 }
 
 /**
- * Recursively scans a local directory tree, hashing every file for comparison against the manifest base.
+ * Recursively scans a local directory tree, hashing every file for comparison against the manifest base. A folder
+ * that cannot be read is left out of this sync, with a warning, rather than failing the whole sync.
  * @returns Map<string, TreeNode>
  */
 export async function scanLocalTree(
   fs: LocalFileSystem,
   rootPath: string,
+  logger?: ILogger,
 ): Promise<Map<string, TreeNode>> {
   const tree = new Map<string, TreeNode>();
 
   async function walk(absDir: string, relDir: string): Promise<void> {
-    const names = await fs.listDir(absDir);
+    let names: string[];
+    try {
+      names = await fs.listDir(absDir);
+    } catch (error) {
+      await logger?.log("WARN", "sync/treeScan", "Sync skipped a folder it could not read", {
+        dir: absDir, message: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
     for (const name of names) {
       const abs = `${absDir}/${name}`;
       const rel = joinPath(relDir, name);

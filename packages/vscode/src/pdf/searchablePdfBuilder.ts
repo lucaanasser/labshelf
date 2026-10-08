@@ -3,11 +3,9 @@
  * layer is read optically, and Tesseract's invisible, positioned text is laid
  * over the original page. The page's own content is never re-encoded, so the
  * paper looks exactly as it did and grows by a few kilobytes per page.
- *
- * @depends pdf-lib, @labshelf/core, pdf/tesseractOcrEngine.ts
- * @dependents core/paperService.ts (injected), extension.ts
  */
 import { isSparseText } from "@labshelf/core";
+import type { ExistingLayer, TextLayerDetection, TextLayerOutcome } from "@labshelf/core";
 
 import { openPdfForOcr, type OcrDocument, type TesseractOcrEngine } from "./tesseractOcrEngine.js";
 
@@ -22,26 +20,6 @@ export interface TextLayerHooks {
   onProgress?: (progress: TextLayerProgress) => void;
   isCancelled?: () => boolean;
 }
-
-export type TextLayerOutcome =
-  // The document now carries a text layer on `pagesAdded` pages.
-  | { status: "added"; bytes: Uint8Array; pagesAdded: number; pagesFailed: number }
-  // The PDF already has text — its own, or an OCR layer added earlier.
-  | { status: "not-needed"; layer: ExistingLayer }
-  | { status: "cancelled" }
-  // The document needs OCR but was deliberately not read (OCR off, too many pages).
-  | { status: "skipped"; reason: string }
-  // OCR could not run or produced nothing usable; `reason` says why.
-  | { status: "unavailable"; reason: string };
-
-/** Where the text of a PDF that has some comes from. */
-export type ExistingLayer = "native" | "ocr";
-
-/** What a document's own text layer looks like, before any OCR. */
-export type TextLayerDetection =
-  | { status: ExistingLayer }
-  | { status: "missing"; textlessPages: number; totalPages: number }
-  | { status: "unavailable"; reason: string };
 
 /** Adds a text layer to PDFs that lack one. */
 export interface PdfTextLayerBuilder {
@@ -67,7 +45,6 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
   /**
    * Reports whether the PDF needs OCR, without reading any page optically —
    * a fraction of a second, so it can run over a whole library.
-   * @usedBy core/paperService.ts
    * @returns native, missing (with page counts), or why the PDF could not be opened.
    */
   async detect(pdfBytes: Uint8Array): Promise<TextLayerDetection> {
@@ -87,7 +64,6 @@ export class SearchablePdfBuilder implements PdfTextLayerBuilder {
 
   /**
    * Reads every text-less page and returns the PDF with the text laid over it.
-   * @usedBy core/paperService.ts
    * @returns The outcome; bytes are present only when a layer was actually added.
    */
   async build(pdfBytes: Uint8Array, hooks: TextLayerHooks = {}): Promise<TextLayerOutcome> {

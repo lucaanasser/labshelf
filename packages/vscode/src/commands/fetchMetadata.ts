@@ -3,9 +3,6 @@
  * DOI, an arXiv id, a PMID, a publisher URL, or just the title. This is the
  * escape hatch for PDFs the automatic pipeline cannot recognise, such as scans
  * too poor for OCR or papers no registry indexes.
- *
- * @depends vscode, @labshelf/core, core/paperService
- * @dependents commands/registerCommands.ts
  */
 import * as vscode from "vscode";
 
@@ -15,12 +12,11 @@ import {
   searchOnlineCandidates,
 } from "@labshelf/core";
 import type { PaperRecord, ResolvedMetadata } from "@labshelf/core";
-import type { PaperService } from "../core/paperService.js";
+import type { PaperService } from "../core/index.js";
 
 /**
  * Asks the user how to identify the paper, resolves it online, and writes the
  * result back to the library.
- * @usedBy commands/registerCommands.ts
  * @returns The updated paper, or undefined when the user cancelled or nothing matched.
  */
 export async function fetchMetadataForPaper(
@@ -79,7 +75,6 @@ export async function fetchMetadataForPaper(
 /**
  * Turns free-form user input into candidate records, preferring an identifier
  * it can confirm over a title it can only search for.
- * @usedBy commands/fetchMetadata.ts
  * @returns One confirmed record, several candidates, or an empty list.
  */
 export async function lookupUserQuery(query: string): Promise<ResolvedMetadata[]> {
@@ -98,7 +93,6 @@ export async function lookupUserQuery(query: string): Promise<ResolvedMetadata[]
 /**
  * Collects the record by hand. The genuine last resort, for work no registry
  * indexes: unpublished manuscripts, internal reports, theses, lecture notes.
- * @usedBy commands/fetchMetadata.ts
  * @returns The updated paper, or undefined when the user cancelled.
  */
 export async function enterMetadataManually(
@@ -197,7 +191,6 @@ async function pickCandidate(candidates: ResolvedMetadata[]): Promise<ResolvedMe
  * Re-runs extraction over every paper no registry ever confirmed, then offers
  * a manual lookup for whatever is still unidentified. This is the recovery
  * path after importing offline or before the pipeline could resolve a source.
- * @usedBy commands/registerCommands.ts
  * @returns void
  */
 export async function resolveMissingMetadata(paperService: PaperService): Promise<void> {
@@ -242,7 +235,6 @@ export async function resolveMissingMetadata(paperService: PaperService): Promis
 
 /**
  * Offers to look metadata up for papers the importer could not identify.
- * @usedBy commands/registerCommands.ts
  * @returns void
  */
 export async function offerMetadataFetch(

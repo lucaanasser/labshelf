@@ -14,7 +14,7 @@ import {
   queueTextLayers,
 } from '../../src/commands/textLayerQueue';
 import type { TextLayerJob } from '../../src/commands/textLayerQueue';
-import type { MakeSearchableResult, PaperService } from '../../src/core/paperService';
+import type { MakeSearchableResult, PaperTextLayers } from '../../src/core';
 import type { TextLayerHooks } from '../../src/pdf/searchablePdfBuilder';
 
 const paper = (id: string): PaperRecord => ({ id, title: `Paper ${id}`, path: `/lib/${id}`, citeKey: id, status: 'unread' });
@@ -22,8 +22,8 @@ const paper = (id: string): PaperRecord => ({ id, title: `Paper ${id}`, path: `/
 function serviceWith(
   run: (id: string, hooks: TextLayerHooks) => Promise<MakeSearchableResult>,
   check: (id: string) => Promise<PaperRecord | undefined> = async () => undefined,
-): PaperService {
-  return { makeSearchable: jest.fn(run), checkTextLayer: jest.fn(check) } as unknown as PaperService;
+): PaperTextLayers {
+  return { makeSearchable: jest.fn(run), checkTextLayer: jest.fn(check) } as unknown as PaperTextLayers;
 }
 
 describe('queueTextLayers', () => {

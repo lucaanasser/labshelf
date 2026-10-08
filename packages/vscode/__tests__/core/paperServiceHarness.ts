@@ -1,113 +1,71 @@
-/** Shared fakes for the PaperService suites: an in-memory database, a stubbed parser and library-folder stat answers. */
-import * as vscode from 'vscode';
+/** The paper glue over the real core mutations: an in-memory disk, an index that records its writes, and an event spy. */
+import * as path from 'node:path';
+import { BibTeXService, type EventBus, type ILogger, type IResearchDatabase, type MutationContext, type PaperRecord } from '@labshelf/core';
+
+import { PaperImporter } from '../../src/core/paperImporter';
 import { PaperService } from '../../src/core/paperService';
-import type { IFileSystem, LibraryLayout, IResearchDatabase, EventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
+import { PaperTextLayers } from '../../src/core/paperTextLayers';
+import { MemoryLibraryFs } from '../support/memoryLibraryFs';
 
-export const PAPERS_ROOT = '/workspace/papers';
+export const PAPERS_ROOT = '/lib/papers';
 
-// Folders that exist on disk under the library; every other library path is free.
-export const existingFolders = new Set<string>();
+// JSON values are valid YAML flow scalars and sequences.
+const asYaml = (meta: Record<string, unknown>): string =>
+  Object.entries(meta).map(([key, value]) => `${key}: ${JSON.stringify(value)}\n`).join('');
 
-// Import suites call this: a library folder resolves only when listed in existingFolders (import probes for free
-// cite keys), any other URI answers with `otherwise`.
-function statLike(otherwise: (uri: vscode.Uri) => { type: number }) {
-  return async (uri: vscode.Uri) => {
-    if (uri.fsPath.startsWith(`${PAPERS_ROOT}/`)) {
-      if (existingFolders.has(uri.fsPath)) { return { type: vscode.FileType.Directory }; }
-      throw new Error('ENOENT');
-    }
-    return otherwise(uri);
-  };
+export const pdfBytes = (body = 'fake'): Uint8Array => new TextEncoder().encode(`%PDF-1.7\n${body}\n%%EOF\n`);
+
+export interface Glue {
+  fs: MemoryLibraryFs;
+  ctx: MutationContext;
+  rows: PaperRecord[];
+  emitted: Array<[string, unknown]>;
+  /** Index writes, in order; each entry is "upsert:<id>" or "delete:<id>". */
+  indexWrites: string[];
+  service: PaperService;
+  importer: PaperImporter;
+  textLayers: (builder?: { build?: jest.Mock; detect?: jest.Mock }) => PaperTextLayers;
+  parse: jest.Mock;
+  /** Writes a paper to disk and to the index, the way a rebuild would find it. */
+  seed: (id: string, meta?: Record<string, unknown>, dir?: string) => Promise<PaperRecord>;
 }
 
-export function makeUri(fsPath: string): vscode.Uri {
-  return vscode.Uri.file(fsPath);
-}
-
-export function makeParsedPdf(overrides: Record<string, unknown> = {}) {
-  return {
-    title: 'Test Paper',
-    citeKey: 'testpaper2024',
-    authors: ['Alice', 'Bob'],
-    year: 2024,
-    ...overrides,
-  };
-}
-
-export function makeService(overrides: {
-  dbPapers?: any[];
-  parsedPdf?: any;
-  fsStatResult?: (uri: vscode.Uri) => { type: number };
-  fsReadDir?: (uri: vscode.Uri) => [string, number][];
-  textLayerBuilder?: { build?: jest.Mock; detect?: jest.Mock };
-} = {}): PaperService {
-  // Upserts land in the list, so a later read sees them as the real index would.
-  const rows: any[] = overrides.dbPapers ?? [];
-  const mockDb: Partial<IResearchDatabase> = {
-    upsertPaper: jest.fn(async (paper: any) => {
+export function makeGlue(): Glue {
+  const fs = new MemoryLibraryFs();
+  const rows: PaperRecord[] = [];
+  const emitted: Array<[string, unknown]> = [];
+  const indexWrites: string[] = [];
+  const database = {
+    listPapers: jest.fn(async () => rows.map((row) => ({ ...row }))),
+    upsertPaper: jest.fn(async (paper: PaperRecord) => {
+      indexWrites.push(`upsert:${paper.id}`);
       const at = rows.findIndex((row) => row.id === paper.id);
       if (at === -1) { rows.push(paper); } else { rows[at] = paper; }
     }),
-    listPapers: jest.fn(async () => rows.map((row) => ({ ...row }))),
-    deletePaper: jest.fn(async () => {}),
-    appendLog: jest.fn(async () => {}),
+    deletePaper: jest.fn(async (id: string) => {
+      indexWrites.push(`delete:${id}`);
+      const at = rows.findIndex((row) => row.id === id);
+      if (at !== -1) { rows.splice(at, 1); }
+    }),
+  } as unknown as IResearchDatabase;
+  const eventBus = { emit: jest.fn((name: string, payload: unknown) => { emitted.push([name, payload]); }) } as unknown as EventBus;
+  const logger: ILogger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
+  const bibtex = new BibTeXService(fs);
+  const ctx: MutationContext = { fs, paths: path, artifacts: bibtex, logger, papersRoot: PAPERS_ROOT, now: () => '2026-01-01T00:00:00.000Z' };
+  const parse = jest.fn(async () => ({ title: 'Test Paper', citeKey: 'testpaper2024', authors: ['Alice'], year: 2024 }));
+  const service = new PaperService(ctx, database, eventBus, bibtex, parse);
+  void fs.mkdir(PAPERS_ROOT);
+  return {
+    fs, ctx, rows, emitted, indexWrites, service, parse,
+    importer: new PaperImporter(ctx, database, eventBus, parse),
+    textLayers: (builder) => new PaperTextLayers(ctx, service, builder as never),
+    async seed(id, meta = {}, dir = PAPERS_ROOT) {
+      const folder = `${dir}/${id}`;
+      await fs.writeText(`${folder}/metadata.yaml`, asYaml({ title: `Title ${id}`, status: 'unread', ...meta }));
+      await fs.writeFile(`${folder}/paper.pdf`, pdfBytes());
+      const record: PaperRecord = { id, title: `Title ${id}`, path: folder, citeKey: id, status: 'unread', hasPdf: true, ...meta } as PaperRecord;
+      rows.push(record);
+      return record;
+    },
   };
-
-  const mockEventBus: Partial<EventBus> = {
-    emit: jest.fn(),
-    on: jest.fn(),
-  };
-
-  const mockFsService: Partial<IFileSystem> = {
-    ensureDir: jest.fn(async () => {}),
-    writeText: jest.fn(async () => {}),
-  };
-
-  const mockPaths: Partial<LibraryLayout<vscode.Uri>> = {
-    papersRoot: jest.fn(() => makeUri(PAPERS_ROOT)),
-  };
-
-  const mockParser: Partial<PdfImportParser> = {
-    parse: jest.fn(async () => overrides.parsedPdf ?? makeParsedPdf()),
-  };
-
-  const mockBibTeX: Partial<BibTeXService> = {
-    writePaperArtifacts: jest.fn(async () => {}),
-  };
-
-  // Override workspace.fs behaviour per test
-  if (overrides.fsStatResult) {
-    (vscode.workspace.fs.stat as jest.Mock).mockImplementation(statLike(overrides.fsStatResult));
-  }
-  if (overrides.fsReadDir) {
-    (vscode.workspace.fs.readDirectory as jest.Mock).mockImplementation(
-      async (uri: vscode.Uri) => overrides.fsReadDir!(uri),
-    );
-  }
-
-  return new PaperService(
-    mockFsService as IFileSystem,
-    mockDb as IResearchDatabase,
-    mockEventBus as EventBus,
-    mockPaths as LibraryLayout<vscode.Uri>,
-    mockParser as PdfImportParser,
-    mockBibTeX as BibTeXService,
-    overrides.textLayerBuilder as any,
-  );
-}
-
-// Default file-system answers for every PaperService suite: any URI is a file, PDFs read and write.
-export function resetFsMocks(): void {
-  jest.clearAllMocks();
-  existingFolders.clear();
-  (vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({ type: vscode.FileType.File });
-  (vscode.workspace.fs.readDirectory as jest.Mock).mockResolvedValue([]);
-  (vscode.workspace.fs.readFile as jest.Mock).mockResolvedValue(Buffer.from('pdf-bytes'));
-  (vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined);
-}
-
-export function importOnEmptyLibrary(): void {
-  beforeEach(() => {
-    (vscode.workspace.fs.stat as jest.Mock).mockImplementation(statLike(() => ({ type: vscode.FileType.File })));
-  });
 }

@@ -6,7 +6,6 @@ export type { CollectionNode, LibrarySnapshot, PaperEntry } from "./libraryScann
 export { LibraryStore, paperComparator } from "./libraryStore.js";
 export type { SortSpec } from "./libraryStore.js";
 export { LibraryWatcher } from "./libraryWatcher.js";
-export { TerminalPaperService } from "./paperService.js";
-export type { ImportOutcome } from "./paperService.js";
+export { TerminalPaperService } from "./papers/index.js";
 export { matchPaper, parseQuery, searchDoc } from "./search.js";
 export { SidecarReader } from "./sidecars.js";

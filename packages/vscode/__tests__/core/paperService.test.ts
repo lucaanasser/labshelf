@@ -1,264 +1,135 @@
 import * as vscode from 'vscode';
-import type { PaperService } from '../../src/core/paperService';
-import { makeService, makeUri, resetFsMocks } from './paperServiceHarness';
+import { makeGlue, PAPERS_ROOT } from './paperServiceHarness';
 
-beforeEach(resetFsMocks);
+beforeEach(() => {
+  jest.clearAllMocks();
+  (vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({ type: vscode.FileType.File });
+});
 
-// ─── organizing: movePapers / moveFolder ──────────────────────────────────────
+describe('PaperService field edits', () => {
+  it('writes metadata.yaml first, then updates the index and announces the paper', async () => {
+    const g = makeGlue();
+    await g.seed('p1');
+
+    const updated = await g.service.updatePaperFields('p1', { status: 'done', note: 'read twice' });
+
+    expect(updated).toMatchObject({ status: 'done', note: 'read twice' });
+    expect(await g.fs.readText(`${PAPERS_ROOT}/p1/metadata.yaml`)).toMatch(/status: done/);
+    expect(g.rows[0]).toMatchObject({ status: 'done', note: 'read twice' });
+    expect(g.emitted).toEqual([['paper:updated', expect.objectContaining({ id: 'p1', status: 'done' })]]);
+  });
+
+  it('leaves the index and events alone when the disk write fails', async () => {
+    const g = makeGlue();
+    await g.seed('p1');
+    g.fs.failWrites = new Error('EACCES');
+
+    await expect(g.service.updatePaperFields('p1', { status: 'done' })).rejects.toThrow('EACCES');
+
+    expect(g.indexWrites).toEqual([]);
+    expect(g.rows[0]!.status).toBe('unread');
+    expect(g.emitted).toEqual([]);
+  });
+
+  it('does not re-announce a patch that changes nothing', async () => {
+    const g = makeGlue();
+    await g.seed('p1');
+    await g.service.updatePaperStatus('p1', 'unread');
+    expect(g.emitted).toEqual([]);
+  });
+
+  it('edits tags on several papers and reports unknown ids', async () => {
+    const g = makeGlue();
+    await g.seed('p1', { tags: ['old', 'keep'] });
+    await g.seed('p2');
+
+    const outcome = await g.service.editTags(['p1', 'p2', 'ghost'], ['new'], ['old']);
+
+    expect(outcome.done).toEqual(['p1', 'p2']);
+    expect(outcome.failed).toEqual([{ id: 'ghost', error: 'Paper not found' }]);
+    expect(g.rows.map((row) => row.tags)).toEqual([['keep', 'new'], ['new']]);
+  });
+});
+
+describe('PaperService.trashPapers', () => {
+  it('drops the row and announces it only once the folder is in the trash', async () => {
+    const g = makeGlue();
+    await g.seed('p1');
+
+    expect(await g.service.trashPapers(['p1'])).toEqual({ done: ['p1'], failed: [] });
+    expect(await g.fs.exists(`${PAPERS_ROOT}/p1`)).toBe(false);
+    expect(g.rows).toEqual([]);
+    expect(g.emitted).toEqual([['paper:deleted', { id: 'p1' }]]);
+  });
+
+  it('keeps a paper whose trash fails in the index and reports why', async () => {
+    const g = makeGlue();
+    await g.seed('p1');
+    g.fs.trashFails.add(`${PAPERS_ROOT}/p1`);
+
+    const outcome = await g.service.trashPapers(['p1']);
+
+    expect(outcome.done).toEqual([]);
+    expect(outcome.failed).toEqual([{ id: 'p1', error: `Cannot move ${PAPERS_ROOT}/p1 to the trash` }]);
+    expect(g.rows.map((row) => row.id)).toEqual(['p1']);
+    expect(g.emitted).toEqual([]);
+  });
+});
 
 describe('PaperService.movePapers', () => {
-  const stored = [
-    { id: 'p1', title: 'One', path: '/workspace/papers/A/p1' },
-    { id: 'p2', title: 'Two', path: '/workspace/papers/B/p2' },
-  ];
+  it('moves the folder on disk, then re-points the record', async () => {
+    const g = makeGlue();
+    await g.seed('p1', {}, `${PAPERS_ROOT}/A`);
+    await g.fs.mkdir(`${PAPERS_ROOT}/B`);
 
-  beforeEach(() => {
-    (vscode.workspace.fs.rename as jest.Mock).mockReset().mockResolvedValue(undefined);
+    const outcome = await g.service.movePapers(['p1', 'ghost'], `${PAPERS_ROOT}/B`);
+
+    expect(outcome.done).toEqual(['p1']);
+    expect(outcome.failed).toEqual([{ id: 'ghost', error: 'Paper not found' }]);
+    expect(await g.fs.exists(`${PAPERS_ROOT}/B/p1/metadata.yaml`)).toBe(true);
+    expect(g.rows[0]!.path).toBe(`${PAPERS_ROOT}/B/p1`);
+    expect(g.emitted).toEqual([['paper:updated', expect.objectContaining({ path: `${PAPERS_ROOT}/B/p1` })]]);
   });
 
-  it('renames the paper folder into the target and re-points the record', async () => {
-    const service = makeService({ dbPapers: stored });
-    const result = await service.movePapers(['p1'], '/workspace/papers/B');
+  it('reports a name clash in the shared wording and leaves the record where it is', async () => {
+    const g = makeGlue();
+    await g.seed('p1', {}, `${PAPERS_ROOT}/A`);
+    await g.fs.mkdir(`${PAPERS_ROOT}/B/p1`);
 
-    expect(result).toEqual({ moved: ['p1'], failed: [] });
-    const [from, to, options] = (vscode.workspace.fs.rename as jest.Mock).mock.calls[0];
-    expect(from.fsPath).toBe('/workspace/papers/A/p1');
-    expect(to.fsPath).toBe('/workspace/papers/B/p1');
-    expect(options).toEqual({ overwrite: false });
-  });
+    const outcome = await g.service.movePapers(['p1'], `${PAPERS_ROOT}/B`);
 
-  it('skips papers already in the target folder', async () => {
-    const service = makeService({ dbPapers: stored });
-    const result = await service.movePapers(['p2'], '/workspace/papers/B');
-
-    expect(result).toEqual({ moved: [], failed: [] });
-    expect(vscode.workspace.fs.rename).not.toHaveBeenCalled();
-  });
-
-  it('reports unknown ids and filesystem collisions without aborting the batch', async () => {
-    (vscode.workspace.fs.rename as jest.Mock).mockRejectedValueOnce(new Error('EEXIST'));
-    const service = makeService({ dbPapers: stored });
-    const result = await service.movePapers(['p1', 'ghost', 'p2'], '/workspace/papers/C');
-
-    expect(result.moved).toEqual(['p2']);
-    expect(result.failed).toEqual([
-      { id: 'p1', error: 'EEXIST' },
-      { id: 'ghost', error: 'Paper not found' },
-    ]);
+    expect(outcome.failed).toEqual([{ id: 'p1', error: '"p1" already exists there' }]);
+    expect(g.rows[0]!.path).toBe(`${PAPERS_ROOT}/A/p1`);
   });
 });
 
-describe('PaperService.moveFolder', () => {
-  beforeEach(() => {
-    (vscode.workspace.fs.rename as jest.Mock).mockReset().mockResolvedValue(undefined);
-  });
+describe('PaperService metadata rewrites', () => {
+  it('applies resolved metadata, keeping the status the file holds', async () => {
+    const g = makeGlue();
+    await g.seed('p1');
+    await g.fs.writeText(`${PAPERS_ROOT}/p1/metadata.yaml`, 'title: "Title p1"\nstatus: reading\n');
 
-  it('moves the folder under the new parent and returns its new path', async () => {
-    const service = makeService({ dbPapers: [{ id: 'p1', title: 'One', path: '/workspace/papers/A/p1' }] });
-    const moved = await service.moveFolder('/workspace/papers/A', '/workspace/papers/B');
+    const updated = await g.service.applyResolvedMetadata('p1', { title: 'Resolved', doi: '10.1/x' });
 
-    expect(moved).toBe('/workspace/papers/B/A');
-    const [from, to] = (vscode.workspace.fs.rename as jest.Mock).mock.calls[0];
-    expect([from.fsPath, to.fsPath]).toEqual(['/workspace/papers/A', '/workspace/papers/B/A']);
-  });
-
-  it('refuses to move a folder into itself or its own subtree', async () => {
-    const service = makeService();
-    await expect(service.moveFolder('/workspace/papers/A', '/workspace/papers/A/B')).rejects.toThrow('into itself');
-    await expect(service.moveFolder('/workspace/papers/A', '/workspace/papers/A')).rejects.toThrow('into itself');
-    expect(vscode.workspace.fs.rename).not.toHaveBeenCalled();
-  });
-
-  it('refuses a no-op move to the current parent', async () => {
-    const service = makeService();
-    await expect(service.moveFolder('/workspace/papers/A', '/workspace/papers')).rejects.toThrow('already there');
+    expect(updated).toMatchObject({ title: 'Resolved', doi: '10.1/x', status: 'reading' });
+    expect(g.rows[0]).toMatchObject({ title: 'Resolved', status: 'reading' });
   });
 });
 
-describe('PaperService.resolvePdfUri', () => {
-  it('follows the stored path, so papers inside collection folders resolve', async () => {
-    const service = makeService({ dbPapers: [{ id: 'p1', title: 'One', path: '/workspace/papers/Project/Refs/p1' }] });
-    expect((await service.resolvePdfUri('p1'))?.fsPath).toBe('/workspace/papers/Project/Refs/p1/paper.pdf');
+describe('PaperService PDF lookups', () => {
+  it('resolves the PDF from the stored path, and null for an unknown id or a paper without one', async () => {
+    const g = makeGlue();
+    await g.seed('p1', {}, `${PAPERS_ROOT}/Project`);
+    await g.seed('p2', { hasPdf: false });
+    expect((await g.service.resolvePdfUri('p1'))?.fsPath).toBe(`${PAPERS_ROOT}/Project/p1/paper.pdf`);
+    expect(await g.service.resolvePdfUri('p2')).toBeNull();
+    expect(await g.service.resolvePdfUri('ghost')).toBeNull();
   });
 
-  it('returns null for an unknown id', async () => {
-    expect(await makeService().resolvePdfUri('ghost')).toBeNull();
-  });
-});
-
-describe('PaperService.makeSearchable', () => {
-  const stored = () => ({ id: 'scan1986', title: 'A Scan', path: '/workspace/papers/scan1986', citeKey: 'scan1986', status: 'unread' });
-  const verdictOf = (svc: PaperService) => (svc as any).database.upsertPaper.mock.calls.at(-1)?.[0]?.textLayer;
-
-  beforeEach(() => {
-    (vscode.workspace.fs.readFile as jest.Mock).mockImplementation(async () => new Uint8Array([1, 2, 3]));
-  });
-
-  it('replaces paper.pdf through a temporary file and records the OCR verdict', async () => {
-    const bytes = new Uint8Array([9, 9]);
-    const builder = { build: jest.fn(async () => ({ status: 'added', bytes, pagesAdded: 17, pagesFailed: 1 })) };
-    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: builder });
-
-    const result = await svc.makeSearchable('scan1986');
-
-    expect(result).toMatchObject({ status: 'added', pagesAdded: 17 });
-    const [pending, written] = (vscode.workspace.fs.writeFile as jest.Mock).mock.calls[0];
-    expect(pending.fsPath).toBe('/workspace/papers/scan1986/paper.searchable.tmp');
-    expect(written).toBe(bytes);
-    const [from, to, options] = (vscode.workspace.fs.rename as jest.Mock).mock.calls[0];
-    expect([from.fsPath, to.fsPath, options]).toEqual([pending.fsPath, '/workspace/papers/scan1986/paper.pdf', { overwrite: true }]);
-
-    expect(verdictOf(svc)).toMatchObject({ state: 'ocr', ocrPages: 17, failedPages: 1 });
-    // The verdict lives in metadata.yaml too, or the next start would lose it.
-    const [folder, written2] = (svc as any).bibTeXService.writePaperArtifacts.mock.calls[0];
-    expect([folder, written2.textLayer.state]).toEqual(['/workspace/papers/scan1986', 'ocr']);
-    expect((svc as any).eventBus.emit).toHaveBeenCalledTimes(1);
-    expect((svc as any).eventBus.emit).toHaveBeenCalledWith('paper:updated', expect.objectContaining({ textLayer: expect.objectContaining({ state: 'ocr' }) }));
-  });
-
-  it('writes to where the paper is now and keeps changes made while it was being read', async () => {
-    const rows: any[] = [stored()];
-    const builder = {
-      build: jest.fn(async () => {
-        // The user moved the paper and started reading it during OCR.
-        rows[0] = { ...rows[0], path: '/workspace/papers/Moved/scan1986', status: 'reading' };
-        return { status: 'added', bytes: new Uint8Array([1]), pagesAdded: 2, pagesFailed: 0 };
-      }),
-    };
-    const svc = makeService({ dbPapers: rows, textLayerBuilder: builder });
-
-    await svc.makeSearchable('scan1986');
-
-    expect((vscode.workspace.fs.rename as jest.Mock).mock.calls[0][1].fsPath).toBe('/workspace/papers/Moved/scan1986/paper.pdf');
-    expect(rows[0]).toMatchObject({ status: 'reading', path: '/workspace/papers/Moved/scan1986', textLayer: { state: 'ocr' } });
-  });
-
-  it.each([
-    [{ status: 'not-needed', layer: 'native' }, { state: 'native' }],
-    [{ status: 'not-needed', layer: 'ocr' }, { state: 'ocr' }],
-    [{ status: 'cancelled' }, { state: 'missing', reason: 'OCR was cancelled' }],
-    [{ status: 'skipped', reason: 'OCR is turned off' }, { state: 'missing', reason: 'OCR is turned off' }],
-    [{ status: 'unavailable', reason: 'no canvas' }, { state: 'failed', reason: 'no canvas' }],
-  ])('leaves the file alone and records the verdict for %j', async (outcome, verdict) => {
-    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: { build: jest.fn(async () => outcome) } });
-
-    expect(await svc.makeSearchable('scan1986')).toEqual(outcome);
-    expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
-    expect(verdictOf(svc)).toMatchObject(verdict);
-    expect(verdictOf(svc).checkedAt).toEqual(expect.any(String));
-  });
-
-  it('does not rewrite a paper whose verdict has not changed', async () => {
-    const paper = { ...stored(), textLayer: { state: 'native', checkedAt: '2026-01-01T00:00:00.000Z' } };
-    const svc = makeService({ dbPapers: [paper], textLayerBuilder: { build: jest.fn(async () => ({ status: 'not-needed', layer: 'native' })) } });
-
-    await svc.makeSearchable('scan1986');
-
-    expect((svc as any).database.upsertPaper).not.toHaveBeenCalled();
-    expect((svc as any).bibTeXService.writePaperArtifacts).not.toHaveBeenCalled();
-    expect((svc as any).eventBus.emit).not.toHaveBeenCalled();
-  });
-
-  it('records a builder crash as failed, and reports an unknown paper or a missing builder', async () => {
-    expect(await makeService({ dbPapers: [stored()] }).makeSearchable('scan1986')).toMatchObject({ status: 'unavailable' });
-
-    const builder = { build: jest.fn(async () => { throw new Error('boom'); }) };
-    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: builder });
-    expect(await svc.makeSearchable('missing')).toEqual({ status: 'unavailable', reason: 'paper not found' });
-    expect(await svc.makeSearchable('scan1986')).toEqual({ status: 'unavailable', reason: 'boom' });
-    expect(verdictOf(svc)).toMatchObject({ state: 'failed', reason: 'boom' });
-    expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
-  });
-});
-
-describe('PaperService.checkTextLayer', () => {
-  const stored = (extra: Record<string, unknown> = {}) => ({ id: 'p1', title: 'P', path: '/workspace/papers/p1', citeKey: 'p1', status: 'unread', ...extra });
-
-  beforeEach(() => {
-    (vscode.workspace.fs.readFile as jest.Mock).mockImplementation(async () => new Uint8Array([1]));
-  });
-
-  it.each([
-    [{ status: 'native' }, { state: 'native' }],
-    [{ status: 'missing', textlessPages: 17, totalPages: 17 }, { state: 'missing' }],
-    [{ status: 'unavailable', reason: 'could not be opened' }, { state: 'failed', reason: 'could not be opened' }],
-  ])('records %j without reading any page optically', async (detection, verdict) => {
-    const builder = { build: jest.fn(), detect: jest.fn(async () => detection) };
-    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: builder });
-
-    const updated = await svc.checkTextLayer('p1');
-
-    expect(updated?.textLayer).toMatchObject(verdict);
-    expect(builder.build).not.toHaveBeenCalled();
-  });
-
-  it.each(['native', 'ocr'])('keeps the page counts of a paper LabShelf read when a re-check finds %s text', async (status) => {
-    const paper = stored({ textLayer: { state: 'ocr', ocrPages: 3, checkedAt: 'x' } });
-    const svc = makeService({ dbPapers: [paper], textLayerBuilder: { detect: jest.fn(async () => ({ status })) } });
-
-    expect((await svc.checkTextLayer('p1'))?.textLayer).toEqual({ state: 'ocr', ocrPages: 3, checkedAt: 'x' });
-    expect((svc as any).database.upsertPaper).not.toHaveBeenCalled();
-  });
-
-  it('labels a scan read by another OCR tool as ocr', async () => {
-    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: { detect: jest.fn(async () => ({ status: 'ocr' })) } });
-    expect((await svc.checkTextLayer('p1'))?.textLayer?.state).toBe('ocr');
-  });
-
-  it('returns undefined for an unknown paper or without a builder', async () => {
-    expect(await makeService({ dbPapers: [stored()] }).checkTextLayer('p1')).toBeUndefined();
-    expect(await makeService({ textLayerBuilder: { detect: jest.fn() } }).checkTextLayer('p1')).toBeUndefined();
-  });
-});
-
-describe('PaperService — papers saved without a PDF', () => {
-  const stored = (extra: Record<string, unknown> = {}) => ({ id: 'p1', title: 'P', path: '/workspace/papers/p1', citeKey: 'p1', status: 'unread', ...extra });
-  // stat throws exactly as vscode.workspace.fs does for a file that is not there.
-  const noPdf = { fsStatResult: () => { throw new Error('EntryNotFound (FileSystemError): /workspace/papers/p1/paper.pdf'); } };
-
-  it('checkTextLayer returns the paper untouched and never classifies it', async () => {
-    const detect = jest.fn();
-    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: { detect }, ...noPdf });
-
-    const result = await svc.checkTextLayer('p1');
-
-    expect(result).toMatchObject({ id: 'p1' });
-    expect(result).not.toHaveProperty('textLayer');
-    expect(detect).not.toHaveBeenCalled();
-    expect((svc as any).database.upsertPaper).not.toHaveBeenCalled();
-    expect((svc as any).bibTeXService.writePaperArtifacts).not.toHaveBeenCalled();
-    expect((svc as any).eventBus.emit).not.toHaveBeenCalled();
-  });
-
-  it('makeSearchable skips with "it has no PDF" and records nothing', async () => {
-    const build = jest.fn();
-    const svc = makeService({ dbPapers: [stored()], textLayerBuilder: { build }, ...noPdf });
-
-    expect(await svc.makeSearchable('p1')).toEqual({ status: 'skipped', reason: 'it has no PDF' });
-    expect(build).not.toHaveBeenCalled();
-    expect((svc as any).database.upsertPaper).not.toHaveBeenCalled();
-    expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
-  });
-
-  it('resolvePdfUri is null when the flag says so, and when the file is not there', async () => {
-    expect(await makeService({ dbPapers: [stored({ hasPdf: false })] }).resolvePdfUri('p1')).toBeNull();
-    expect(await makeService({ dbPapers: [stored()], ...noPdf }).resolvePdfUri('p1')).toBeNull();
-  });
-
-  it('reconcilePdf corrects a stale flag and emits, but only on a change', async () => {
-    // Stored false, file is actually present (default stat = File): flips to true.
-    const appeared = makeService({ dbPapers: [stored({ hasPdf: false })] });
-    expect(await appeared.reconcilePdf('p1')).toEqual({ paper: expect.objectContaining({ hasPdf: true }), hasPdf: true });
-    expect((appeared as any).database.upsertPaper).toHaveBeenCalledTimes(1);
-    expect((appeared as any).eventBus.emit).toHaveBeenCalledWith('paper:updated', expect.objectContaining({ hasPdf: true }));
-
-    // Already true and present: nothing is written or emitted.
-    const stable = makeService({ dbPapers: [stored({ hasPdf: true })] });
-    expect(await stable.reconcilePdf('p1')).toEqual({ paper: expect.objectContaining({ hasPdf: true }), hasPdf: true });
-    expect((stable as any).database.upsertPaper).not.toHaveBeenCalled();
-    expect((stable as any).eventBus.emit).not.toHaveBeenCalled();
-
-    // Unknown paper.
-    expect(await makeService().reconcilePdf('ghost')).toBeUndefined();
+  it('reconcilePdf corrects a stale flag in the index only', async () => {
+    const g = makeGlue();
+    await g.seed('p1', { hasPdf: false });
+    expect(await g.service.reconcilePdf('p1')).toEqual({ paper: expect.objectContaining({ hasPdf: true }), hasPdf: true });
+    expect(g.emitted).toEqual([['paper:updated', expect.objectContaining({ hasPdf: true })]]);
   });
 });

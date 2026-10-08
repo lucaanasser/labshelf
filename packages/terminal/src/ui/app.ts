@@ -13,11 +13,13 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { type PaperRecord, type PaperStatus, formatAnnotationsMarkdown, paperFiles, type PaperData } from "@labshelf/core";
+import {
+  type ImportOutcome, type PaperRecord, type PaperStatus, formatAnnotationsMarkdown, paperFiles, summarizeImport, type PaperData,
+} from "@labshelf/core";
 
 import type { SortKey } from "../app/config.js";
 import type { AppContext } from "../app/context.js";
-import { rankFuzzy, papersUnder, type PaperEntry, paperComparator, type SortSpec, type ImportOutcome, matchPaper, parseQuery, searchDoc } from "../library/index.js";
+import { rankFuzzy, papersUnder, type PaperEntry, paperComparator, type SortSpec, matchPaper, parseQuery, searchDoc } from "../library/index.js";
 import { copyToClipboard, openExternal, revealInFileManager, runEditor, trashSupported } from "../platform/system.js";
 import type { SyncOutcome, SyncStatus } from "../sync/syncService.js";
 import { clearImages, drawImage, fitImage, pngSize, type CellRect } from "../tui/graphics.js";
@@ -1155,23 +1157,10 @@ export class App {
   }
 
   private reportImport(outcomes: ImportOutcome[]): void {
-    const added = outcomes.filter((o): o is Extract<ImportOutcome, { status: "added" }> => o.status === "added");
-    const duplicates = outcomes.filter((o): o is Extract<ImportOutcome, { status: "duplicate" }> => o.status === "duplicate");
-    const failed = outcomes.filter((o): o is Extract<ImportOutcome, { status: "failed" }> => o.status === "failed");
-    if (!outcomes.length) { return this.notify("No PDF found there", "warn"); }
-    if (added.length === 1 && !duplicates.length && !failed.length) {
-      const paper = added[0]!.paper;
-      this.revealPaper(paper.id);
-      return this.notify(`Added "${truncate(paper.title, 60)}"${added[0]!.needsReview ? " — metadata unconfirmed, check it" : ""}`);
-    }
-    if (duplicates.length === 1 && !added.length && !failed.length) {
-      this.revealPaper(duplicates[0]!.existingId);
-      return this.notify(`Already in the library as ${duplicates[0]!.existingId}`, "warn");
-    }
-    const parts = [`${added.length} added`];
-    if (duplicates.length) { parts.push(`${duplicates.length} already in the library`); }
-    if (failed.length) { parts.push(`${failed.length} failed: ${failed[0]!.error}`); }
-    this.notify(parts.join(", "), failed.length ? "warn" : "info");
+    const shortened = outcomes.map((o): ImportOutcome => (o.status === "added" ? { ...o, record: { ...o.record, title: truncate(o.record.title, 60) } } : o));
+    const summary = summarizeImport(shortened);
+    if (summary.reveal) { this.revealPaper(summary.reveal); }
+    this.notify(summary.text, summary.level === "warn" ? "warn" : "info");
   }
 
   private async syncNow(): Promise<void> {

@@ -12,10 +12,11 @@ import {
   type IFileSystem,
   type ILogger,
   type IResearchDatabase,
+  type MutationContext,
   type SyncResult,
   type ReaderCommandId,
 } from "@labshelf/core";
-import { PaperService, createExtensionLogger } from "./core/index.js";
+import { PaperImporter, PaperService, PaperTextLayers, createExtensionLogger } from "./core/index.js";
 import { VscodeFileSystem } from "./storage/vscodeFileSystem.js";
 import {
   resolveLibraryRoot,
@@ -24,14 +25,15 @@ import {
   mirrorLibraryRoot,
 } from "./storage/paths/index.js";
 import { ExternalChangeWatcher, findMissingPapers } from "./storage/data/externalChangeWatcher.js";
-import { LibraryTreeDataProvider, LibraryDragAndDropController, validateFolderNameInput } from "./ui/library/index.js";
+import { LibraryTreeDataProvider, LibraryDragAndDropController } from "./ui/library/index.js";
 import type { LibraryNode } from "./ui/library/index.js";
 import { ListWebviewPanel } from "./ui/list/index.js";
 import { SettingsWebviewPanel } from "./ui/settings/index.js";
 import { PdfViewerPanel } from "./pdf-viewer/PdfViewerPanel.js";
 import { registerCommands, resolvePaper, ensurePaperPdf } from "./commands/registerCommands.js";
 import { registerAiCommands } from "./commands/registerAiCommands.js";
-import { announceImport, importWithProgress } from "./commands/importProgress.js";
+import { importPapers } from "./commands/importProgress.js";
+import { moveFolders, registerFolderCommands, type FolderCommandHost } from "./commands/folderCommands.js";
 import type { ActiveServices } from "./commands/registerCommands.js";
 import { createAiService, AiService } from "./ai/service/index.js";
 import { SqliteResearchDatabase } from "./db/sqliteResearchDatabase.js";
@@ -181,7 +183,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           return false;
         }
       });
-      for (const id of missing) { await services.paperService.deletePaper(id, false); }
+      for (const id of missing) { await services.paperService.removeFromIndex(id); }
     } catch (error) {
       await services.logger.log("WARN", "extension", "Re-index after an external change failed", {
         message: error instanceof Error ? error.message : String(error),
@@ -191,37 +193,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     refreshLibraryViews();
   }
 
+  const folderHost: FolderCommandHost = {
+    requireServices,
+    papersRoot: () => papersRootUri()?.fsPath ?? null,
+    refreshViews: () => refreshLibraryViews(),
+    followFolderMove: async (from, to) => { await ListWebviewPanel.currentPanel?.followFolderMove(from, to); },
+  };
+
   const libraryDnD = new LibraryDragAndDropController(async (uris, targetDir) => {
     const services = await requireServices();
-    if (!services) { return; }
-    const target = targetDir ? vscode.Uri.file(targetDir) : undefined;
-    const result = await importWithProgress(services.paperService, uris, target, services.logger);
-    if (result.failed.length > 0) {
-      await services.logger.log("WARN", "extension", "Sidebar drop import had failures", { failed: result.failed });
-      const firstError = result.failed[0]?.error ?? "unknown error";
-      vscode.window.showErrorMessage(
-        `LabShelf: ${result.success.length} imported, ${result.failed.length} failed — ${firstError}`,
-      );
-    } else {
-      announceImport(result);
-    }
-  }, async (sourceDirs, targetDir) => {
-    // Folders dragged inside the tree; a drop on "All Papers" or the empty area targets papers/.
-    const services = await requireServices();
-    const target = targetDir ?? papersRootUri()?.fsPath;
-    if (!services || !target) { return; }
-    for (const sourceDir of sourceDirs) {
-      try {
-        const movedTo = await services.paperService.moveFolder(sourceDir, target);
-        await ListWebviewPanel.currentPanel?.followFolderMove(sourceDir, movedTo);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        await services.logger.log("WARN", "extension", "Folder move failed", { sourceDir, target, message });
-        vscode.window.showErrorMessage(`LabShelf: Could not move "${path.basename(sourceDir)}" — ${message}`);
-      }
-    }
-    libraryProvider.refresh();
-  });
+    if (services) { await importPapers(services, uris, targetDir); }
+  }, (sourceDirs, targetDir) => moveFolders(folderHost, sourceDirs, targetDir));
 
   libraryProvider.setPaperPathSource(async () =>
     activeServices ? (await activeServices.paperService.listPapers()).map((p) => p.path) : [],
@@ -367,72 +349,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("labshelf.library.refresh", () => libraryProvider.refresh()),
   );
 
-  // Prompts for a name and creates the folder under `node`, or at papers/ when no node is given.
-  async function createFolder(node?: LibraryNode): Promise<void> {
-    const services = await requireServices();
-    if (!services) { return; }
-    const parent = node ? vscode.Uri.file(node.dirPath) : papersRootUri();
-    if (!parent) { return; }
-
-    const name = await vscode.window.showInputBox({
-      prompt: "Folder name",
-      placeHolder: "My Folder",
-      validateInput: validateFolderNameInput,
-    });
-    if (!name?.trim()) { return; }
-
-    await services.fileSystem.ensureDir(vscode.Uri.joinPath(parent, name.trim()).fsPath);
-    refreshLibraryViews();
-  }
-
-  // Two command ids on purpose. VS Code hands tree-view title actions the focused
-  // tree item as their first argument, so a single id shared by the title bar and
-  // the context menu would nest every new folder inside whatever row happened to
-  // be selected. The title-bar id takes no node and always targets papers/.
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.newFolder", (node?: LibraryNode) => createFolder(node)),
-    vscode.commands.registerCommand("labshelf.newFolderAtRoot", () => createFolder()),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.renameFolder", async (node?: LibraryNode) => {
-      if (!node || node.isRoot) { return; }
-      const services = await requireServices();
-      if (!services) { return; }
-
-      const name = await vscode.window.showInputBox({
-        prompt: "New folder name",
-        value: node.label,
-        validateInput: validateFolderNameInput,
-      });
-      if (!name?.trim() || name.trim() === node.label) { return; }
-
-      const target = vscode.Uri.joinPath(vscode.Uri.file(path.dirname(node.dirPath)), name.trim());
-      await vscode.workspace.fs.rename(vscode.Uri.file(node.dirPath), target, { overwrite: false });
-      await services.paperService.relocatePapersUnder(node.dirPath, target.fsPath);
-      libraryProvider.refresh();
-      await ListWebviewPanel.currentPanel?.followFolderMove(node.dirPath, target.fsPath);
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("labshelf.deleteFolder", async (node?: LibraryNode) => {
-      if (!node || node.isRoot) { return; }
-      const services = await requireServices();
-      if (!services) { return; }
-
-      const choice = await vscode.window.showWarningMessage(
-        `Delete folder "${node.label}" and everything inside it?`,
-        { modal: true },
-        "Delete",
-      );
-      if (choice !== "Delete") { return; }
-
-      await services.paperService.removePapersUnder(node.dirPath);
-      await vscode.workspace.fs.delete(vscode.Uri.file(node.dirPath), { recursive: true, useTrash: true });
-      refreshLibraryViews();
-    }),
-  );
+  registerFolderCommands(context, folderHost);
 
   // Import papers into a specific folder selected via the tree context menu.
   context.subscriptions.push(
@@ -449,17 +366,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       });
       if (!selected || selected.length === 0) { return; }
 
-      const target = node ? vscode.Uri.file(node.dirPath) : undefined;
-      const result = await importWithProgress(services.paperService, selected, target, services.logger);
-      if (result.failed.length > 0) {
-        await services.logger.log("WARN", "extension", "Add Paper Here had failures", { failed: result.failed });
-        const firstError = result.failed[0]?.error ?? "unknown error";
-        vscode.window.showErrorMessage(
-          `LabShelf: ${result.success.length} imported, ${result.failed.length} failed — ${firstError}`,
-        );
-      } else {
-        announceImport(result);
-      }
+      await importPapers(services, selected, node?.dirPath);
     }),
   );
 
@@ -498,10 +405,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   if (activeServices) {
     const services = activeServices;
     eventBus.on("paper:added", async (payload) => {
-      await services.logger.log("INFO", "core/paperService", "Paper added", { payload });
+      await services.logger.log("INFO", "extension", "Paper added", { payload });
     });
     eventBus.on("paper:updated", async (payload) => {
-      await services.logger.log("INFO", "core/paperService", "Paper updated", { payload });
+      await services.logger.log("INFO", "extension", "Paper updated", { payload });
     });
   }
 }
@@ -593,10 +500,13 @@ async function buildServices(
   const ocrEngine = createOcrEngine(context, logger);
   const pdfImportParser = new PdfImportParser(new NodePdfOpener(), { ocr: ocrEngine });
   const bibTeXService = new BibTeXService(fileSystem);
-  const paperService = new PaperService(
-    fileSystem, database, eventBus, paths, pdfImportParser, bibTeXService,
-    createTextLayerBuilder(ocrEngine),
-  );
+  const mutations: MutationContext = {
+    fs: fileSystem, paths: path, artifacts: bibTeXService, logger, papersRoot: paths.papersRoot().fsPath,
+  };
+  const parse = (bytes: Uint8Array, stem: string) => pdfImportParser.parse(bytes, stem);
+  const paperService = new PaperService(mutations, database, eventBus, bibTeXService, parse);
+  const importer = new PaperImporter(mutations, database, eventBus, parse);
+  const textLayers = new PaperTextLayers(mutations, paperService, createTextLayerBuilder(ocrEngine));
   const paperDataStore = new PaperDataStore(paths, fileSystem);
   const indexer = new LibraryIndexer(paths, fileSystem, database);
   await indexer.rebuild();
@@ -606,7 +516,7 @@ async function buildServices(
   const indexed = await database.listPapers();
   const toCheck = indexed.filter((paper) => paper.hasPdf !== false && !paper.textLayer);
   if (toCheck.length > 0) {
-    void queueTextLayers(paperService, toCheck, { mode: "check", logger });
+    void queueTextLayers(textLayers, toCheck, { mode: "check", logger });
   }
   const themeManager = new ThemeManager(paperDataStore);
   const annotationManager = new AnnotationManager(paperDataStore, eventBus);
@@ -615,9 +525,12 @@ async function buildServices(
       database,
       indexer,
       eventBus,
-      queueCheck: (papers) => void queueTextLayers(paperService, papers, { mode: "check", logger }),
+      queueCheck: (papers) => void queueTextLayers(textLayers, papers, { mode: "check", logger }),
     });
-  return { paperService, logger, themeManager, annotationManager, database, paperDataStore, fileSystem, reindexLibrary: reindex };
+  return {
+    paperService, importer, textLayers, mutations, logger, themeManager, annotationManager, database, paperDataStore, fileSystem,
+    reindexLibrary: reindex,
+  };
 }
 
 // Tries to create the SQLite database; falls back to the in-memory implementation on failure.

@@ -1,31 +1,22 @@
 /**
- * Reacts to paper intents emitted by the list and detail pane. Handles
- * open-pdf (the LabShelf reader, one tab per paper — or, for a paper with no
- * usable PDF, an honest "find or attach" dialog), find-pdf (asks the background
- * to search the web and attach what it finds), attach-pdf (a local file picker),
- * copy-cite, status changes (rewrites metadata.yaml + record so the sync engine
- * uploads them), delete (with a VS Code-style confirmation whose copy omits the
- * PDF when none exists), move (drag-and-drop or a folder quick pick), and "Add"
- * — a quick pick over the open tabs that, when no PDF is found, asks before
- * saving the reference. Every mutation refreshes the store in place.
- *
- *          platform/runtimeMessages, storage, capture (attachPdfToPaper, isPdfBytes),
- *          ui/quickInput, ui/dialog, ui/toast, ui/pdfCopy, state/derive, events,
- *          controllers/dataController, reader/readerTabs
+ * Reacts to paper intents from the list and detail pane: open, find or attach a PDF, copy the cite key, change
+ * status, remove, move and add from an open tab. Every mutation goes through the core library mutations and then
+ * refreshes the store in place.
  */
-import type { IFileSystem, PaperRecord, PaperStatus } from "@labshelf/core";
-import { BibTeXService, FolderService, PDF_FILE } from "@labshelf/core";
+import type { PaperRecord, PaperRef, PaperStatus } from "@labshelf/core";
+import { PDF_FILE } from "@labshelf/core";
 import { attachPdfToPaper, isPdfBytes } from "../../capture";
+import { BrowserLogger } from "../../platform/logger";
 import { openReader } from "../../reader/readerTabs";
 import type { AttachPdfData, IfNoPdf, PdfMiss, SaveOutcome, TabSummary } from "../../platform/runtimeMessages";
-import { IndexedDbFileSystem, deleteRecord, listAllRecords, upsertRecord } from "../../storage";
+import { IndexedDbFileSystem, createLibraryMutations } from "../../storage";
 import { showDialog } from "../../ui/dialog";
 import { noPdfDialogCopy, pdfSourceLabel } from "../../ui/pdfCopy";
 import { quickPick } from "../../ui/quickInput";
 import { toast } from "../../ui/toast";
 import { on } from "../events";
 import type { PaperAction } from "../events";
-import { ROOT, ROOT_LABEL, baseName, flattenFolders, parentDir } from "../state/derive";
+import { ROOT, ROOT_LABEL, baseName, flattenFolders } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { errorMessage, refreshLibrary, scheduleSyncSoon, send } from "./dataController";
 
@@ -33,23 +24,9 @@ import { errorMessage, refreshLibrary, scheduleSyncSoon, send } from "./dataCont
 const MAX_PDF_BYTES = 120 * 1024 * 1024;
 
 const fs = new IndexedDbFileSystem();
+const mutations = createLibraryMutations(new BrowserLogger("library-page"));
 
-// Wrap IndexedDbFileSystem in the text-oriented IFileSystem expected by
-// BibTeXService so we can rewrite metadata.yaml after a status change.
-class IdbTextAdapter implements IFileSystem {
-  constructor(private readonly idb: IndexedDbFileSystem) {}
-  async ensureDir(_path: string): Promise<void> {}
-  async writeText(path: string, text: string): Promise<void> { await this.idb.writeFile(path, new TextEncoder().encode(text)); }
-  async readText(path: string): Promise<string> { return new TextDecoder().decode(await this.idb.readFile(path)); }
-  async exists(path: string): Promise<boolean> { return (await this.idb.stat(path)) !== undefined; }
-}
-
-const bib = new BibTeXService(new IdbTextAdapter(fs));
-const folderService = new FolderService({
-  listPapers: () => listAllRecords(),
-  upsertPaper: (p) => upsertRecord(p, p.path),
-  deletePaper: (id) => deleteRecord(id),
-}, "/");
+const asRefs = (papers: PaperRecord[]): PaperRef[] => papers.map((p) => ({ id: p.id, path: p.path }));
 
 /** Attaches paper-intent listeners. Returns a disposer. */
 export function attachPaperController(store: LibraryStore): () => void {
@@ -200,15 +177,12 @@ async function setStatus(store: LibraryStore, ids: string[], status: PaperStatus
   const byId = new Map(store.get().papers.map((p) => [p.id, p]));
   const changed = ids.map((id) => byId.get(id)).filter((p): p is PaperRecord => !!p && p.status !== status);
   if (changed.length === 0) return;
-  // Applied locally first so the row responds instantly; IDB confirms right after.
+  // Applied locally first so the row responds instantly; the files confirm right after.
   store.set({ papers: store.get().papers.map((p) => (changed.includes(p) ? { ...p, status } : p)) });
-  for (const paper of changed) {
-    const next: PaperRecord = { ...paper, status };
-    await upsertRecord(next, next.path);
-    await bib.writePaperArtifacts(next.path, next, PDF_FILE);
-  }
+  const { failed } = await mutations.setStatus(asRefs(changed), status);
   await refreshLibrary(store);
   scheduleSyncSoon("paper.status");
+  if (failed.length) toast(`${failed.length} could not be updated — ${failed[0]!.error}`, "error");
 }
 
 async function deletePapers(store: LibraryStore, papers: PaperRecord[]): Promise<void> {
@@ -226,14 +200,12 @@ async function deletePapers(store: LibraryStore, papers: PaperRecord[]): Promise
     buttons: [{ id: "remove", label: "Remove", primary: true, danger: true }],
   });
   if (choice !== "remove") return;
-  for (const paper of papers) {
-    await deleteRecord(paper.id);
-    await fs.deleteDir(paper.path);
-  }
+  const { done, failed } = await mutations.trashPapers(asRefs(papers));
   store.clearSelection();
   await refreshLibrary(store);
-  scheduleSyncSoon("paper.delete");
-  toast(papers.length === 1 ? "Paper removed" : `${papers.length} papers removed`, "ok");
+  if (done.length) scheduleSyncSoon("paper.delete");
+  if (failed.length) toast(`${done.length} removed, ${failed.length} failed — ${failed[0]!.error}`, "error");
+  else toast(done.length === 1 ? "Paper removed" : `${done.length} papers removed`, "ok");
 }
 
 async function pickMoveTarget(store: LibraryStore, ids: string[]): Promise<void> {
@@ -246,21 +218,13 @@ async function pickMoveTarget(store: LibraryStore, ids: string[]): Promise<void>
 /** Moves paper folders under `target` and re-points their records; papers already there are skipped. */
 export async function movePapers(store: LibraryStore, ids: string[], target: string): Promise<void> {
   const byId = new Map(store.get().papers.map((p) => [p.id, p]));
-  let moved = 0;
-  const failed: string[] = [];
-  for (const id of ids) {
-    const paper = byId.get(id);
-    if (!paper || parentDir(paper.path) === target) continue;
-    const destination = `${target}/${baseName(paper.path)}`;
-    if (await fs.stat(destination)) { failed.push(`"${paper.title}" — a paper with the same key is already there`); continue; }
-    await fs.moveDir(paper.path, destination);
-    await folderService.relocatePapersUnder(paper.path, destination);
-    moved++;
-  }
-  if (moved) { await refreshLibrary(store); scheduleSyncSoon("paper.move"); }
+  const papers = ids.map((id) => byId.get(id)).filter((p): p is PaperRecord => !!p);
+  const { done, failed } = await mutations.movePapers(asRefs(papers), target);
+  if (done.length) { await refreshLibrary(store); scheduleSyncSoon("paper.move"); }
   const where = target === ROOT ? ROOT_LABEL : baseName(target);
-  if (failed.length) toast(`${moved} moved, ${failed.length} failed — ${failed[0]}`, "error");
-  else if (moved) toast(`${moved} paper${moved === 1 ? "" : "s"} moved to ${where}`, "ok");
+  const first = failed[0];
+  if (first) toast(`${done.length} moved, ${failed.length} failed — "${byId.get(first.id)?.title ?? first.id}" — ${first.error}`, "error");
+  else if (done.length) toast(`${done.length} paper${done.length === 1 ? "" : "s"} moved to ${where}`, "ok");
 }
 
 /** Lists the window's other tabs in a quick pick and captures the chosen one. */

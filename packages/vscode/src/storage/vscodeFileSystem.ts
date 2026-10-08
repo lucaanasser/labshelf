@@ -1,13 +1,15 @@
-/** The one file-system adapter of the VS Code extension: IFileSystem and LocalFileSystem over vscode.workspace.fs. */
+/** The one file-system adapter of the VS Code extension: the LibraryFileSystem port over vscode.workspace.fs. */
 import { randomUUID } from "node:crypto";
 import * as path from "node:path";
 
 import * as vscode from "vscode";
-import type { IFileSystem, LocalFileSystem, LocalStat } from "@labshelf/core";
+import type { LibraryFileSystem, LocalStat } from "@labshelf/core";
 
 const uriOf = (target: string): vscode.Uri => vscode.Uri.file(target);
 
-export class VscodeFileSystem implements IFileSystem, LocalFileSystem {
+const isNotFound = (error: unknown): boolean => (error as { code?: string }).code === "FileNotFound";
+
+export class VscodeFileSystem implements LibraryFileSystem {
   /** tmpDir holds the temp files of atomic writes; it lives outside the synced roots. */
   constructor(private readonly tmpDir: string) {}
 
@@ -58,11 +60,17 @@ export class VscodeFileSystem implements IFileSystem, LocalFileSystem {
     }
   }
 
+  // Only a missing folder lists as empty: an import walk must be able to report a folder it may not read.
   async listDir(dirPath: string): Promise<string[]> {
-    return (await this.listEntries(dirPath)).map(([name]) => name);
+    try {
+      return (await vscode.workspace.fs.readDirectory(uriOf(dirPath))).map(([name]) => name);
+    } catch (error) {
+      if (isNotFound(error)) { return []; }
+      throw error;
+    }
   }
 
-  /** The children of a folder with their types in one call, [] when the folder is missing. */
+  /** The children of a folder with their types in one call; [] when it is missing or unreadable, so one bad folder does not stop an index rebuild. */
   async listEntries(dirPath: string): Promise<Array<[string, vscode.FileType]>> {
     try {
       return await vscode.workspace.fs.readDirectory(uriOf(dirPath));
@@ -76,11 +84,25 @@ export class VscodeFileSystem implements IFileSystem, LocalFileSystem {
     try {
       await vscode.workspace.fs.delete(uriOf(filePath), { useTrash: false });
     } catch (error) {
-      if ((error as { code?: string }).code === "FileNotFound") { return; }
+      if (isNotFound(error)) { return; }
       throw error;
     }
   }
 
+  // VS Code allows a rename that changes only letter case even without overwrite, so "ml" → "ML" works on macOS.
+  async rename(from: string, to: string): Promise<void> {
+    await vscode.workspace.fs.rename(uriOf(from), uriOf(to), { overwrite: false });
+  }
+
+  async trash(target: string): Promise<void> {
+    await vscode.workspace.fs.delete(uriOf(target), { recursive: true, useTrash: true });
+  }
+
+  async mkdir(dir: string): Promise<void> {
+    await vscode.workspace.fs.createDirectory(uriOf(dir));
+  }
+
+  // FileType is a bit flag and a symlink reports File|SymbolicLink: the strict comparison leaves symlinks out.
   async stat(target: string): Promise<LocalStat | undefined> {
     try {
       const s = await vscode.workspace.fs.stat(uriOf(target));
