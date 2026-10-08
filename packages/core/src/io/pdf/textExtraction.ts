@@ -42,30 +42,6 @@ export async function extractTitleBlocks(document: PdfDocumentLike): Promise<Tex
 }
 
 /**
- * Concatenates the plain text from the first `pageCount` pages of the PDF document.
- * @usedBy io/pdf/parser.ts
- * @returns Newline-joined string of page text, used for identifier detection.
- */
-export async function extractFirstPagesText(document: PdfDocumentLike, pageCount: number): Promise<string> {
-  const chunks: string[] = [];
-  const limit = Math.min(document.numPages ?? pageCount, pageCount);
-
-  for (let pageNumber = 1; pageNumber <= limit; pageNumber += 1) {
-    const page = await document.getPage(pageNumber);
-    const textContent = await page.getTextContent({ normalizeWhitespace: true });
-    const pageText = textContent.items
-      .map((item) => item.str ?? "")
-      .join(" ")
-      .trim();
-    if (pageText) {
-      chunks.push(pageText);
-    }
-  }
-
-  return chunks.join("\n");
-}
-
-/**
  * Returns the first `pageCount` pages as separate strings. Keeping pages apart
  * is what makes a repeated running header detectable.
  * @usedBy io/pdf/parser.ts

@@ -37,14 +37,12 @@ export {
 export type { RegistryRecord } from "./registries.js";
 export {
   extractTitleBlocks,
-  extractFirstPagesText,
   extractPageTexts,
   extractLinkUrls,
 } from "./textExtraction.js";
 export {
   titleFromBlocks,
   authorsFromBlocks,
-  detectIdentifier,
   normalizeTitle,
   normalizeAuthors,
   buildCiteKey,

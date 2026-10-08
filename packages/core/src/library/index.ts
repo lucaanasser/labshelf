@@ -7,7 +7,6 @@
 export {
   FolderService,
   isUnderDir,
-  rewritePath,
 } from "./folderService.js";
 export type {
   IPaperRecordIndex,

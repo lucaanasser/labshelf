@@ -26,7 +26,7 @@ export type { ApplyContext } from "./syncApply.js";
 export { SyncEngine } from "./syncEngine.js";
 export type { SyncEngineDeps, NamespaceRoots, FolderNameMaps } from "./syncEngine.js";
 export { buildLibraryFolderNames, driveFolderName } from "./folderNames.js";
-export { SyncLock, HeldSyncLock, parseSyncLock } from "./syncLock.js";
+export { SyncLock, parseSyncLock } from "./syncLock.js";
 export type { LockStore, SyncLockOwner, SyncLockInfo, SyncLockOptions, SyncLockAttempt } from "./syncLock.js";
 export { summarizeSyncResult, writeSyncRunRecord, readSyncRunRecord } from "./syncRunRecord.js";
 export type { SyncRunRecord } from "./syncRunRecord.js";

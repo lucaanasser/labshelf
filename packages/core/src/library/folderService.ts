@@ -40,15 +40,11 @@ export function isUnderDir(paperPath: string, dirPath: string, sep: string): boo
   return paperPath === dirPath || paperPath.startsWith(dirPath + sep);
 }
 
-/**
- * Rewrites a single path so segments under `oldDir` are re-rooted under
- * `newDir`. Returns the input unchanged if it does not lie under `oldDir`.
- */
-export function rewritePath(paperPath: string, oldDir: string, newDir: string, sep: string): string {
+// Re-roots a path under `oldDir` to `newDir`; paths outside `oldDir` are returned unchanged.
+function rewritePath(paperPath: string, oldDir: string, newDir: string, sep: string): string {
   if (paperPath === oldDir) return newDir;
   if (!paperPath.startsWith(oldDir + sep)) return paperPath;
-  const tail = paperPath.slice(oldDir.length + sep.length);
-  return newDir + sep + tail;
+  return newDir + sep + paperPath.slice(oldDir.length + sep.length);
 }
 
 /**

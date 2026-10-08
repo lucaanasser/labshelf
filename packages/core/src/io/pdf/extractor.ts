@@ -81,21 +81,6 @@ function medianSize(blocks: TextBlock[]): number {
 }
 
 /**
- * Detects the single most likely identifier in a PDF. Prefer
- * `detectIdentifiers` when you can try more than one candidate online.
- * @usedBy io/pdf/parser.ts
- * @returns The highest-ranked identifier, or undefined if none found.
- */
-export function detectIdentifier(
-  pdfInfo: Record<string, unknown>,
-  text: string,
-  linkUrls: string[] = [],
-): DetectedIdentifier | undefined {
-  return detectIdentifiers(pdfInfo, text, linkUrls)[0];
-}
-
-
-/**
  * Normalizes a raw title string by collapsing underscores, hyphens, and whitespace.
  * @usedBy io/pdf/parser.ts
  * @returns The cleaned title string.

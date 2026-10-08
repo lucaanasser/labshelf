@@ -6,7 +6,7 @@
 
 import {
   buildCiteKey,
-  detectIdentifier,
+  detectIdentifiers,
   isSparseText,
   looksLikeNaturalText,
   metadataFromXmp,
@@ -76,9 +76,11 @@ describe('looksLikeNaturalText', () => {
   });
 });
 
-describe('detectIdentifier', () => {
+const firstIdentifier = (...args: Parameters<typeof detectIdentifiers>) => detectIdentifiers(...args)[0];
+
+describe('detectIdentifiers', () => {
   it('reads a DOI from a link annotation when the text layer is unusable', () => {
-    const identifier = detectIdentifier({}, 'WrnE ynEENFCnAMNAyN', [
+    const identifier = firstIdentifier({}, 'WrnE ynEENFCnAMNAyN', [
       'https://doi.org/10.1371/journal.pone.0173461',
     ]);
 
@@ -88,18 +90,18 @@ describe('detectIdentifier', () => {
   it('prefers a labelled DOI over an earlier bibliography match', () => {
     const text = 'References 10.9999/old.reference ... doi:10.1038/nature12373';
 
-    expect(detectIdentifier({}, text)).toEqual({ type: 'doi', value: '10.1038/nature12373' });
+    expect(firstIdentifier({}, text)).toEqual({ type: 'doi', value: '10.1038/nature12373' });
   });
 
   it('recovers a DOI split across text items', () => {
-    expect(detectIdentifier({}, 'https://doi.org/10.1038/ nature12373')).toEqual({
+    expect(firstIdentifier({}, 'https://doi.org/10.1038/ nature12373')).toEqual({
       type: 'doi',
       value: '10.1038/nature12373',
     });
   });
 
   it('strips trailing punctuation from a DOI', () => {
-    expect(detectIdentifier({}, 'doi:10.1038/nature12373.')).toEqual({
+    expect(firstIdentifier({}, 'doi:10.1038/nature12373.')).toEqual({
       type: 'doi',
       value: '10.1038/nature12373',
     });
@@ -107,16 +109,16 @@ describe('detectIdentifier', () => {
 
   it('does not mistake an arbitrary decimal number for an arXiv id', () => {
     // A page range, a version string and a measurement all match `dddd.dddd`.
-    expect(detectIdentifier({}, 'pages 1706.03762 of volume 12')).toBeUndefined();
-    expect(detectIdentifier({}, 'measured 2017.1234 units')).toBeUndefined();
+    expect(firstIdentifier({}, 'pages 1706.03762 of volume 12')).toBeUndefined();
+    expect(firstIdentifier({}, 'measured 2017.1234 units')).toBeUndefined();
   });
 
   it('accepts an arXiv id with explicit context', () => {
-    expect(detectIdentifier({}, 'arXiv:1706.03762v7')).toEqual({
+    expect(firstIdentifier({}, 'arXiv:1706.03762v7')).toEqual({
       type: 'arxiv',
       value: '1706.03762',
     });
-    expect(detectIdentifier({}, '', ['https://arxiv.org/abs/1706.03762'])).toEqual({
+    expect(firstIdentifier({}, '', ['https://arxiv.org/abs/1706.03762'])).toEqual({
       type: 'arxiv',
       value: '1706.03762',
     });
