@@ -120,8 +120,6 @@ export type WebviewToHost =
   | { command: "exportAnnotations"; target: "clipboard" | "file" }
   | { command: "openExternalLink"; url: string };
 
-export type WebviewCommand = WebviewToHost["command"];
-
 const isStr = (v: unknown): v is string => typeof v === "string";
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const isObj = (v: unknown): v is Record<string, unknown> =>
@@ -135,7 +133,7 @@ const isObj = (v: unknown): v is Record<string, unknown> =>
 export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
   if (!isObj(raw) || !isStr(raw["command"])) { return false; }
   const m = raw;
-  switch (m["command"] as WebviewCommand) {
+  switch (m["command"] as WebviewToHost["command"]) {
     case "ready-for-init":
       return true;
     case "ready":

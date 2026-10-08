@@ -6,7 +6,7 @@
  */
 import type { EffectiveTheme } from "./protocol.js";
 
-export interface PagePreset {
+interface PagePreset {
   bg: string;
   text: string;
 }

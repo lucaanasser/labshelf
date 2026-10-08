@@ -16,8 +16,8 @@ export interface PaperData {
   reading?: ReadingState;
 }
 
-export const PDF_THEMES: readonly PdfTheme[] = ["auto", "light", "dark", "sepia", "high-contrast"];
-export const ANNOTATION_COLORS: readonly AnnotationColor[] = ["yellow", "green", "blue", "red", "pink"];
+const PDF_THEMES: readonly PdfTheme[] = ["auto", "light", "dark", "sepia", "high-contrast"];
+const ANNOTATION_COLORS: readonly AnnotationColor[] = ["yellow", "green", "blue", "red", "pink"];
 
 /**
  * @usedBy normalizePaperData, PaperDataStore, vscode storage/data/paperDataStore.ts

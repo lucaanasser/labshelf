@@ -6,9 +6,9 @@
  */
 import { DEFAULT_READER_PREFS, type CitationStyle, type ReaderPrefs, type ZoomPreset } from "./protocol.js";
 
-export const ZOOM_PRESETS: readonly ZoomPreset[] = ["page-width", "page-fit", "page-actual", "auto"];
-export const CITATION_STYLES: readonly CitationStyle[] = ["pandoc", "latex", "author-year", "citekey"];
-export const MAX_HOVER_DELAY_MS = 2000;
+const ZOOM_PRESETS: readonly ZoomPreset[] = ["page-width", "page-fit", "page-actual", "auto"];
+const CITATION_STYLES: readonly CitationStyle[] = ["pandoc", "latex", "author-year", "citekey"];
+const MAX_HOVER_DELAY_MS = 2000;
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
   return allowed.includes(value as T) ? (value as T) : fallback;
