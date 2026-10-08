@@ -14,7 +14,7 @@ const HEX = "0123456789abcdef";
  * @returns Promise<string>
  */
 export async function sha256Hex(content: Uint8Array): Promise<string> {
-  const buffer = await crypto.subtle.digest("SHA-256", content as BufferSource);
+  const buffer = await crypto.subtle.digest("SHA-256", content as Uint8Array<ArrayBuffer>);
   const view = new Uint8Array(buffer);
   let out = "";
   for (const byte of view) {

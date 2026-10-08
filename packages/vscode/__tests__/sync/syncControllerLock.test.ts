@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 
 import { ExtensionEventBus } from '@labshelf/core';
-import { FakeRemoteProvider } from './fakes';
+import { FakeRemoteProvider } from '@labshelf/core/test-support/sync-fakes';
 
 const provider = new FakeRemoteProvider();
 

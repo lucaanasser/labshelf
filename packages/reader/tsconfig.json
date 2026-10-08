@@ -1,12 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    // Only the DOM-free shared modules are compiled: the VS Code extension host require()s them at runtime.
-    // The reader UI under src/webview/ is bundled from source by each host's esbuild build.
+    // Only the DOM-free shared modules are checked here; the reader UI under src/webview/ has its own tsconfig.
     "lib": ["ES2022"],
     "types": ["node"],
-    "outDir": "dist",
-    "rootDir": "src/shared"
+    "noEmit": true
   },
   "include": ["src/shared/**/*"]
 }

@@ -1,10 +1,7 @@
 {
   "name": "@labshelf/core",
   "version": "0.1.0",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p ./",
     "typecheck": "tsc --noEmit -p ./",
     "test": "jest"
   },
@@ -19,5 +16,10 @@
     "ts-jest": "^29.4.9",
     "typescript": "^7.0.2",
     "typescript-js": "npm:typescript@^6.0.3"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./test-support/sync-fakes": "./__tests__/support/syncFakes.ts",
+    "./package.json": "./package.json"
   }
 }

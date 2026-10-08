@@ -121,7 +121,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 |---|---|---|---|---|---|
 | S0.1 | Commit the working tree | — | user · `commit-splitter` (L) | clean tree | [x] |
 | S0.2 | Core gets its own test suite | S0.1 | M · module-splitter | A7 for core | [x] |
-| S0.3 | Consume core from source; VS Code host on esbuild | S0.2 | H · main thread | builds and tests green, extension host run passes | [ ] |
+| S0.3 | Consume core from source; VS Code host on esbuild | S0.2 | H · main thread | builds and tests green, extension host run passes | [x] |
 | S0.4 | Add ESLint, dependency-cruiser, knip, runtime tsconfigs (warnings) | S0.3 | M · implementer | checks run in `pnpm -r lint` | [ ] |
 | S0.5 | Fix root scripts, drop `coverage/` | S0.1 | L · implementer (haiku) | `pnpm dev:vscode` resolves | [ ] |
 
@@ -708,3 +708,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 ## 8. Log
 - 2026-10-08 S0.1 done: working tree committed as 8 commits (`889043c`..`1e8a74b`), tree clean.
 - 2026-10-08 S0.2 done in two parts. Part 1: core has its own jest config and runs 12 test suites (127 tests) mirroring `src/`. Part 2 (moving `syncDiff`, `syncEngine`, `syncApply`, `syncManifest`, `libraryFolderNames`, `helpers` and `sync/fakes.ts`) waits for the `exports` map of S0.3, because `syncControllerLock.test.ts` in VS Code shares `FakeRemoteProvider` and needs a core test-support subpath. Also fixed the stale `PdfViewerPanel` default-column test.
+- 2026-10-08 S0.3 done: core and reader export TypeScript source (no `dist`); the VS Code host is bundled by esbuild (`build/host.mjs`, `out/extension.js`); the terminal alias is gone; the test tsconfigs of browser and terminal use Node16 resolution. S0.2 part 2 landed here: the six sync tests and `syncFakes.ts` are in core, and VS Code reaches the fakes through the `@labshelf/core/test-support/sync-fakes` export (core 175 tests + VS Code 360 = the 535 from before). `./node`, `./dom` and `./styles/*` are not exported yet: no file exists for them, and the steps that create the folders add the entries. Reader exports source for the same reason (it imports core source); `ai` keeps its `dist` until S2.1. Extension-host run on a library copy: activates, imports a PDF, resolves metadata, opens the reader. It found a startup bug in `activate()` (`externalWatcher` used before its declaration, which broke activation for any configured library); fixed in its own commit.

@@ -54,10 +54,6 @@ const common = {
   logLevel: "info",
   // Loaded lazily from node_modules: pdfjs reads its data files next to itself, the canvas is a native module.
   external: ["pdfjs-dist", "pdfjs-dist/*", "@napi-rs/canvas"],
-  alias: {
-    "@labshelf/core": resolve(repo, "packages/core/src/index.ts"),
-    "@labshelf/reader": resolve(repo, "packages/reader/src/shared/index.ts"),
-  },
   banner: { js: banner },
 };
 
