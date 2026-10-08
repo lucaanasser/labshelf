@@ -49,7 +49,7 @@ export class SyncController implements vscode.Disposable {
 
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly paths: ILibraryPaths,
+    private paths: ILibraryPaths,
     eventBus: ExtensionEventBus,
     /** Returns a paperId → title map used to name Drive folders. */
     private readonly getPaperTitles?: () => Promise<Map<string, string>>,
@@ -69,6 +69,11 @@ export class SyncController implements vscode.Disposable {
     eventBus.on("annotation:created", scheduleSync);
     eventBus.on("annotation:updated", scheduleSync);
     eventBus.on("annotation:deleted", scheduleSync);
+  }
+
+  /** Points the controller at another library, so the lock, manifest and synced folders follow a reconfigured root. */
+  setPaths(paths: ILibraryPaths): void {
+    this.paths = paths;
   }
 
   /** Loads persisted auth state and starts periodic sync if already authenticated. @usedBy extension. @returns void */

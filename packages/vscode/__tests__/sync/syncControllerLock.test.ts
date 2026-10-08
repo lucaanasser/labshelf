@@ -74,6 +74,25 @@ describe('SyncController and the cross-app sync lock', () => {
     controller.dispose();
   });
 
+  it('syncs against the new library after setPaths, not the one it was built with', async () => {
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'labshelf-lock-other-'));
+    fs.mkdirSync(path.join(other, '.research', 'sync'), { recursive: true });
+    try {
+      holdLockAsTerminal();
+      const listSpy = jest.spyOn(provider, 'list');
+      const controller = makeController(root);
+
+      controller.setPaths(new LibraryPaths(vscode.Uri.file(other)));
+      await controller.sync('manual');
+
+      expect(listSpy).toHaveBeenCalled();
+      expect(JSON.parse(fs.readFileSync(lockFile(root), 'utf8')).token).toBe('terminal-token');
+      controller.dispose();
+    } finally {
+      fs.rmSync(other, { recursive: true, force: true });
+    }
+  });
+
   it('stays quiet when an automatic sync finds the lock taken', async () => {
     holdLockAsTerminal();
     const controller = makeController(root);

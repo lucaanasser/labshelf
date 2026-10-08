@@ -131,7 +131,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Every path that activates a library root comes through here, so the watcher and the shared config follow it.
     watchLibrary(root);
     void mirrorLibraryRoot(root);
-    if (syncController) { return; }
+    if (syncController) {
+      syncController.setPaths(new LibraryPaths(root));
+      return;
+    }
     const controller = new SyncController(
       context,
       new LibraryPaths(root),
@@ -490,6 +493,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       libraryRoot = root;
       activeServices = await buildServices(context, root, fileSystemService, eventBus);
       libraryProvider.setPapersRoot(new LibraryPaths(root).papersRoot());
+      await ensureSyncController(root);
       vscode.window.showInformationMessage(`LabShelf: Library configured at ${root.fsPath}`);
     }),
   );
