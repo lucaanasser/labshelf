@@ -28,21 +28,29 @@ jest.mock("../../src/storage/paperRecordStore", () => ({
   upsertRecord: async () => undefined,
 }));
 
-import { attachPdfToPaper, makeCiteKey, uniqueCiteKey } from "../../src/capture/addPaperFlow";
+import { addPaper, attachPdfToPaper } from "../../src/capture/addPaperFlow";
 import { safeFolder } from "../../src/capture/captureService";
 
-describe("cite keys", () => {
-  it("builds author + year + first significant title word, accent-folded", () => {
-    expect(makeCiteKey({ authors: ["Alok Aggarwal"], year: 1986, title: "Geometric applications of a matrix searching algorithm" }, "x"))
-      .toBe("aggarwal1986geometric");
-    expect(makeCiteKey({ authors: ["José Müller"], year: 2020, title: "A study of the ocean" }, "x")).toBe("muller2020study");
-    expect(makeCiteKey({}, "On Growth and Form")).toBe("growth");
+describe("addPaper", () => {
+  const meta = { authors: ["Ann Lee"], year: 2020, title: "Attention" };
+  beforeEach(() => { mockFiles.clear(); mockRecords = []; });
+
+  it("normalises the tags it stores", async () => {
+    const paper = await addPaper(undefined, meta, "x", "papers", { tags: ["NLP", "nlp", " Deep   Learning "] });
+    expect(paper.tags).toEqual(["NLP", "Deep Learning"]);
   });
 
-  it("appends a, b, … when the key is taken", () => {
-    expect(uniqueCiteKey("smith2020deep", new Set())).toBe("smith2020deep");
-    expect(uniqueCiteKey("smith2020deep", new Set(["smith2020deep"]))).toBe("smith2020deepa");
-    expect(uniqueCiteKey("smith2020deep", new Set(["smith2020deep", "smith2020deepa"]))).toBe("smith2020deepb");
+  it("skips an id taken in another casing", async () => {
+    mockRecords = [{ id: "Lee2020Attention", title: "Other", citeKey: "Lee2020Attention", path: "papers/Lee2020Attention", status: "unread" }];
+    const paper = await addPaper(undefined, meta, "x");
+    expect(paper.id).toBe("lee2020attentiona");
+    expect(paper.path).toBe("papers/lee2020attentiona");
+  });
+
+  it("skips a folder that exists without a cached record", async () => {
+    mockFiles.set("papers/lee2020attention/metadata.yaml", new Uint8Array());
+    const paper = await addPaper(undefined, meta, "x");
+    expect(paper.id).toBe("lee2020attentiona");
   });
 });
 

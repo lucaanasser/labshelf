@@ -1,8 +1,5 @@
 /**
  * Orchestrates paper import, metadata persistence, status updates, and deletion.
- *
- * @depends @labshelf/core, storage/fileSystemService
- * @dependents commands/registerCommands.ts, extension.ts, pdf-viewer/PdfViewerPanel.ts, ui/list/listWebviewPanel.ts
  */
 import * as path from "node:path";
 import * as vscode from "vscode";
@@ -13,8 +10,11 @@ import {
   PdfImportParser,
   BibTeXService,
   FolderService,
+  citeKeySlug,
+  claimCiteKey,
   isPaperStatus,
   isUnderDir,
+  normalizeTags,
   paperFiles,
   parsePaperMetadata,
 } from "@labshelf/core";
@@ -82,8 +82,13 @@ export class PaperService {
     const pdfBytes = await vscode.workspace.fs.readFile(sourceUri);
     const fileStem = path.basename(sourceUri.fsPath, path.extname(sourceUri.fsPath));
     const parsed = await this.pdfImportParser.parse(pdfBytes, fileStem);
-    const paperId = parsed.citeKey || fileStem || crypto.randomUUID();
     const parentDir = targetParentDir ?? this.paths.papersRoot();
+    // The id is also the folder name: a taken one would overwrite another paper's PDF.
+    const paperId = await claimCiteKey(
+      parsed.citeKey || citeKeySlug(fileStem) || `paper${Date.now()}`,
+      (await this.database.listPapers()).map((paper) => paper.id),
+      (key) => this.folderExists(vscode.Uri.joinPath(parentDir, key)),
+    );
     const targetFolder = vscode.Uri.joinPath(parentDir, paperId);
     await this.fsService.ensureDirectory(targetFolder);
 
@@ -95,34 +100,22 @@ export class PaperService {
     }
     await vscode.workspace.fs.writeFile(targetPdf, pdfBytes);
 
-    const paper: PaperRecord = {
-      id: paperId,
-      title: parsed.title,
-      path: targetFolder.fsPath,
-      citeKey: paperId,
-      status: "unread",
-      // The PDF was just written above, so this import always has one.
-      hasPdf: true,
-      ...(parsed.authors?.length ? { authors: parsed.authors } : {}),
-      ...(parsed.year ? { year: parsed.year } : {}),
-      ...(parsed.summary ? { summary: parsed.summary } : {}),
-      ...(parsed.journal ? { journal: parsed.journal } : {}),
-      ...(parsed.publisher ? { publisher: parsed.publisher } : {}),
-      ...(parsed.volume ? { volume: parsed.volume } : {}),
-      ...(parsed.issue ? { issue: parsed.issue } : {}),
-      ...(parsed.pages ? { pages: parsed.pages } : {}),
-      ...(parsed.doi ? { doi: parsed.doi } : {}),
-      ...(parsed.url ? { url: parsed.url } : {}),
-      ...(parsed.issn ? { issn: parsed.issn } : {}),
-      ...(parsed.language ? { language: parsed.language } : {}),
-      ...(parsed.keywords?.length ? { keywords: parsed.keywords } : {}),
-    };
+    const paper = importedPaperRecord(paperId, targetFolder.fsPath, parsed);
 
     await this.database.upsertPaper(paper);
     await this.bibTeXService.writePaperArtifacts(targetFolder.fsPath, paper, sourceUri.fsPath);
     this.eventBus.emit(EVENTS.PAPER_ADDED, paper);
     this._lastImportNeedsReview = needsReview(parsed);
     return paper;
+  }
+
+  private async folderExists(uri: vscode.Uri): Promise<boolean> {
+    try {
+      await vscode.workspace.fs.stat(uri);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -636,19 +629,29 @@ export class PaperService {
   }
 }
 
-// Trimmed, de-duplicated (case-insensitively, first spelling wins) and in the order given.
-function normalizeTags(tags: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const raw of tags) {
-    const tag = raw.trim().replace(/\s+/g, " ");
-    const key = tag.toLowerCase();
-    if (tag && !seen.has(key)) {
-      seen.add(key);
-      out.push(tag);
-    }
-  }
-  return out;
+// The record of a PDF that was just copied into the library, so it always has one.
+function importedPaperRecord(id: string, folderPath: string, parsed: ParsedPdfImport): PaperRecord {
+  return {
+    id,
+    title: parsed.title,
+    path: folderPath,
+    citeKey: id,
+    status: "unread",
+    hasPdf: true,
+    ...(parsed.authors?.length ? { authors: parsed.authors } : {}),
+    ...(parsed.year ? { year: parsed.year } : {}),
+    ...(parsed.summary ? { summary: parsed.summary } : {}),
+    ...(parsed.journal ? { journal: parsed.journal } : {}),
+    ...(parsed.publisher ? { publisher: parsed.publisher } : {}),
+    ...(parsed.volume ? { volume: parsed.volume } : {}),
+    ...(parsed.issue ? { issue: parsed.issue } : {}),
+    ...(parsed.pages ? { pages: parsed.pages } : {}),
+    ...(parsed.doi ? { doi: parsed.doi } : {}),
+    ...(parsed.url ? { url: parsed.url } : {}),
+    ...(parsed.issn ? { issn: parsed.issn } : {}),
+    ...(parsed.language ? { language: parsed.language } : {}),
+    ...(parsed.keywords?.length ? { keywords: parsed.keywords } : {}),
+  };
 }
 
 // Turns a text-layer job's outcome into the verdict shown in the library.

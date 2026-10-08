@@ -24,7 +24,7 @@ import {
   mirrorLibraryRoot,
 } from "./storage/paths/index.js";
 import { ExternalChangeWatcher, findMissingPapers } from "./storage/data/externalChangeWatcher.js";
-import { LibraryTreeDataProvider, LibraryDragAndDropController } from "./ui/library/index.js";
+import { LibraryTreeDataProvider, LibraryDragAndDropController, validateFolderNameInput } from "./ui/library/index.js";
 import type { LibraryNode } from "./ui/library/index.js";
 import { ListWebviewPanel } from "./ui/list/index.js";
 import { SettingsWebviewPanel } from "./ui/settings/index.js";
@@ -371,7 +371,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const name = await vscode.window.showInputBox({
       prompt: "Folder name",
       placeHolder: "My Folder",
-      validateInput: (value) => isValidFolderName(value) ? null : "Use a name without slashes.",
+      validateInput: validateFolderNameInput,
     });
     if (!name?.trim()) { return; }
 
@@ -397,7 +397,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const name = await vscode.window.showInputBox({
         prompt: "New folder name",
         value: node.label,
-        validateInput: (value) => isValidFolderName(value) ? null : "Use a name without slashes.",
+        validateInput: validateFolderNameInput,
       });
       if (!name?.trim() || name.trim() === node.label) { return; }
 
@@ -572,12 +572,6 @@ function createOcrEngine(
 function createTextLayerBuilder(engine: TesseractOcrEngine | undefined): SearchablePdfBuilder {
   const config = vscode.workspace.getConfiguration("labshelf");
   return new SearchablePdfBuilder(engine, { maxPages: config.get<number>("ocr.maxPages", 150) });
-}
-
-// Returns true when the folder name is non-empty and contains no path separators.
-function isValidFolderName(value: string): boolean {
-  const trimmed = value.trim();
-  return trimmed.length > 0 && !/[/\\]/.test(trimmed);
 }
 
 // Constructs and wires all application services for the given library root.

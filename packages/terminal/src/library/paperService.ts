@@ -15,9 +15,14 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import {
+  citeKeySlug,
+  claimCiteKey,
   detectIdentifiers,
-  resolveOnlineMetadata,
+  makeCiteKey,
+  normalizeTags,
   normalizeTitle,
+  resolveOnlineMetadata,
+  validateFolderName,
   type BibTeXService,
   type DetectedIdentifier,
   type ILogger,
@@ -71,75 +76,7 @@ export interface PaperServiceDeps {
 }
 
 const PDF_MAGIC = "%PDF-";
-const STOPWORDS = new Set(["a", "an", "the", "on", "of", "in", "for", "and", "to", "with", "from", "by", "at", "is", "are"]);
 const MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024;
-
-/**
- * Trimmed, de-duplicated case-insensitively (first spelling wins), order kept — the VS Code PaperService rule.
- * @usedBy TerminalPaperService.updateFields
- * @returns the tags
- */
-export function normalizeTags(tags: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const raw of tags) {
-    const tag = raw.trim().replace(/\s+/g, " ");
-    const key = tag.toLowerCase();
-    if (tag && !seen.has(key)) {
-      seen.add(key);
-      out.push(tag);
-    }
-  }
-  return out;
-}
-
-function slug(text: string): string {
-  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-/**
- * "authorYearWord" cite key (vaswani2017attention), the rule the browser extension uses for papers captured from
- * metadata; falls back to a timestamp.
- * @usedBy importIdentifier
- * @returns the cite key
- */
-export function makeCiteKey(meta: ResolvedMetadata, fallbackTitle: string): string {
-  const lastName = slug(meta.authors?.[0]?.trim().split(/\s+/).pop() ?? "");
-  const year = meta.year ? String(meta.year) : "";
-  const word = (meta.title ?? fallbackTitle).split(/\s+/).map(slug).find((w) => w.length > 1 && !STOPWORDS.has(w)) ?? "";
-  return `${lastName}${year}${word}` || `paper${Date.now()}`;
-}
-
-/**
- * The key when free, otherwise key + a, b, … (BibTeX's convention). The key is the folder name and the paper id, so a
- * collision would overwrite another paper.
- * @usedBy importPdf, importIdentifier
- * @returns a free key
- */
-export function uniqueCiteKey(base: string, taken: Set<string>): string {
-  if (!taken.has(base.toLowerCase())) { return base; }
-  for (let i = 0; i < 26 * 26; i++) {
-    const suffix = i < 26
-      ? String.fromCharCode(97 + i)
-      : String.fromCharCode(97 + Math.floor(i / 26) - 1) + String.fromCharCode(97 + (i % 26));
-    if (!taken.has(`${base}${suffix}`.toLowerCase())) { return `${base}${suffix}`; }
-  }
-  return `${base}${Date.now()}`;
-}
-
-/**
- * Valid collection folder name: not empty, no slashes, not hidden, not "." or "..".
- * @usedBy TerminalPaperService, ui/app
- * @returns an error message, or undefined when valid
- */
-export function validateCollectionName(name: string): string | undefined {
-  const trimmed = name.trim();
-  if (!trimmed) { return "The name cannot be empty."; }
-  if (/[/\\]/.test(trimmed)) { return "Use a name without slashes."; }
-  if (trimmed.startsWith(".")) { return "A collection name cannot start with a dot."; }
-  if (/[\x00-\x1f\x7f]/.test(trimmed)) { return "The name contains control characters."; }
-  return undefined;
-}
 
 /**
  * Normalizes what the user typed in "add" into something detectIdentifiers understands (bare arXiv ids, doi: …).
@@ -323,7 +260,7 @@ export class TerminalPaperService {
    * @returns the new collection path
    */
   async createCollection(parentRel: string, name: string): Promise<string> {
-    const problem = validateCollectionName(name);
+    const problem = validateFolderName(name);
     if (problem) { throw new Error(problem); }
     const dir = path.join(this.paths.collectionDir(parentRel), name.trim());
     if (await exists(dir)) { throw new Error(`"${name.trim()}" already exists`); }
@@ -339,7 +276,7 @@ export class TerminalPaperService {
    */
   async renameCollection(rel: string, newName: string): Promise<string> {
     if (!rel) { throw new Error("The library root cannot be renamed"); }
-    const problem = validateCollectionName(newName);
+    const problem = validateFolderName(newName);
     if (problem) { throw new Error(problem); }
     const from = this.paths.collectionDir(rel);
     const to = path.join(path.dirname(from), newName.trim());
@@ -383,10 +320,6 @@ export class TerminalPaperService {
     await this.changed();
   }
 
-  private takenIds(): Set<string> {
-    return new Set([...this.deps.store.snapshot.papers.keys()].map((id) => id.toLowerCase()));
-  }
-
   private findByDoi(doi: string | undefined): PaperEntry | undefined {
     if (!doi) { return undefined; }
     const key = doi.toLowerCase();
@@ -394,14 +327,7 @@ export class TerminalPaperService {
   }
 
   private async freeFolder(targetDir: string, base: string): Promise<string> {
-    const taken = this.takenIds();
-    let id = uniqueCiteKey(base, taken);
-    // A folder can exist without being a paper the scan knows (a sync in flight, an orphan PDF folder).
-    while (await exists(path.join(targetDir, id))) {
-      taken.add(id.toLowerCase());
-      id = uniqueCiteKey(base, taken);
-    }
-    return id;
+    return claimCiteKey(base, this.deps.store.snapshot.papers.keys(), (key) => exists(path.join(targetDir, key)));
   }
 
   /**
@@ -421,7 +347,7 @@ export class TerminalPaperService {
       if (duplicate) { return { status: "duplicate", existingId: duplicate.record.id, input }; }
 
       const targetDir = this.paths.collectionDir(targetRel);
-      const id = await this.freeFolder(targetDir, parsed.citeKey || slug(stem) || `paper${Date.now()}`);
+      const id = await this.freeFolder(targetDir, parsed.citeKey || citeKeySlug(stem) || `paper${Date.now()}`);
       const folder = path.join(targetDir, id);
       await fs.mkdir(folder, { recursive: true });
       await writeFileAtomic(path.join(folder, PDF_FILE), bytes, this.paths.layout.tmpDir());

@@ -87,7 +87,8 @@ describe('PaperService.addPaperFromUri byte safety', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({ type: vscode.FileType.File });
+    // No library folder exists yet, so cite keys are free.
+    (vscode.workspace.fs.stat as jest.Mock).mockRejectedValue(new Error('ENOENT'));
     (vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined);
     (vscode.workspace.fs.readFile as jest.Mock).mockResolvedValue(new Uint8Array(2048).fill(9));
   });

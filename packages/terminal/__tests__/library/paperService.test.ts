@@ -18,10 +18,6 @@ import { LibraryStore } from "../../src/library/libraryStore";
 import {
   TerminalPaperService,
   identifiersIn,
-  makeCiteKey,
-  normalizeTags,
-  uniqueCiteKey,
-  validateCollectionName,
 } from "../../src/library/paperService";
 import { NodeFileSystem } from "../../src/platform/nodeFileSystem";
 import {
@@ -137,88 +133,6 @@ const metaFile = (h: Harness, id: string, collection?: string): string => path.j
 const bibFile = (h: Harness, id: string, collection?: string): string => path.join(h.lib.paperDir(id, collection), "bib.bib");
 
 describe("pure helpers", () => {
-  describe("normalizeTags", () => {
-    it("trims, collapses inner whitespace, drops blanks and de-duplicates case-insensitively (first spelling wins)", () => {
-      expect(normalizeTags(["  NLP ", "nlp", "Deep   Learning", "deep learning", "", "   ", "Vision"]))
-        .toEqual(["NLP", "Deep Learning", "Vision"]);
-    });
-
-    it("keeps the order and handles an empty list", () => {
-      expect(normalizeTags(["b", "a", "c"])).toEqual(["b", "a", "c"]);
-      expect(normalizeTags([])).toEqual([]);
-    });
-  });
-
-  describe("validateCollectionName", () => {
-    it.each([
-      ["", "The name cannot be empty."],
-      ["   ", "The name cannot be empty."],
-      ["a/b", "Use a name without slashes."],
-      ["a\\b", "Use a name without slashes."],
-      [".hidden", "A collection name cannot start with a dot."],
-      ["  .hidden", "A collection name cannot start with a dot."],
-      ["bad\u0001name", "The name contains control characters."],
-    ])("rejects %j", (name, message) => {
-      expect(validateCollectionName(name)).toBe(message);
-    });
-
-    it.each(["Machine Learning", "Café", "v1.2", "日本語", "  padded  ", "a-b_c"])("accepts %j", (name) => {
-      expect(validateCollectionName(name)).toBeUndefined();
-    });
-  });
-
-  describe("makeCiteKey", () => {
-    it("builds authorYearWord from the first author's family name, the year and the first meaningful title word", () => {
-      expect(makeCiteKey({ authors: ["Ashish Vaswani", "Noam Shazeer"], year: 2017, title: "Attention Is All You Need" }, "x"))
-        .toBe("vaswani2017attention");
-    });
-
-    it("skips stop words and one-letter words in the title", () => {
-      expect(makeCiteKey({ authors: ["Ann Lee"], year: 2020, title: "The Role of Attention" }, "x")).toBe("lee2020role");
-      expect(makeCiteKey({ authors: ["Ann Lee"], year: 2020, title: "A B Transformer" }, "x")).toBe("lee2020transformer");
-    });
-
-    it("strips accents and punctuation", () => {
-      expect(makeCiteKey({ authors: ["José Müller-Ñandú"], year: 2021, title: "Über-Models" }, "x")).toBe("mullernandu2021uber" + "models");
-    });
-
-    it("uses the last word of the author's name, also with initials", () => {
-      expect(makeCiteKey({ authors: ["G. Kucsko"], year: 2013, title: "Thermometry" }, "x")).toBe("kucsko2013thermometry");
-    });
-
-    it("leaves out a missing author or year", () => {
-      expect(makeCiteKey({ year: 2017, title: "Attention" }, "x")).toBe("2017attention");
-      expect(makeCiteKey({ authors: ["Ann Lee"], title: "Attention" }, "x")).toBe("leeattention");
-    });
-
-    it("falls back to the given title when the metadata has none", () => {
-      expect(makeCiteKey({ authors: ["Ann Lee"], year: 2020 }, "Fallback Words")).toBe("lee2020fallback");
-    });
-
-    it("falls back to a timestamp key when nothing is usable", () => {
-      expect(makeCiteKey({}, "")).toMatch(/^paper\d+$/);
-    });
-  });
-
-  describe("uniqueCiteKey", () => {
-    it("returns the key when it is free", () => {
-      expect(uniqueCiteKey("vaswani2017attention", new Set())).toBe("vaswani2017attention");
-      expect(uniqueCiteKey("vaswani2017attention", new Set(["other"]))).toBe("vaswani2017attention");
-    });
-
-    it("appends a, b, c… when taken, comparing case-insensitively against a lower-cased set", () => {
-      expect(uniqueCiteKey("Key", new Set(["key"]))).toBe("Keya");
-      expect(uniqueCiteKey("key", new Set(["key", "keya"]))).toBe("keyb");
-      expect(uniqueCiteKey("key", new Set(["key", "keya", "keyb", "keyc"]))).toBe("keyd");
-    });
-
-    it("continues with two letters after z", () => {
-      const taken = new Set(["key"]);
-      for (const c of "abcdefghijklmnopqrstuvwxyz") { taken.add(`key${c}`); }
-      expect(uniqueCiteKey("key", taken)).toBe("keyaa");
-    });
-  });
-
   describe("identifiersIn", () => {
     it("reads a bare arXiv id, dropping the version", () => {
       expect(identifiersIn("1706.03762")).toEqual([{ type: "arxiv", value: "1706.03762" }]);
@@ -672,6 +586,7 @@ describe("collections", () => {
       ["   ", "The name cannot be empty."],
       ["a/b", "Use a name without slashes."],
       [".secret", "A collection name cannot start with a dot."],
+      ["a".repeat(256), "The name is too long (at most 255 characters)."],
     ])("rejects %j", async (name, message) => {
       const h = await harness();
       await expect(h.service.createCollection("", name)).rejects.toThrow(message);

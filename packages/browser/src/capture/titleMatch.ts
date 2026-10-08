@@ -10,10 +10,9 @@
  * within a tolerance (wider for preprints, whose online-first date drifts from
  * the version of record); and, when both sides list authors, they share at least
  * one surname. Pure and network-free so every rule can be unit-tested.
- * @depends capture/libraryMatch (normalizeTitle), capture/metadataResolver (surname)
- * @dependents capture/resolvers/{openalexResolver,semanticScholarResolver,europePmcResolver,arxivTitleResolver,repositoryResolver}
  */
-import { normalizeTitle } from "./libraryMatch";
+import { titleKey } from "@labshelf/core";
+
 import { surname } from "./metadataResolver";
 
 /** A record thin enough for the comparison: whatever a source managed to supply. */
@@ -38,8 +37,8 @@ const TITLE_DICE_MIN = 0.9;
  * @usedBy the open-access resolvers, to reject wrong-item candidates
  */
 export function sameWork(a: WorkRef, b: WorkRef, opts: SameWorkOptions = {}): boolean {
-  const ta = a.title ? normalizeTitle(a.title) : "";
-  const tb = b.title ? normalizeTitle(b.title) : "";
+  const ta = a.title ? titleKey(a.title) : "";
+  const tb = b.title ? titleKey(b.title) : "";
   // Without a title on both sides there is nothing to anchor the identity to.
   if (!ta || !tb) return false;
   if (ta !== tb && wordBigramDice(ta, tb) < TITLE_DICE_MIN) return false;

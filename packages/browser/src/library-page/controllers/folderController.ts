@@ -8,19 +8,15 @@
  * Prompts use the VS Code-style input box and dialog instead of the browser's
  * native ones. Sync runs separately: every mutation here just changes the
  * local IDB state and asks the background to sync soon.
- *
- * @depends @labshelf/core FolderService, storage (IndexedDbFileSystem, paperRecordStore),
- *          ui/quickInput, ui/dialog, ui/toast, state/derive, events, controllers/dataController
- * @dependents library-page/index
  */
-import { FolderService } from "@labshelf/core";
+import { FolderService, validateFolderName } from "@labshelf/core";
 import type { IPaperRecordIndex } from "@labshelf/core";
 import { IndexedDbFileSystem, deleteRecord, listAllRecords, upsertRecord } from "../../storage";
 import { confirmDialog } from "../../ui/dialog";
 import { inputBox } from "../../ui/quickInput";
 import { toast } from "../../ui/toast";
 import { on } from "../events";
-import { ROOT, baseName, countPapersUnder, findNode, isUnder, isValidFolderName, parentDir } from "../state/derive";
+import { ROOT, baseName, countPapersUnder, findNode, isUnder, parentDir } from "../state/derive";
 import type { LibraryStore } from "../state/libraryStore";
 import { errorMessage, refreshLibrary, scheduleSyncSoon } from "./dataController";
 
@@ -49,9 +45,10 @@ async function guard(_store: LibraryStore, work: () => Promise<void>): Promise<v
   try { await work(); } catch (err) { toast(errorMessage(err), "error"); }
 }
 
-/** Validation shared by new and rename: syntax plus sibling collision. */
-export function validateFolderName(store: LibraryStore, parent: string, name: string, current?: string): string | null {
-  if (!isValidFolderName(name)) return "Use a name without slashes; it cannot start with a dot.";
+/** Validation shared by new and rename: the core name rule plus sibling collision. */
+export function folderNameProblem(store: LibraryStore, parent: string, name: string, current?: string): string | null {
+  const invalid = validateFolderName(name);
+  if (invalid) return invalid;
   const trimmed = name.trim();
   if (trimmed === current) return null;
   const siblings = parent === ROOT ? store.get().folders : findNode(store.get().folders, parent)?.children ?? [];
@@ -65,7 +62,7 @@ async function handleNew(store: LibraryStore, parent: string): Promise<void> {
     title: parent === ROOT ? "New folder" : `New folder in ${baseName(parent)}`,
     prompt: "Folder name",
     placeholder: "e.g. Reading group",
-    validate: (v) => validateFolderName(store, parent, v),
+    validate: (v) => folderNameProblem(store, parent, v),
   });
   if (!name) return;
   const target = `${parent}/${name}`;
@@ -83,7 +80,7 @@ async function handleRename(store: LibraryStore, oldPath: string): Promise<void>
     title: "Rename folder",
     prompt: "New name",
     value: current,
-    validate: (v) => validateFolderName(store, parent, v, current),
+    validate: (v) => folderNameProblem(store, parent, v, current),
   });
   if (!next || next === current) return;
   const newPath = `${parent}/${next}`;

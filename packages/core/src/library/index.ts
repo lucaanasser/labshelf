@@ -18,3 +18,8 @@ export {
   joinWith, libraryLayout, paperFiles, syncRoots,
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles } from "./layout.js";
+export {
+  FOLDER_NAME_MAX_LENGTH,
+  citeKeySlug, claimCiteKey, makeCiteKey, normalizeTags, titleKey, uniqueCiteKey, validateFolderName,
+} from "./identity/index.js";
+export type { CiteKeyMetadata } from "./identity/index.js";

@@ -1,9 +1,9 @@
 /**
  * Pure text helpers for the popup: the one-line byline under the title, tag
  * parsing, and human labels for folders.
- * @depends platform/runtimeMessages (types)
- * @dependents popup/index
  */
+import { normalizeTags } from "@labshelf/core";
+
 import type { DraftView, FoldersData } from "../platform/runtimeMessages";
 
 /** "Edelman, Arias, Smith · SIAM J. Matrix Anal. Appl. · 1998" — surnames, et al. past three. */
@@ -13,14 +13,9 @@ export function metaLine(d: Pick<DraftView, "authors" | "venue" | "year">): stri
   return [who, d.venue, d.year].filter(Boolean).join(" · ");
 }
 
-/** "ml, Thesis ch2 , ml" → ["ml", "Thesis ch2"]: trimmed, de-duplicated case-insensitively. */
+/** "ml, #Thesis ch2 , ML" → ["ml", "Thesis ch2"]: split on , and ;, a leading # dropped, then normalised. */
 export function parseTags(text: string): string[] {
-  const out: string[] = [];
-  for (const raw of text.split(/[,;]/)) {
-    const tag = raw.replace(/\s+/g, " ").trim().replace(/^#/, "");
-    if (tag && !out.some((t) => t.toLowerCase() === tag.toLowerCase())) out.push(tag);
-  }
-  return out;
+  return normalizeTags(text.split(/[,;]/).map((raw) => raw.trim().replace(/^#/, "")));
 }
 
 /** "papers/Thesis/Chapter 2" → "Thesis / Chapter 2"; the root is "Library". */

@@ -162,9 +162,3 @@ export function sortPapers(papers: ListPaper[], key: SortKey, dir: SortDir): Lis
     return (a.title ?? "").localeCompare(b.title ?? "");
   });
 }
-
-/** Rejects names that would escape the folder or collide with the path syntax. */
-export function isValidFolderName(name: string): boolean {
-  const n = name.trim();
-  return n.length > 0 && n !== "." && n !== ".." && !n.startsWith(".") && !/[/\\]/.test(n);
-}

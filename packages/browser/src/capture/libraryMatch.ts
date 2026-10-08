@@ -3,10 +3,8 @@
  * Scholar buttons can say "In LabShelf" instead of saving a duplicate. A DOI
  * or arXiv id settles it; otherwise the normalised title must match exactly
  * and the years must not disagree.
- * @depends @labshelf/core PaperRecord
- * @dependents capture/captureService, background/index
  */
-import type { PaperRecord } from "@labshelf/core";
+import { titleKey, type PaperRecord } from "@labshelf/core";
 
 export interface PaperQuery {
   doi?: string | undefined;
@@ -17,16 +15,6 @@ export interface PaperQuery {
 
 // Shorter titles ("Introduction", "Editorial") are too common to identify a paper.
 const MIN_TITLE_CHARS = 20;
-
-/** Lower-cased, accent-folded, punctuation-free title for comparison. */
-export function normalizeTitle(title: string): string {
-  return title
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
 
 /**
  * The library record describing the queried paper, if any.
@@ -44,8 +32,8 @@ export function findInLibrary(records: PaperRecord[], query: PaperQuery): PaperR
       r.doi?.toLowerCase() === `10.48550/arxiv.${arxiv}` || (r.url ?? "").toLowerCase().includes(`arxiv.org/abs/${arxiv}`));
     if (hit) return hit;
   }
-  const title = query.title ? normalizeTitle(query.title) : "";
+  const title = query.title ? titleKey(query.title) : "";
   if (title.length < MIN_TITLE_CHARS) return undefined;
   return records.find((r) =>
-    normalizeTitle(r.title) === title && !(query.year && r.year && Math.abs(query.year - r.year) > 1));
+    titleKey(r.title) === title && !(query.year && r.year && Math.abs(query.year - r.year) > 1));
 }

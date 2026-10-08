@@ -8,7 +8,6 @@ import {
   flattenFolders,
   fmtCreator,
   folderLabel,
-  isValidFolderName,
   listPapersUnder,
   nextStatus,
   papersInScope,
@@ -73,10 +72,6 @@ describe("folder helpers", () => {
     expect(flattenFolders(tree)).toEqual([
       { label: "A", path: "papers/A" }, { label: "A / A1", path: "papers/A/A1" }, { label: "B", path: "papers/B" },
     ]);
-  });
-  it("validates folder names", () => {
-    expect(isValidFolderName("Reading group")).toBe(true);
-    for (const bad of ["", " ", ".", "..", ".hidden", "a/b", "a\\b"]) expect(isValidFolderName(bad)).toBe(false);
   });
 });
 

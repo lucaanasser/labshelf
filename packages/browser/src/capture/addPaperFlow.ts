@@ -9,7 +9,7 @@
  * @dependents capture/captureService, background/index
  */
 import type { IFileSystem, PaperRecord, ResolvedMetadata } from "@labshelf/core";
-import { BibTeXService, PDF_FILE, PAPERS_DIR } from "@labshelf/core";
+import { BibTeXService, PDF_FILE, PAPERS_DIR, claimCiteKey, makeCiteKey, normalizeTags } from "@labshelf/core";
 import { IndexedDbFileSystem } from "../storage/indexedDbFileSystem";
 import { listAllRecords, upsertRecord } from "../storage/paperRecordStore";
 
@@ -26,44 +26,6 @@ class IdbTextAdapter implements IFileSystem {
   async exists(path: string): Promise<boolean> {
     return (await this.idb.stat(path)) !== undefined;
   }
-}
-
-// Title words that make a poor cite-key suffix.
-const STOPWORDS = new Set(["a", "an", "the", "on", "of", "in", "for", "and", "to", "with", "from", "by", "at", "is", "are"]);
-
-function slug(text: string): string {
-  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-/**
- * Builds an "authorYearWord" cite key (aggarwal1986geometric), falling back
- * to a timestamp when the metadata has nothing to build from.
- * @usedBy addPaper, tests
- */
-export function makeCiteKey(meta: ResolvedMetadata, fallbackTitle: string): string {
-  const lastName = slug(meta.authors?.[0]?.trim().split(/\s+/).pop() ?? "");
-  const year = meta.year ? String(meta.year) : "";
-  const word = (meta.title ?? fallbackTitle)
-    .split(/\s+/)
-    .map(slug)
-    .find((w) => w.length > 1 && !STOPWORDS.has(w)) ?? "";
-  const key = `${lastName}${year}${word}`;
-  return key || `paper${Date.now()}`;
-}
-
-/**
- * The key itself when free, otherwise key + a, b, … — BibTeX's convention for
- * two papers by the same author in the same year. The key is also the folder
- * name and the paper id, so a collision would overwrite another paper.
- * @usedBy addPaper, tests
- */
-export function uniqueCiteKey(base: string, taken: Set<string>): string {
-  if (!taken.has(base)) return base;
-  for (let i = 0; i < 26 * 26; i++) {
-    const suffix = i < 26 ? String.fromCharCode(97 + i) : String.fromCharCode(97 + Math.floor(i / 26) - 1) + String.fromCharCode(97 + (i % 26));
-    if (!taken.has(`${base}${suffix}`)) return `${base}${suffix}`;
-  }
-  return `${base}${Date.now()}`;
 }
 
 /** What the user attached while saving. */
@@ -88,17 +50,14 @@ export async function addPaper(
   extras: PaperExtras = {},
 ): Promise<PaperRecord> {
   const idb = new IndexedDbFileSystem();
-  const taken = new Set((await listAllRecords()).map((r) => r.id.toLowerCase()));
-  const base = makeCiteKey(meta, fallbackTitle);
-  let citeKey = uniqueCiteKey(base, taken);
-  // A folder can exist without a cached record (a sync still in flight).
-  while (await idb.stat(`${targetFolder}/${citeKey}`)) {
-    taken.add(citeKey);
-    citeKey = uniqueCiteKey(base, taken);
-  }
+  const citeKey = await claimCiteKey(
+    makeCiteKey(meta, fallbackTitle),
+    (await listAllRecords()).map((r) => r.id),
+    async (key) => (await idb.stat(`${targetFolder}/${key}`)) !== undefined,
+  );
   const folderPath = `${targetFolder}/${citeKey}`;
 
-  const tags = [...new Set((extras.tags ?? []).map((t) => t.trim()).filter(Boolean))];
+  const tags = normalizeTags(extras.tags ?? []);
   const note = extras.note?.trim();
   const paper: PaperRecord = {
     id: citeKey,

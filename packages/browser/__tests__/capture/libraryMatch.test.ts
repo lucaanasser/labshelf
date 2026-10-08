@@ -1,5 +1,5 @@
 import type { PaperRecord } from "@labshelf/core";
-import { findInLibrary, normalizeTitle } from "../../src/capture/libraryMatch";
+import { findInLibrary } from "../../src/capture/libraryMatch";
 
 const rec = (over: Partial<PaperRecord>): PaperRecord => ({
   id: "x", title: "T", path: "papers/x", citeKey: "x", status: "unread", ...over,
@@ -27,9 +27,5 @@ describe("findInLibrary", () => {
 
   it("never matches on a title too short to identify a paper", () => {
     expect(findInLibrary(library, { title: "Introduction" })).toBeUndefined();
-  });
-
-  it("normalises accents, case and punctuation", () => {
-    expect(normalizeTitle("  Análise: A Ótima  ")).toBe("analise a otima");
   });
 });
