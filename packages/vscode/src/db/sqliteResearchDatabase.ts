@@ -1,8 +1,5 @@
 /**
  * SQLite-backed implementation of IResearchDatabase that persists papers and logs.
- *
- * @depends @labshelf/core
- * @dependents extension.ts
  */
 import * as path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -40,7 +37,6 @@ type PaperRow = {
 
 /**
  * Concrete IResearchDatabase backed by a WAL-mode SQLite file; creates its schema on initialize.
- * @usedBy extension.ts (via createSqliteResearchDatabase)
  */
 export class SqliteResearchDatabase implements IResearchDatabase {
   private connection: DatabaseSync | undefined;
@@ -105,7 +101,6 @@ export class SqliteResearchDatabase implements IResearchDatabase {
    * Sharing the connection avoids opening a second file handle on the same
    * SQLite database.
    *
-   * @usedBy ai/aiService factory
    * @returns The active DatabaseSync handle.
    */
   rawConnection(): DatabaseSync {
@@ -244,7 +239,6 @@ export class SqliteResearchDatabase implements IResearchDatabase {
 
 /**
  * Factory that instantiates a SqliteResearchDatabase without calling initialize, leaving that to the caller.
- * @usedBy extension.ts
  * @returns uninitialised IResearchDatabase backed by the file at storageUri
  */
 export async function createSqliteResearchDatabase(storageUri: vscode.Uri, fileSystem: IFileSystem): Promise<IResearchDatabase> {

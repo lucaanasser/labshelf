@@ -2,9 +2,6 @@
  * The in-memory view of the library the TUI and CLI read from: the latest snapshot, the listing of a collection
  * (sub-collections first, then papers, sorted), library-wide search, and change notification. Reloads are coalesced,
  * so a burst of file events (a sync pulling twenty papers, VS Code rewriting metadata) costs one rescan.
- *
- * @depends library/libraryScanner, library/search, library/sidecars
- * @dependents app/context, ui/app, cli/commands
  */
 import type { PaperRecord } from "@labshelf/core";
 
@@ -49,7 +46,6 @@ function firstAuthorKey(record: PaperRecord): string {
 
 /**
  * Comparator for papers under a sort spec; ties fall back to the title.
- * @usedBy listCollection, search
  * @returns the comparator
  */
 export function paperComparator(sort: SortSpec): (a: PaperEntry, b: PaperEntry) => number {
@@ -104,7 +100,6 @@ export class LibraryStore {
 
   /**
    * Subscribes to snapshot changes.
-   * @usedBy ui/app
    * @returns an unsubscribe function
    */
   onChange(listener: Listener): () => void {
@@ -114,7 +109,6 @@ export class LibraryStore {
 
   /**
    * Rescans the library. Calls made while a scan runs are folded into one follow-up scan.
-   * @usedBy app/context, library/libraryWatcher, library/paperService, sync/syncService
    * @returns the new snapshot
    */
   async reload(): Promise<LibrarySnapshot> {
@@ -141,7 +135,6 @@ export class LibraryStore {
 
   /**
    * Annotation text per paper, folded into the library search so a highlight finds its paper.
-   * @usedBy app/context (after loading sidecars)
    * @returns void
    */
   setAnnotationText(text: Map<string, string>): void {
@@ -169,7 +162,6 @@ export class LibraryStore {
 
   /**
    * The entries of one collection as the middle column shows them.
-   * @usedBy ui/app, cli ls
    * @returns sub-collections (by name) then papers (by the sort spec)
    */
   listCollection(rel: string, options: ListOptions): Entry[] {
@@ -197,7 +189,6 @@ export class LibraryStore {
 
   /**
    * Searches every paper in the library.
-   * @usedBy ui/app (s), cli search
    * @returns matching papers, best match first (ties by the sort spec)
    */
   search(query: string, sort: SortSpec): PaperEntry[] {
@@ -214,7 +205,6 @@ export class LibraryStore {
 
   /**
    * Every tag in use with its count, most used first.
-   * @usedBy ui/app (tag prompt completion)
    * @returns the tags
    */
   tagCounts(): Array<{ tag: string; count: number }> {

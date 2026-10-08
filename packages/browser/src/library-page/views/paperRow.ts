@@ -5,9 +5,6 @@
  * muted file-minus type icon marks "No PDF attached"), the title with a
  * location chip when the paper sits in a subfolder, creator, year, publication,
  * and a status badge that cycles on click.
- *
- * @depends ui/dom, ui/icons, state/derive, events, views/dnd
- * @dependents views/paperListView
  */
 import { el, esc, highlight } from "../../ui/dom";
 import { icon } from "../../ui/icons";

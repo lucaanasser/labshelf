@@ -2,9 +2,6 @@
  * Content of the preview pane (right column), as styled lines: a paper's Info / Abstract / Notes / BibTeX tabs, or a
  * summary of the hovered folder. Pure functions of the snapshot and the sidecar, so tests render them without a
  * terminal.
- *
- * @depends ui/theme, ui/format, tui/text, library/*
- * @dependents ui/render
  */
 import { type Annotation, type PaperRecord, cleanQuote, type PaperData } from "@labshelf/core";
 
@@ -72,7 +69,6 @@ function textLayerLabel(record: PaperRecord): string | undefined {
 
 /**
  * The Info tab: title, authors, venue, status and tags, identifiers, where it lives, PDF and reading state, note.
- * @usedBy paperPreview
  * @returns the lines
  */
 export function infoLines(entry: PaperEntry, data: PaperData | undefined, width: number): Line[] {
@@ -156,7 +152,6 @@ function annotationLines(annotations: Annotation[], width: number): Line[] {
 
 /**
  * Lines of one preview tab of a paper.
- * @usedBy ui/render
  * @returns the lines and whether a thumbnail fits under them
  */
 export function paperPreview(entry: PaperEntry, data: PaperData | undefined, tab: PreviewTab, width: number, bibtex: string): PaperPreview {
@@ -170,7 +165,6 @@ export function paperPreview(entry: PaperEntry, data: PaperData | undefined, tab
 
 /**
  * The tab bar of the paper preview.
- * @usedBy ui/render
  * @returns one line
  */
 export function tabBar(active: PreviewTab, annotationCount: number): Line {
@@ -184,7 +178,6 @@ export function tabBar(active: PreviewTab, annotationCount: number): Line {
 
 /**
  * Preview of a hovered folder: how many papers it holds by status, its subfolders, and its papers.
- * @usedBy ui/app
  * @returns the lines
  */
 export function folderPreview(
@@ -233,7 +226,6 @@ export function folderPreview(
 
 /**
  * Library-wide numbers for the parent pane at the root.
- * @usedBy ui/render
  * @returns the lines
  */
 export function libraryOverview(snapshot: LibrarySnapshot): Line[] {

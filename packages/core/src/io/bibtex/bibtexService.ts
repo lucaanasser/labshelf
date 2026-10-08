@@ -41,7 +41,6 @@ export class BibTeXService {
 
   /**
    * Writes metadata.yaml and bib.bib into the paper folder.
-   * @usedBy paperService, addPaperFlow
    * @returns void
    */
   async writePaperArtifacts(paperFolder: string, paper: PaperRecord, sourceFileName: string): Promise<void> {
@@ -116,7 +115,6 @@ export class BibTeXService {
    * @param options.includeFile Whether to emit the `file = {…/paper.pdf}` line.
    *   Defaults to true; writePaperArtifacts passes false when the folder holds
    *   no paper.pdf, so the entry never points at a file that does not exist.
-   * @usedBy writePaperArtifacts, paperService
    * @returns string
    */
   generateBibTeX(paper: PaperRecord, options: { includeFile?: boolean } = {}): string {

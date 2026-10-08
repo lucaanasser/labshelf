@@ -37,7 +37,6 @@ export class SidecarReader {
   }
 
   /**
-   * @usedBy ui/app, cli
    * @returns the paper's sidecar (empty when it has none)
    */
   async load(paperId: string): Promise<PaperData> {
@@ -57,7 +56,6 @@ export class SidecarReader {
 
   /**
    * Annotation text of every paper that has a sidecar, for the library search.
-   * @usedBy app/context
    * @returns paperId → concatenated annotation text
    */
   async annotationIndex(paperIds: Iterable<string>): Promise<Map<string, string>> {

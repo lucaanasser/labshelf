@@ -78,7 +78,7 @@ export class SyncController implements vscode.Disposable {
     this.localFs = localFs;
   }
 
-  /** Loads persisted auth state and starts periodic sync if already authenticated */
+  /** Loads persisted auth state and starts periodic sync if already authenticated. @usedBy extension. @returns void */
   async initialize(): Promise<void> {
     await this.auth.loadPersistedState();
     this.updateStatusBar();
@@ -87,7 +87,7 @@ export class SyncController implements vscode.Disposable {
     }
   }
 
-  /** Authenticates with Google Drive, starts periodic sync, and runs an initial sync */
+  /** Authenticates with Google Drive, starts periodic sync, and runs an initial sync. @usedBy extension. @returns void */
   async connect(): Promise<void> {
     await this.auth.authenticate();
     this.updateStatusBar();
@@ -96,7 +96,7 @@ export class SyncController implements vscode.Disposable {
     await this.sync();
   }
 
-  /** Stops periodic sync and revokes Google Drive credentials */
+  /** Stops periodic sync and revokes Google Drive credentials. @usedBy extension. @returns void */
   async disconnect(): Promise<void> {
     this.stopPeriodicSync();
     await this.auth.revoke();
@@ -104,7 +104,7 @@ export class SyncController implements vscode.Disposable {
     vscode.window.showInformationMessage("LabShelf: Disconnected from Google Drive.");
   }
 
-  /** Runs a full sync if authenticated, updating the status bar and reporting results. Skips (quietly when automatic) while another app — the terminal, another window — holds the library's sync lock */
+  /** Runs a full sync if authenticated, updating the status bar and reporting results. Skips (quietly when automatic) while another app — the terminal, another window — holds the library's sync lock. @usedBy extension. @returns void */
   async sync(reason: SyncReason = "manual"): Promise<void> {
     if (!this.auth.isAuthenticated()) {
       if (reason === "manual") {
@@ -140,17 +140,17 @@ export class SyncController implements vscode.Disposable {
     }
   }
 
-  /** Returns whether the controller is currently authenticated with Google Drive */
+  /** Returns whether the controller is currently authenticated with Google Drive. @usedBy ui/settings/settingsWebviewPanel.ts. @returns boolean */
   isConnected(): boolean {
     return this.auth.isAuthenticated();
   }
 
-  /** Returns whether a sync operation is currently in progress */
+  /** Returns whether a sync operation is currently in progress. @usedBy ui/settings/settingsWebviewPanel.ts. @returns boolean */
   isSyncing(): boolean {
     return this.syncing;
   }
 
-  /** Returns the locale time string of the last successful sync, or null */
+  /** Returns the locale time string of the last successful sync, or null. @usedBy ui/settings/settingsWebviewPanel.ts. @returns string | null */
   getLastSyncTime(): string | null {
     return this.lastSyncTime;
   }

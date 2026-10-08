@@ -1,4 +1,4 @@
-/** Extension entry point — wires services, commands, library folder tree, sync controller, and list panel on activation */
+/** Extension entry point — wires services, commands, library folder tree, sync controller, and list panel on activation. @depends vscode, core, storage, db, ui, sync, bibtex, commands. @dependents vscode runtime */
 import * as path from "node:path";
 import * as vscode from "vscode";
 
@@ -55,7 +55,7 @@ const READER_COMMANDS: readonly ReaderCommandId[] = [
   "zoomIn", "zoomOut", "zoomReset", "find", "historyBack", "historyForward", "toggleSidebar",
 ];
 
-/** Activates the extension, initializing services if a library is already configured */
+/** Activates the extension, initializing services if a library is already configured. @usedBy vscode runtime. @returns void */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const eventBus = new EventBus();
 
@@ -506,7 +506,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 }
 
-/** Called by VS Code on extension deactivation — cleanup is handled via disposables */
+/** Called by VS Code on extension deactivation — cleanup is handled via disposables. @usedBy vscode runtime. @returns void */
 export function deactivate(): void { return; }
 
 // True when a sync pulled, removed or conflicted files in the library

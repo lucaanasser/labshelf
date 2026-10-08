@@ -2,9 +2,6 @@
  * Inline JavaScript for the list webview panel. The list shows papers only; subfolders live in a chip strip above it. Owns search (with field prefixes), status filters, sorting, selection, keyboard control, inline status changes, and paper drag-and-drop.
  *
  * The script body deliberately avoids template literals and backslashes so it can live inside a TypeScript template string without escaping.
- *
- * @depends ui/list/template.icons.ts, ui/list/template.menu.script.ts, ui/list/template.detail.script.ts, ui/list/template.detail.tabs.script.ts
- * @dependents ui/list/template.ts
  */
 import { PAPER_STATUSES } from '@labshelf/core';
 import { secIcon } from './template.icons.js';

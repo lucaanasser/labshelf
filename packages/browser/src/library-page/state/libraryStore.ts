@@ -9,9 +9,6 @@
  * The store is intentionally tiny — no framework — because every view file is
  * vanilla TS/DOM and the state surface is small. Selection is an immutable Set
  * replaced on every change so slice equality stays a reference check.
- *
- * @depends @labshelf/core PaperRecord, storage FolderNode, runtimeMessages
- * @dependents library-page/app, views, controllers
  */
 import type { PaperRecord, PaperStatus } from "@labshelf/core";
 import type { FolderNode } from "../../storage";

@@ -9,11 +9,9 @@
  * — a quick pick over the open tabs that, when no PDF is found, asks before
  * saving the reference. Every mutation refreshes the store in place.
  *
- * @depends @labshelf/core BibTeXService FolderService IFileSystem PaperRecord,
  *          platform/runtimeMessages, storage, capture (attachPdfToPaper, isPdfBytes),
  *          ui/quickInput, ui/dialog, ui/toast, ui/pdfCopy, state/derive, events,
  *          controllers/dataController, reader/readerTabs
- * @dependents library-page/index
  */
 import type { IFileSystem, PaperRecord, PaperStatus } from "@labshelf/core";
 import { BibTeXService, FolderService, PDF_FILE } from "@labshelf/core";

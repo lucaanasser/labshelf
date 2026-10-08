@@ -4,12 +4,10 @@
  * controller, capture, the Phase 7 schedulers (alarm + idle + debouncer) and
  * the toolbar badge updater into the runtime message channel so popup,
  * options, library-page and the Google Scholar buttons can drive every flow.
- * @depends platform/browserApi, platform/logger, platform/runtimeMessages, platform/settings,
  *          sync/auth/browserDriveAuth, sync/browserSyncController, capture/index,
  *          storage, library-page/state/derive, library-page/router,
  *          background/draftCache, background/autoSyncScheduler, background/syncOnIdle,
  *          background/eventDebouncer, background/badgeUpdater.
- * @dependents none (entry point).
  */
 import { bx } from "../platform/browserApi";
 import { BrowserLogger } from "../platform/logger";

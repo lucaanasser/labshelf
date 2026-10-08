@@ -7,9 +7,6 @@
  *
  * Kept out of extension.ts on purpose: extension.ts is excluded from unit tests,
  * and this reconciliation is where the honest-attachment flag is refreshed.
- *
- * @depends @labshelf/core
- * @dependents extension.ts, commands/registerCommands.ts
  */
 import { EVENTS } from "@labshelf/core";
 import type { EventBus, PaperRecord } from "@labshelf/core";
@@ -42,7 +39,6 @@ export interface ReindexSummary {
  * Rebuilds the index and reconciles it against the previous snapshot. The
  * indexer only upserts (it never deletes), so a paper on disk can appear or
  * change, but one removed on disk stays until the next full activation.
- * @usedBy extension.ts (post-sync hook), commands/registerCommands.ts (labshelf.rebuildIndex)
  * @returns the ids that were added and the ids whose record changed
  */
 export async function reindexLibrary(deps: ReindexLibraryDeps): Promise<ReindexSummary> {

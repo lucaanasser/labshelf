@@ -1,9 +1,6 @@
 /**
  * Drawing primitives of the main screen: the column layout, list rows for collections and papers, styled preview
  * lines, the header breadcrumb and the status bar segments. Stateless; the App decides what to draw.
- *
- * @depends tui/screen, tui/text, ui/theme, ui/preview, library/libraryStore
- * @dependents ui/app
  */
 import type { PaperEntry } from "../library/index.js";
 import type { Screen, Style } from "../tui/screen.js";
@@ -30,7 +27,6 @@ export interface Layout {
 /**
  * Splits the screen into header, three panes — folders, papers, preview, like Zotero's panes laid out as yazi's
  * columns — and a status bar. Narrow terminals keep the focused list pane and the preview, then the focused pane only.
- * @usedBy ui/app
  * @returns the rectangles
  */
 export function computeLayout(width: number, height: number, focus: "folders" | "papers" = "papers"): Layout {
@@ -69,7 +65,6 @@ export function computeLayout(width: number, height: number, focus: "folders" | 
 
 /**
  * Draws the vertical separators between columns.
- * @usedBy ui/app
  * @returns void
  */
 export function drawSeparators(screen: Screen, layout: Layout): void {
@@ -105,7 +100,6 @@ export interface FolderRowData {
 
 /**
  * One row of the folders pane: indentation by depth, the folder name and its paper count.
- * @usedBy ui/app
  * @returns void
  */
 export function drawFolderRow(screen: Screen, x: number, y: number, width: number, row: FolderRowData, marks: RowMarks): void {
@@ -121,7 +115,6 @@ export function drawFolderRow(screen: Screen, x: number, y: number, width: numbe
 /**
  * One row of the papers pane: a mark cell (selected / cut), the status glyph, the title and the year. Papers without a
  * PDF on this device are drawn in italics.
- * @usedBy ui/app
  * @returns void
  */
 export function drawPaperRow(screen: Screen, x: number, y: number, width: number, paper: PaperEntry, marks: RowMarks, detail?: string): void {
@@ -145,7 +138,6 @@ export function drawPaperRow(screen: Screen, x: number, y: number, width: number
 
 /**
  * Draws styled lines into a rectangle, starting at line `scroll`.
- * @usedBy ui/app
  * @returns the number of rows drawn
  */
 export function drawLines(screen: Screen, rect: Rect, lines: Line[], scroll = 0): number {
@@ -164,7 +156,6 @@ export function drawLines(screen: Screen, rect: Rect, lines: Line[], scroll = 0)
 
 /**
  * Lays segments left to right in one row, each separated by a space, stopping at the edge.
- * @usedBy ui/app (header, status bar)
  * @returns the column after the last segment
  */
 export function drawSegments(screen: Screen, x: number, y: number, maxX: number, segments: Array<{ text: string; style?: Style }>): number {

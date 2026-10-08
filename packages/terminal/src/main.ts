@@ -4,9 +4,6 @@
  * the shared config file.
  *
  * Debug: `labshelf --dump-frame 120x40 [--keys "jj<enter>"]` prints one rendered frame as text, without a terminal.
- *
- * @depends app/*, cli/*, ui/app, tui/terminal
- * @dependents dist/labshelf.mjs (bin)
  */
 import * as path from "node:path";
 import { createInterface } from "node:readline/promises";

@@ -7,8 +7,6 @@
  * Mirrors the VS Code extension's `readCollectionFolders`: a directory that
  * holds a paper (marker file `metadata.yaml` or `paper.pdf`) is a paper, not a
  * collection, and never appears in the tree. Dot-directories are hidden.
- * @depends idb/db
- * @dependents library-page controllers, storage/index
  */
 import { getDb } from "./idb/db";
 import { METADATA_FILE, PDF_FILE, PAPERS_DIR } from "@labshelf/core";
@@ -23,7 +21,6 @@ const PAPER_MARKERS = new Set([METADATA_FILE, PDF_FILE]);
 
 /**
  * Builds the collection tree under `rootPath` from a single key scan.
- * @usedBy library-page controllers/dataController
  */
 export async function buildFolderTree(rootPath: string = PAPERS_DIR): Promise<FolderNode[]> {
   const db = await getDb();
@@ -62,7 +59,6 @@ export function collectionTreeFromKeys(keys: string[], rootPath: string): Folder
  * Pure: paper folders (record.path) that hold a paper.pdf. Conflict copies
  * ("paper (conflict 2026-05-22).pdf") and backups ("paper.pdf.bak") don't
  * count — only an exact "paper.pdf" basename marks a present PDF.
- * @usedBy scanLibrary, pdfDirs, tests
  */
 export function pdfDirsFromKeys(keys: string[]): Set<string> {
   const out = new Set<string>();
@@ -76,7 +72,6 @@ export function pdfDirsFromKeys(keys: string[]): Set<string> {
 /**
  * One key scan feeding both the collection tree and the PDF-presence set, so
  * the library page's load and refresh cost a single IndexedDB round trip.
- * @usedBy library-page controllers/dataController
  */
 export async function scanLibrary(rootPath: string = PAPERS_DIR): Promise<{ tree: FolderNode[]; pdfDirs: Set<string> }> {
   const db = await getDb();
@@ -88,7 +83,6 @@ export async function scanLibrary(rootPath: string = PAPERS_DIR): Promise<{ tree
 /**
  * The folders holding a paper.pdf, for the background's library.lookup /
  * draftView (which do not need the tree).
- * @usedBy background/index
  */
 export async function pdfDirs(rootPath: string = PAPERS_DIR): Promise<Set<string>> {
   const db = await getDb();

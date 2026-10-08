@@ -6,16 +6,12 @@
  * Returned as a source fragment that template.script.ts splices into its IIFE, so it shares that scope with the list
  * and detail fragments (view, ICON, NL, esc, post, selIds, paperById, libraryById, hasPdf, fmtCreator, fmtAgo, fmtDate,
  * fmtSize, lastName, section, muted, iconBtn, textLayerSummary, renderDetail).
- *
- * @depends none
- * @dependents ui/list/template.script.ts
  */
 
 import { ANNOTATION_COLORS, PDF_FILE } from '@labshelf/core';
 
 /**
  * Returns the tab-body JavaScript source. Like its host script it avoids template literals and backslashes.
- * @usedBy ui/list/template.script.ts
  * @returns JavaScript source text, without a surrounding script tag
  */
 export function detailTabsScriptFragment(): string {

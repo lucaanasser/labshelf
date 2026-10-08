@@ -1,8 +1,5 @@
 /**
  * Manages the central editor tab that browses the library: any folder opens here, with breadcrumb and subfolder navigation, search, and paper organization, next to an inline detail sidebar.
- *
- * @depends ui/list/template.ts, ui/list/citationFormats.ts, ui/tabIcon.ts, ui/library/folderNavigation.ts, ui/library/collectionFolders.ts, core/paperService.ts, @labshelf/core
- * @dependents ui/list/index.ts, extension.ts
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -78,7 +75,6 @@ export class ListWebviewPanel {
 
   /**
    * Reveals the existing list panel if one is open, or creates a new one, and navigates it to the given folder (papers/ when omitted).
-   * @usedBy extension.ts
    * @returns void
    */
   public static createOrShow(deps: ListPanelDeps, folder?: LibraryNode): void {
@@ -139,7 +135,6 @@ export class ListWebviewPanel {
 
   /**
    * The folder currently shown, used to keep the sidebar tree selection in sync.
-   * @usedBy extension.ts
    * @returns the current LibraryNode, or undefined before the first load
    */
   public get currentFolder(): LibraryNode | undefined {
@@ -148,7 +143,6 @@ export class ListWebviewPanel {
 
   /**
    * Shows the given folder; anything missing or outside papers/ falls back to the library root.
-   * @usedBy extension.ts, ui/list/listWebviewPanel.ts (webview navigate messages)
    * @returns void
    */
   public async navigateTo(folder?: LibraryNode): Promise<void> {
@@ -158,7 +152,6 @@ export class ListWebviewPanel {
 
   /**
    * Re-reads the current folder from disk and the index; called after folders are created, renamed, moved, or deleted.
-   * @usedBy extension.ts
    * @returns void
    */
   public async refresh(): Promise<void> {
@@ -167,7 +160,6 @@ export class ListWebviewPanel {
 
   /**
    * Keeps the panel on the same folder after it (or one of its ancestors) moved from oldDir to newDir.
-   * @usedBy extension.ts
    * @returns void
    */
   public async followFolderMove(oldDir: string, newDir: string): Promise<void> {
@@ -498,7 +490,6 @@ export class ListWebviewPanel {
 
   /**
    * Clears the static panel reference, detaches event listeners, and disposes the webview panel.
-   * @usedBy ui/list/listWebviewPanel.ts (self, on panel dispose event)
    * @returns void
    */
   public dispose(): void {

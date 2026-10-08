@@ -45,15 +45,15 @@ Domains:
 | Domain | Owns |
 |---|---|
 | `model/` | shared types and their runtime value lists: paper record, statuses, annotations, themes, colours, log entry |
-| `ports/` | the interfaces apps implement: file system, local tree, lock store, sidecar port, logger, auth, clock |
-| `library/` | the library format ([contracts/library-format.md](contracts/library-format.md)): layout paths, `metadata.yaml` ⇄ record, cite keys, tags, folder names, the folder tree, library mutations (move, rename, trash, update fields), the in-memory store with sort and filter, the search query language, fuzzy matching, shared config; `node/` has the Node file system, atomic writes and the scanner adapter |
+| `ports/` | the interfaces apps implement: file system, local file system, lock store, sidecar port, research database, logger, log sink |
+| `library/` | the library format ([contracts/library-format.md](contracts/library-format.md)): layout paths, `metadata.yaml` ⇄ record, cite keys, tags, folder names, the folder tree, library mutations (move, rename, trash, update fields), the in-memory store with sort and filter, the search query language, fuzzy matching, shared config; `identity/` has cite keys, tags, folder names and title keys; `node/` has the Node file system, atomic writes and the shared config file |
 | `import/` | everything that turns an input into a paper: identifier detection, PDF text and metadata extraction, metadata registries (CrossRef, arXiv, Semantic Scholar…), resolution and merge, landing-page parsing, the PDF resolver chain and download, BibTeX; `node/` has the pdfjs opener for Node |
 | `sync/` | the sync engine, Drive provider, lock, run record, folder naming, and the sync coordinator (debounce, periodic runs, lock handling) every app drives ([contracts/sync.md](contracts/sync.md)); `node/` has the lock store, the local tree adapter and the PKCE loopback auth shared by VS Code and the terminal |
 | `reader/` | the PDF reader: protocol, sidecar data store, reading state, preferences, citation formats, pure logic, and the host controller that answers reader messages for every host ([contracts/reader-host.md](contracts/reader-host.md)); `dom/` has the reader UI and its styles |
 | `library-ui/` | the library surface shared by the VS Code list panel and the browser library page: list state, list, detail pane, folder header and chips; `dom/` holds the components |
 | `ui/` | the design system: tokens, base styles, components (button, menu, dialog, toast, quick input), icons |
 | `ai/` | embeddings contracts, chunking, retrieval, heuristics; runtimes stay in the VS Code app |
-| `logging/` | the JSON-lines log format and a logger over a port |
+| `logging/` | the JSON-lines log format and a logger over a port; `node/` has the file log sink |
 
 Each domain folder has an `index.ts`. Inside a domain, related files are grouped in subfolders once there are more than eight (for example `import/registries/`, `reader/dom/sidebar/`).
 

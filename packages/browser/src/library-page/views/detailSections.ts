@@ -5,9 +5,6 @@
  * when one exists — otherwise a "No PDF" empty state offering Find PDF / Attach
  * PDF — the note and tags attached when saving from the toolbar (read-only here
  * for now).
- *
- * @depends ui/dom, ui/icons, ui/pdfCopy, state/derive
- * @dependents views/detailPaneView
  */
 import { esc } from "../../ui/dom";
 import { icon } from "../../ui/icons";

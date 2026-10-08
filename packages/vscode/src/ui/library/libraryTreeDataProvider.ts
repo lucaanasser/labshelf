@@ -1,8 +1,5 @@
 /**
  * Provides the VS Code tree view for the LabShelf library: an "All Papers" entry plus the collection folders under papers/. Every row opens in the list panel, shows its paper count, and accepts PDF drops and folder drags.
- *
- * @depends @labshelf/core, ui/library/folderNavigation.ts, ui/library/collectionFolders.ts
- * @dependents ui/library/index.ts, extension.ts
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -36,7 +33,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
 
   /**
    * Updates the papers root URI and triggers a full tree refresh; called after workspace setup completes.
-   * @usedBy extension.ts
    * @returns void
    */
   setPapersRoot(papersRoot: vscode.Uri): void {
@@ -46,7 +42,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
 
   /**
    * Registers where the provider reads stored paper paths from, used for the per-folder counts.
-   * @usedBy extension.ts
    * @returns void
    */
   setPaperPathSource(source: () => Promise<string[]>): void {
@@ -55,7 +50,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
 
   /**
    * Drops cached counts and fires onDidChangeTreeData so VS Code re-reads the tree.
-   * @usedBy extension.ts (and eventBus listeners, debounced)
    * @returns void
    */
   refresh(): void {
@@ -65,7 +59,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
 
   /**
    * Returns the node for papers/ itself, or null while no library is configured.
-   * @usedBy extension.ts
    * @returns the root LibraryNode or null
    */
   rootNode(): LibraryNode | null {
@@ -74,7 +67,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
 
   /**
    * Returns the VS Code TreeItem for a node. Every row, not just leaves, opens in the list panel on click.
-   * @usedBy vscode TreeView API
    * @returns A vscode.TreeItem configured for the given node.
    */
   async getTreeItem(node: LibraryNode): Promise<vscode.TreeItem> {
@@ -102,7 +94,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
 
   /**
    * Returns the child folders of a node. The top level is "All Papers" followed by the folders directly under papers/.
-   * @usedBy vscode TreeView API
    * @returns A promise resolving to an array of LibraryNode objects.
    */
   async getChildren(node?: LibraryNode): Promise<LibraryNode[]> {
@@ -121,7 +112,6 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
 
   /**
    * Returns the parent LibraryNode for a given node, or null when the node is at the top level.
-   * @usedBy vscode TreeView API (reveal)
    * @returns The parent LibraryNode, or null.
    */
   getParent(node: LibraryNode): vscode.ProviderResult<LibraryNode> {
@@ -174,7 +164,6 @@ export class LibraryDragAndDropController implements vscode.TreeDragAndDropContr
 
   /**
    * Puts the dragged folders on the transfer. "All Papers" is not a real folder and cannot be dragged.
-   * @usedBy vscode TreeDragAndDropController API
    * @returns void
    */
   handleDrag(source: readonly LibraryNode[], dataTransfer: vscode.DataTransfer): void {
@@ -186,7 +175,6 @@ export class LibraryDragAndDropController implements vscode.TreeDragAndDropContr
 
   /**
    * Routes a drop: folders dragged within the tree are moved, OS files are imported. A drop on "All Papers" or on the empty area targets papers/.
-   * @usedBy vscode TreeDragAndDropController API
    * @returns void
    */
   async handleDrop(target: LibraryNode | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {

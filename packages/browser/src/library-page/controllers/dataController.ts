@@ -4,9 +4,7 @@
  * sync status), reloads after mutations, and polls sync status while a sync
  * is in flight so the status bar updates without a user action.
  *
- * @depends storage (scanLibrary, listAllRecords), state/libraryStore, state/uiPrefs,
  *          platform/browserApi, platform/runtimeMessages, ui/toast, events
- * @dependents library-page/index, controllers/folderController, controllers/paperController
  */
 import { bx } from "../../platform/browserApi";
 import type { LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse, SyncStatusData } from "../../platform/runtimeMessages";
@@ -54,7 +52,6 @@ export async function refreshLibrary(store: LibraryStore): Promise<void> {
 /**
  * Asks the background to coalesce a sync after a local mutation. Fire-and-
  * forget: errors are logged by the background side, the UI keeps going.
- * @usedBy controllers/folderController, controllers/paperController
  */
 export function scheduleSyncSoon(reason: string): void {
   void send({ type: "sync.scheduleSoon", reason }).catch(() => undefined);

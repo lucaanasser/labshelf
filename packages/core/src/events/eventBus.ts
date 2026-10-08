@@ -4,9 +4,6 @@
  * Uses an inline Map-based emitter rather than node:events so the bus is usable
  * inside the browser extension (service worker, content scripts, library page)
  * without polyfills.
- *
- * @depends events/events.ts
- * @dependents paperService, syncController, ui listeners, browser background
  */
 import type { EventName } from "./events.js";
 
@@ -17,7 +14,6 @@ export class EventBus {
 
   /**
    * Broadcasts a named event with an arbitrary payload to all registered listeners.
-   * @usedBy paperService, syncController, capture flows
    * @returns void
    */
   emit(eventName: EventName, payload: unknown): void {
@@ -36,7 +32,6 @@ export class EventBus {
 
   /**
    * Registers a listener for a named event.
-   * @usedBy ui providers, browser views
    * @returns void
    */
   on(eventName: EventName, listener: EventListener): void {
@@ -50,7 +45,6 @@ export class EventBus {
 
   /**
    * Removes a previously registered listener.
-   * @usedBy disposers, view teardown
    * @returns void
    */
   off(eventName: EventName, listener: EventListener): void {

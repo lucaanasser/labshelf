@@ -3,9 +3,6 @@
  * adapter, then runs the @labshelf/core section detector to produce structured
  * input for the ingestion pipeline. Falls back to per-page chunks when no
  * headings are detected.
- *
- * @depends @labshelf/core (PdfDocumentOpener, chunking)
- * @dependents indexer/aiIndexer.ts
  */
 import * as vscode from "vscode";
 import type { ExtractedPdfText, LocalFileSystem, PdfDocumentLike, PdfDocumentOpener } from "@labshelf/core";
@@ -21,7 +18,6 @@ export class PdfTextExtractor {
    * Reads the PDF at `pdfUri` and returns its per-page text plus detected
    * sections, packaged for the @labshelf/core pipeline.
    *
-   * @usedBy aiIndexer
    * @returns Extracted text with paperId metadata.
    */
   async extract(paperId: string, pdfUri: vscode.Uri): Promise<ExtractedPdfText> {

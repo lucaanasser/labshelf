@@ -3,9 +3,6 @@
  * interact with the AI feature set exclusively through this interface — that
  * preserves the no-direct-DB-from-UI rule and gives us one place to swap or
  * stub the implementation in tests.
- *
- * @depends @labshelf/core (RAG primitives), db/ai stores, runtime/*, indexer/*
- * @dependents extension.ts, future UI features
  */
 import type {
   AiPaperMetadata,
@@ -48,7 +45,6 @@ export class AiService {
   /**
    * Top-k semantic search across all indexed chunks.
    *
-   * @usedBy command palette, list panel search
    * @returns Matches sorted by descending score.
    */
   async searchByText(query: string, k = 10, filter?: VectorFilter): Promise<VectorMatch[]> {
@@ -61,7 +57,6 @@ export class AiService {
   /**
    * Stance-classified search for a claim sentence.
    *
-   * @usedBy labshelf.ai.searchByClaim
    * @returns Per-paper results with support/contradict/neutral labels.
    */
   async searchByClaim(claim: string): Promise<ClaimSearchResult[]> {
@@ -71,7 +66,6 @@ export class AiService {
   /**
    * Retrieves the cached AI metadata for a paper.
    *
-   * @usedBy list panel detail cards
    * @returns Metadata or null when the paper is not yet indexed.
    */
   getMetadata(paperId: string): AiPaperMetadata | null {
@@ -81,7 +75,6 @@ export class AiService {
   /**
    * Appends a reading event to the analytics store.
    *
-   * @usedBy PdfViewerPanel hooks
    * @returns void
    */
   recordReadingEvent(event: ReadingEvent): void {
@@ -91,7 +84,6 @@ export class AiService {
   /**
    * Triggers a full reindex of every paper in the library.
    *
-   * @usedBy labshelf.ai.rebuildIndex
    * @returns void
    */
   async rebuildAll(): Promise<void> {
@@ -101,7 +93,6 @@ export class AiService {
   /**
    * Returns a snapshot of indexer status for the settings panel.
    *
-   * @usedBy settings panel + status bar item
    * @returns AiServiceStatus
    */
   status(): AiServiceStatus {

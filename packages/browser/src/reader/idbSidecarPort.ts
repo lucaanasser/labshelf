@@ -7,7 +7,6 @@ import { APPDATA_DIR, SIDECAR_FILE, type SidecarPort } from "@labshelf/core";
 import type { IndexedDbFileSystem } from "../storage/indexedDbFileSystem";
 
 /**
- * @usedBy createIdbSidecarPort, reader/index
  * @returns the IndexedDB path of a paper's sidecar.
  */
 export function sidecarPath(paperId: string): string {
@@ -15,7 +14,6 @@ export function sidecarPath(paperId: string): string {
 }
 
 /**
- * @usedBy reader/index
  * @returns a SidecarPort reading and writing UTF-8 JSON in the IndexedDB file store.
  */
 export function createIdbSidecarPort(fs: Pick<IndexedDbFileSystem, "stat" | "readFile" | "writeFile">): SidecarPort {

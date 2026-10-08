@@ -18,7 +18,6 @@ export class AnnotationManager {
 
   /**
    * Creates a highlight annotation for the given paper and page, validates inputs, and emits ANNOTATION_CREATED.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns The newly created Annotation record.
    */
   async createHighlight(
@@ -48,7 +47,6 @@ export class AnnotationManager {
 
   /**
    * Creates a note annotation for the given paper and page, validates inputs, and emits ANNOTATION_CREATED.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns The newly created Annotation record.
    */
   async createNote(paperId: string, pageNumber: number, content: string): Promise<Annotation> {
@@ -68,7 +66,6 @@ export class AnnotationManager {
 
   /**
    * Returns all annotations for the specified paper and updates the in-memory owner index.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns Array of Annotation records for the paper.
    */
   async getAnnotationsByPaper(paperId: string): Promise<Annotation[]> {
@@ -79,7 +76,6 @@ export class AnnotationManager {
 
   /**
    * Returns all annotations for the specified paper on a given page and updates the in-memory owner index.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns Array of Annotation records for that page.
    */
   async getAnnotationsByPage(paperId: string, pageNumber: number): Promise<Annotation[]> {
@@ -90,7 +86,6 @@ export class AnnotationManager {
 
   /**
    * Updates the content of an existing annotation by id and emits ANNOTATION_UPDATED.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns The updated Annotation record.
    */
   async updateAnnotation(id: string, content: string): Promise<Annotation> {
@@ -105,7 +100,6 @@ export class AnnotationManager {
 
   /**
    * Deletes the annotation with the given id from the sidecar store and emits ANNOTATION_DELETED.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns void
    */
   async deleteAnnotation(id: string, paperId: string): Promise<void> {
@@ -126,7 +120,6 @@ export class AnnotationManager {
 
   /**
    * Throws if the given color string is not one of the allowed annotation colors.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns void
    */
   validateColor(color: string): void {
@@ -137,7 +130,6 @@ export class AnnotationManager {
 
   /**
    * Throws if the given type string is not one of the allowed annotation types.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns void
    */
   validateType(type: string): void {
@@ -148,7 +140,6 @@ export class AnnotationManager {
 
   /**
    * Throws if the given page number is not a positive integer.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns void
    */
   validatePageNumber(pageNumber: number): void {
@@ -159,7 +150,6 @@ export class AnnotationManager {
 
   /**
    * Validates and returns a normalized AnnotationPosition; throws a descriptive error for any invalid field.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns A validated AnnotationPosition with x, y, width, height in the [0, 1] range.
    */
   validatePosition(pos: unknown): AnnotationPosition {

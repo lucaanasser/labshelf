@@ -31,7 +31,6 @@ export class SyncManifest {
 
   /**
    * Loads the manifest from disk, or starts empty when absent or corrupt.
-   * @usedBy syncController
    * @returns SyncManifest
    */
   static async load(
@@ -59,7 +58,6 @@ export class SyncManifest {
 
   /**
    * Returns the entry for a path, or undefined.
-   * @usedBy syncDiff, syncApply
    * @returns ManifestEntry | undefined
    */
   get(ns: RemoteNamespace, path: string): ManifestEntry | undefined {
@@ -68,7 +66,6 @@ export class SyncManifest {
 
   /**
    * Returns all relative paths recorded for a namespace.
-   * @usedBy syncDiff
    * @returns string[]
    */
   paths(ns: RemoteNamespace): string[] {
@@ -77,7 +74,6 @@ export class SyncManifest {
 
   /**
    * Inserts or replaces the entry for a path.
-   * @usedBy syncApply
    * @returns void
    */
   set(ns: RemoteNamespace, path: string, entry: ManifestEntry): void {
@@ -86,7 +82,6 @@ export class SyncManifest {
 
   /**
    * Removes the entry for a path, if present.
-   * @usedBy syncApply
    * @returns void
    */
   delete(ns: RemoteNamespace, path: string): void {
@@ -95,7 +90,6 @@ export class SyncManifest {
 
   /**
    * The remote root folder id the namespace was last synced against, when recorded.
-   * @usedBy syncEngine
    * @returns the id, or undefined (manifests written before roots were recorded)
    */
   rootId(ns: RemoteNamespace): string | undefined {
@@ -104,7 +98,6 @@ export class SyncManifest {
 
   /**
    * Records the remote root folder id of a namespace.
-   * @usedBy syncEngine
    * @returns void
    */
   setRootId(ns: RemoteNamespace, id: string): void {
@@ -113,7 +106,6 @@ export class SyncManifest {
 
   /**
    * Forgets every entry of a namespace, so the next diff treats both sides as new (nothing is deleted).
-   * @usedBy syncEngine
    * @returns void
    */
   clearNamespace(ns: RemoteNamespace): void {
@@ -122,7 +114,6 @@ export class SyncManifest {
 
   /**
    * Persists the manifest to disk.
-   * @usedBy syncEngine
    * @returns void
    */
   async save(): Promise<void> {
@@ -132,7 +123,6 @@ export class SyncManifest {
 
   /**
    * Returns a deep-copy snapshot of the underlying data (for tests/inspection).
-   * @usedBy tests
    * @returns ManifestData
    */
   snapshot(): ManifestData {

@@ -13,8 +13,6 @@
  * The PDF search starts as soon as a draft exists (the popup asks for it
  * while the user is still choosing a folder), so Save is usually instant.
  * Scholar results enter at step 1 through capture/scholarCapture.
- * @depends capture/*, platform/settings, platform/logger, storage/paperRecordStore
- * @dependents background/index
  */
 import type { MetadataSource, PaperRecord, ResolvedMetadata } from "@labshelf/core";
 import { probe } from "./pageProbeContentScript";
@@ -71,7 +69,6 @@ export interface SavedPaper {
 
 /**
  * Probes a tab and settles what paper it shows.
- * @usedBy background/index (capture.inspect, capture.tab)
  */
 export async function inspectTab(tabId: number, tabUrl: string): Promise<CaptureDraft> {
   const raw = await probeTab(tabId, tabUrl);
@@ -82,7 +79,6 @@ export async function inspectTab(tabId: number, tabUrl: string): Promise<Capture
 /**
  * Builds a draft from interpreted page facts plus any extra metadata sources
  * (a Scholar result's own line), resolving the record and checking the library.
- * @usedBy inspectTab, capture/scholarCapture
  */
 export async function draftFromFacts(
   facts: PageFacts,
@@ -127,7 +123,6 @@ export async function draftFromFacts(
 
 /**
  * Starts (once) and returns the PDF search for a draft.
- * @usedBy background/index (capture.findPdf), saveDraft
  */
 export function findPdf(draft: CaptureDraft): Promise<ResolvedPdf | undefined> {
   draft.pdf ??= (async () => {
@@ -158,7 +153,6 @@ export function findPdf(draft: CaptureDraft): Promise<ResolvedPdf | undefined> {
 /**
  * Saves a draft into the library. Refuses a page that is not a paper and has
  * no PDF either — there would be nothing worth keeping.
- * @usedBy background/index (capture.save, capture.tab, scholar.save)
  */
 export async function saveDraft(draft: CaptureDraft, opts: SaveOptions = {}): Promise<SavedPaper> {
   const [pdf, metadata] = await Promise.all([findPdf(draft), withAbstract(draft.metadata)]);
@@ -182,7 +176,6 @@ export async function saveDraft(draft: CaptureDraft, opts: SaveOptions = {}): Pr
  * Pure summary of what a failed search tried, for the "No PDF found" dialog.
  * Entries labelled "<source> (via tab)" (resolverChain) are a bot-check retry,
  * so they are not double-counted but do set `blocked`.
- * @usedBy background/index (save outcomes, find/attach), tests
  */
 export function summarizeAttempts(attempts: PdfAttempt[]): PdfMiss {
   const direct = attempts.filter((a) => !a.source.endsWith("(via tab)"));
@@ -207,7 +200,6 @@ export type SaveDecision = { kind: "saved"; saved: SavedPaper } | { kind: "no-pd
  * reached is NOT written — the caller shows the "No PDF found" dialog and
  * re-sends with "save" to confirm. findPdf is memoised, so the confirming call
  * reuses the finished search rather than running it again.
- * @usedBy background/index (capture.save, capture.tab, scholar.save)
  */
 export async function saveOrAsk(draft: CaptureDraft, opts: SaveOptions = {}, ifNoPdf: IfNoPdf = "ask"): Promise<SaveDecision> {
   if (ifNoPdf === "ask" && draft.isPaper && !(await findPdf(draft))) {
@@ -224,7 +216,6 @@ export async function saveOrAsk(draft: CaptureDraft, opts: SaveOptions = {}, ifN
  * Re-checks the library for the draft's paper: it may have been saved or
  * removed elsewhere since the draft was cached (guards against a duplicate on
  * "Add from open tab" and against a stale "already in library" mark).
- * @usedBy background/index (capture.tab, scholar.save)
  */
 export async function refreshExisting(draft: CaptureDraft): Promise<void> {
   const hit = draft.isPaper
@@ -237,7 +228,6 @@ export async function refreshExisting(draft: CaptureDraft): Promise<void> {
 /**
  * Only collections under papers/ are valid targets; anything else falls back
  * to the library root rather than writing outside the library.
- * @usedBy saveDraft, tests
  */
 export function safeFolder(folder: string | undefined): string {
   if (!folder) return PAPERS_DIR;

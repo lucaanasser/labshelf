@@ -3,9 +3,6 @@
  * paper:added / paper:updated and drives the @labshelf/core pipeline through a
  * single-worker queue. Idempotent: skips papers whose contentHash matches the
  * last indexed run.
- *
- * @depends vscode, @labshelf/core, db/ai/*, runtime/*, pdf/*
- * @dependents extension.ts wiring
  */
 import * as vscode from "vscode";
 import type { EventBus, IEmbeddingProvider, ILogger, IResearchDatabase, LocalFileSystem } from "@labshelf/core";
@@ -36,7 +33,6 @@ export class AiIndexer {
    * Subscribes to paper lifecycle events. Returns a disposer that detaches the
    * listeners — the caller should add it to the extension context.
    *
-   * @usedBy extension.ts activate
    * @returns Function that unsubscribes the indexer.
    */
   attach(): () => void {
@@ -56,7 +52,6 @@ export class AiIndexer {
   /**
    * Re-runs ingestion for every known paper. Used by the rebuild command.
    *
-   * @usedBy labshelf.ai.rebuildIndex
    * @returns void
    */
   async rebuildAll(): Promise<void> {

@@ -43,7 +43,6 @@ const NAMESPACES: RemoteNamespace[] = ["library", "appdata"];
 /**
  * Runs a full bidirectional sync using only injected RemoteProvider and
  * LocalFileSystem — no concrete backend dependency.
- * @usedBy syncController, browserSyncController
  * @returns SyncResult
  */
 export class SyncEngine {
@@ -97,7 +96,6 @@ export class SyncEngine {
 
   /**
    * Runs the full sync across both namespaces and persists the manifest.
-   * @usedBy syncController, browserSyncController
    * @returns SyncResult
    */
   async run(): Promise<SyncResult> {

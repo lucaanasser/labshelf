@@ -2,9 +2,6 @@
  * Non-interactive subcommands of `labshelf`, for scripts, shell pipelines (fzf, rg) and quick lookups. Each command
  * opens the library through the same composition root as the TUI and writes plain text or --json to stdout;
  * diagnostics go to stderr. Exit codes: 0 ok, 1 failure, 2 usage error.
- *
- * @depends app/context, app/config, library/*, sync/*, ui/format, platform/system
- * @dependents main
  */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
@@ -100,7 +97,6 @@ function requireCollection(ctx: AppContext, raw: string | undefined): string {
 
 /**
  * Runs one library command.
- * @usedBy main
  * @returns the exit code
  */
 export async function runLibraryCommand(ctx: AppContext, args: ParsedArgs, io: Output): Promise<number> {
@@ -297,7 +293,6 @@ async function runAuth(ctx: AppContext, sub: string | undefined, io: Output): Pr
 
 /**
  * `labshelf doctor`: checks everything the terminal app depends on, without needing a working library.
- * @usedBy main
  * @returns the exit code (1 when something essential is missing)
  */
 export async function runDoctor(root: string | undefined, rootSource: string, config: TerminalConfig, io: Output): Promise<number> {

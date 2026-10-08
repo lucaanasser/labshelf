@@ -7,10 +7,8 @@
  * After each successful sync the paperRecordStore is rebuilt from the updated
  * files, so the library page always sees current metadata.
  *
- * @depends storage/indexedDbFileSystem, storage/idbManifestFileSystem,
  *          storage/paperRecordStore, sync/auth/browserDriveAuth,
  *          @labshelf/core SyncEngine, SyncManifest, createGoogleDriveProvider
- * @dependents background/index
  */
 import { SyncEngine, SyncManifest, createGoogleDriveProvider, SYNC_PROVIDER_ID, BROWSER_SYNC_ROOTS } from "@labshelf/core";
 import type { SyncResult } from "@labshelf/core";

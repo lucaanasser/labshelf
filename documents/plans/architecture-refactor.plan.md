@@ -1,6 +1,6 @@
 # Plan: architecture refactor
 
-Status: in progress (session 3 of 13)
+Status: in progress (session 4 of 13)
 Size: GG — every package moves and duplicated logic merges across three apps; 13 sessions, one per phase (phases 4 and 9 are the heaviest). Adds a session if Q1 keeps the SQLite paper index (S10.5 grows).
 Pending decisions: 7
 

@@ -3,9 +3,6 @@
  * VS Code extension's `ui/library/folderNavigation.ts`, with "/"-separated
  * IndexedDB paths instead of absolute file paths. Everything here is
  * side-effect free so the views stay thin and the logic is unit-testable.
- *
- * @depends @labshelf/core PaperRecord, storage FolderNode
- * @dependents library-page views and controllers
  */
 import { PAPER_STATUSES, type PaperRecord, type PaperStatus, PAPERS_DIR } from "@labshelf/core";
 import type { FolderNode } from "../../storage";

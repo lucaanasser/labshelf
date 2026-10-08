@@ -2,9 +2,6 @@
  * Composition root of the terminal app (the counterpart of packages/vscode/src/extension.ts): builds the concrete
  * adapters and wires the services for one library. The TUI and the CLI both start here; nothing else instantiates
  * adapters.
- *
- * @depends app/*, library/*, sync/*, preview/*, platform/*, tui/graphics, @labshelf/core
- * @dependents main, cli/commands, ui/app
  */
 import * as path from "node:path";
 
@@ -49,7 +46,6 @@ export interface OpenOptions {
 
 /**
  * Opens a library: creates its folder structure if needed, scans it, and wires every service.
- * @usedBy main, cli/commands
  * @returns the context
  */
 export async function openLibrary(root: string, options: OpenOptions): Promise<AppContext> {

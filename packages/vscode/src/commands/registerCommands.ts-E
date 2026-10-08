@@ -1,4 +1,4 @@
-/** Registers all user-facing extension commands against the VS Code command registry */
+/** Registers all user-facing extension commands against the VS Code command registry. @depends vscode, paperService, logger, themeManager, annotationManager. @dependents extension */
 import * as vscode from "vscode";
 
 import type { PaperService } from "../core/paperService.js";
@@ -29,7 +29,7 @@ export type ActiveServices = {
 
 export type RequireServices = () => Promise<ActiveServices | null>;
 
-/** Registers all labshelf.* commands onto the extension context subscriptions */
+/** Registers all labshelf.* commands onto the extension context subscriptions. @usedBy extension. @returns void */
 export function registerCommands(
   context: vscode.ExtensionContext,
   requireServices: RequireServices,
@@ -241,7 +241,7 @@ function articleLink(paper: PaperRecord): string | undefined {
   return candidate && isSafeExternalUrl(candidate) ? candidate : undefined;
 }
 
-/** Returns the paper matching paperId if given, or presents a quick-pick for the user to choose from */
+/** Returns the paper matching paperId if given, or presents a quick-pick for the user to choose from. @usedBy extension (labshelf.openPdfViewer, labshelf.exportAnnotations). @returns the paper, or undefined when cancelled or the library is empty */
 export async function resolvePaper(
   paperService: PaperService,
   paperId: string | undefined,

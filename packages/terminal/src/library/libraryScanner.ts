@@ -6,9 +6,6 @@
  * Folder rules (same as VS Code's tree and indexer): a folder holding metadata.yaml is a paper; a folder holding only
  * paper.pdf is neither a paper nor a collection (VS Code does not index it either); dot-folders are hidden; anything
  * else under papers/ is a collection.
- *
- * @depends @labshelf/core (paperRecordFromMetadata), library/libraryRoot
- * @dependents library/libraryStore, cli/commands
  */
 import { promises as fs, type Dirent } from "node:fs";
 import * as path from "node:path";
@@ -79,7 +76,6 @@ async function isFileEntry(dir: string, entry: Dirent): Promise<boolean> {
 
 /**
  * Reads one paper folder.
- * @usedBy scanLibrary, library/paperService (fresh read before a write)
  * @returns the entry, or undefined when metadata.yaml is missing or not a mapping
  */
 export async function readPaperFolder(paths: LibraryRoot, folder: string): Promise<PaperEntry | undefined> {
@@ -113,7 +109,6 @@ export async function readPaperFolder(paths: LibraryRoot, folder: string): Promi
 
 /**
  * Scans papers/ completely.
- * @usedBy library/libraryStore, cli/commands
  * @returns the snapshot
  */
 export async function scanLibrary(paths: LibraryRoot): Promise<LibrarySnapshot> {
@@ -204,7 +199,6 @@ export const collator = new Intl.Collator(undefined, { numeric: true, sensitivit
 
 /**
  * All papers at or below a collection.
- * @usedBy library/libraryStore, cli bib
  * @returns the entries
  */
 export function papersUnder(snapshot: LibrarySnapshot, rel: string): PaperEntry[] {

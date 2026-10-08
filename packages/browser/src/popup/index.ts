@@ -9,8 +9,6 @@
  * library (already saved) | empty (no paper here) → saving → saved. A paper
  * whose PDF the search cannot reach is never written silently: the user is
  * asked first through the shared "No PDF found" dialog.
- * @depends platform/browserApi, platform/runtimeMessages, ui/dom, ui/icons, ui/theme, ui/dialog, ui/pdfCopy, popup/format
- * @dependents popup/index.html
  */
 import { bx } from "../platform/browserApi";
 import type {

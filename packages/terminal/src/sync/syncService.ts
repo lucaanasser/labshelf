@@ -8,9 +8,7 @@
  * Triggers: on demand (S, `labshelf sync`), 30 s after a change made in the terminal (same debounce as VS Code), and
  * periodically while the TUI is open.
  *
- * @depends @labshelf/core (SyncEngine, SyncManifest, SyncLock, folder names, run record), sync/driveAuth,
  *          platform/nodeLockStore, library/*
- * @dependents app/context, ui/app, cli sync
  */
 import * as os from "node:os";
 
@@ -70,7 +68,6 @@ export interface SyncServiceDeps {
 
 /**
  * Library namespace changes worth a rescan: something arrived, left or conflicted locally.
- * @usedBy SyncService.syncNow
  * @returns true when the local library changed
  */
 export function libraryChanged(result: SyncResult): boolean {
@@ -97,7 +94,6 @@ export class SyncService {
   }
 
   /**
-   * @usedBy ui/app
    * @returns an unsubscribe function
    */
   onStatus(listener: (status: SyncStatus) => void): () => void {
@@ -119,7 +115,6 @@ export class SyncService {
 
   /**
    * Loads stored credentials and the shared last-run record.
-   * @usedBy app/context
    * @returns the status
    */
   async init(): Promise<SyncStatus> {
@@ -131,7 +126,6 @@ export class SyncService {
 
   /**
    * Re-reads the shared last-run record (another app may have synced).
-   * @usedBy ui/app (on library change)
    * @returns void
    */
   async refreshLastRun(): Promise<void> {
@@ -145,7 +139,6 @@ export class SyncService {
 
   /**
    * Runs one sync now. Concurrent calls in this process share one run; a run in another app is reported as busy.
-   * @usedBy ui/app (S), cli sync, timers
    * @returns what happened
    */
   syncNow(reason = "manual"): Promise<SyncOutcome> {
@@ -214,7 +207,6 @@ export class SyncService {
 
   /**
    * Schedules a sync 30 s after the last local change (a burst of edits syncs once).
-   * @usedBy library/paperService (onLocalChange)
    * @returns void
    */
   notifyLocalChange(): void {
@@ -226,7 +218,6 @@ export class SyncService {
 
   /**
    * Syncs every `minutes` while running, skipping a tick when any app synced within the last half interval.
-   * @usedBy ui/app
    * @returns void
    */
   startPeriodic(minutes: number): void {
@@ -239,7 +230,6 @@ export class SyncService {
 
   /**
    * One periodic tick, exposed for the TUI start-up sync and tests.
-   * @usedBy startPeriodic, ui/app
    * @returns the outcome, or undefined when skipped as recent
    */
   async periodicTick(intervalMs: number): Promise<SyncOutcome | undefined> {
@@ -258,7 +248,6 @@ export class SyncService {
 
   /**
    * Signs in to Google Drive.
-   * @usedBy cli auth login, ui/app
    * @returns void
    */
   async login(options: LoginOptions): Promise<void> {
@@ -269,7 +258,6 @@ export class SyncService {
 
   /**
    * Signs out and forgets the tokens. The library and the manifest stay.
-   * @usedBy cli auth logout, ui/app
    * @returns void
    */
   async logout(): Promise<void> {
@@ -280,7 +268,6 @@ export class SyncService {
 
   /**
    * Stops timers; an in-flight sync finishes on its own.
-   * @usedBy app/context
    * @returns the in-flight sync, if any, so a quitting CLI can wait for it
    */
   stop(): Promise<SyncOutcome> | undefined {

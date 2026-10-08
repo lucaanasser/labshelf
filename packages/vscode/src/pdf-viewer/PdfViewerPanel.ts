@@ -76,7 +76,6 @@ export class PdfViewerPanel {
 
   /**
    * Clears the map of open panels — intended for use in tests only.
-   * @usedBy tests
    * @returns void
    */
   static _clearAllForTesting(): void {
@@ -86,7 +85,6 @@ export class PdfViewerPanel {
 
   /**
    * Sends a reader command (contributed keybinding or palette command) to the focused reader panel.
-   * @usedBy extension.ts (labshelf.reader.* commands)
    * @returns true when a reader panel was focused and received the command.
    */
   static postToActive(id: ReaderCommandId): boolean {
@@ -98,7 +96,6 @@ export class PdfViewerPanel {
 
   /**
    * Reveals an existing panel for the paper if one is open, or creates and initializes a new webview panel.
-   * @usedBy extension.ts
    * @returns void
    */
   static createOrShow(deps: PdfViewerDeps, paper: PaperRecord, options: OpenOptions = {}): void {
@@ -380,7 +377,6 @@ export class PdfViewerPanel {
 
   /**
    * Exports a paper's annotations as Markdown to the clipboard or to a file chosen by the user (default: <paper folder>/annotations.md).
-   * @usedBy pdf-viewer/PdfViewerPanel.ts (exportAnnotations message), extension.ts (labshelf.exportAnnotations)
    * @returns void
    */
   static async exportAnnotations(
@@ -422,7 +418,6 @@ export class PdfViewerPanel {
 
   /**
    * Disposes all disposables and the underlying webview panel, guarded against double-disposal.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts (self, on panel close event)
    * @returns void
    */
   dispose(): void {

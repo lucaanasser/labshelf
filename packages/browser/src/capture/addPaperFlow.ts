@@ -4,9 +4,7 @@
  * adapted for the browser. A paper without a PDF is still a full entry
  * (metadata.yaml + bib.bib): the VS Code index treats any folder holding a
  * metadata.yaml as a paper, and the PDF can be attached later.
- * @depends @labshelf/core BibTeXService IFileSystem PaperRecord ResolvedMetadata,
  *          storage/indexedDbFileSystem, storage/paperRecordStore
- * @dependents capture/captureService, background/index
  */
 import type { IFileSystem, PaperRecord, ResolvedMetadata } from "@labshelf/core";
 import { BibTeXService, PDF_FILE, PAPERS_DIR, claimCiteKey, makeCiteKey, normalizeTags } from "@labshelf/core";
@@ -39,7 +37,6 @@ export interface PaperExtras {
  * the metadata cache. The paper is queued for the next sync cycle; no Drive
  * upload happens here. `targetFolder` is the collection the paper lands in
  * (the library root by default), mirroring the VS Code "Add Paper Here".
- * @usedBy capture/captureService
  * @returns The newly created PaperRecord.
  */
 export async function addPaper(
@@ -95,7 +92,6 @@ export async function addPaper(
  * moved during a long search is written at its CURRENT path — writing to a
  * stale path would leave an orphan folder the tree treats as a bogus paper. A
  * PDF that arrived meanwhile (e.g. by sync) is never overwritten.
- * @usedBy background/index (paper.findPdf, capture.attachPdf)
  * @returns The current record, and whether paper.pdf was written now.
  */
 export async function attachPdfToPaper(

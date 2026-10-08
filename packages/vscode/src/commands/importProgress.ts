@@ -3,9 +3,6 @@
  * (command, sidebar drop, "Add here"). Reading a PDF, running OCR and asking
  * the registries can take ten seconds or more per file; without feedback that
  * is indistinguishable from a hang.
- *
- * @depends vscode, core/paperService.ts, commands/textLayerQueue.ts, @labshelf/core
- * @dependents commands/registerCommands.ts, extension.ts
  */
 import * as vscode from "vscode";
 
@@ -19,7 +16,6 @@ const LIBRARY_VIEW_ID = "labshelf.library";
  * Imports the given PDFs while showing a notification that names the file in
  * progress, plus the library view's own progress bar, since the sidebar is
  * where the user is looking for the paper to appear.
- * @usedBy commands/registerCommands.ts, extension.ts
  * @returns the BatchImportResult of the import
  */
 export async function importWithProgress(
@@ -63,7 +59,6 @@ function runImport(
 /**
  * Confirms a finished import by naming what was added: the extracted title is
  * the proof that the paper was recognised, not merely copied.
- * @usedBy commands/registerCommands.ts, extension.ts
  * @returns void
  */
 export function announceImport(result: BatchImportResult): void {
@@ -75,7 +70,6 @@ export function announceImport(result: BatchImportResult): void {
 
 /**
  * Builds the progress line for one step of the import.
- * @usedBy commands/importProgress.ts
  * @returns e.g. `Importing 2 of 5: "paper.pdf" — reading and identifying…`
  */
 export function describeStep(step: ImportProgress): string {
@@ -85,7 +79,6 @@ export function describeStep(step: ImportProgress): string {
 
 /**
  * Builds the confirmation text for a finished import.
- * @usedBy commands/importProgress.ts
  * @returns the message, or undefined when nothing was imported
  */
 export function describeResult(result: BatchImportResult): string | undefined {

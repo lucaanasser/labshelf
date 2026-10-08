@@ -5,9 +5,6 @@
  *
  * Also owns the reconciliation the indexer does not do: papers whose folder disappeared from disk are dropped from the
  * index (the indexer only upserts).
- *
- * @depends vscode, @labshelf/core (types)
- * @dependents extension.ts
  */
 import * as vscode from "vscode";
 
@@ -50,7 +47,6 @@ export class ExternalChangeWatcher implements vscode.Disposable {
 
 /**
  * Ids of indexed papers whose folder no longer holds a metadata.yaml.
- * @usedBy extension.ts (after an external change)
  * @returns the ids to drop from the index
  */
 export async function findMissingPapers(

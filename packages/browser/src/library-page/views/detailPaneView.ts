@@ -2,9 +2,6 @@
  * Detail pane: renders the selected paper (or a multi-selection summary) and
  * routes its buttons to store changes or typed intents. Section collapse
  * state is persisted through uiPrefs, like the VS Code webview's state.
- *
- * @depends ui/dom, state/libraryStore, state/derive, state/uiPrefs, events, views/detailSections
- * @dependents library-page/index
  */
 import type { PaperStatus } from "@labshelf/core";
 import { $ } from "../../ui/dom";

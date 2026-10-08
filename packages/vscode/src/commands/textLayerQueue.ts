@@ -7,9 +7,6 @@
  *
  * The jobs waiting or running are published (currentTextLayerJobs,
  * onTextLayerJobsChanged) so the library list can show them on each row.
- *
- * @depends vscode, core/paperService.ts
- * @dependents commands/importProgress.ts, commands/registerCommands.ts, extension.ts
  */
 import * as vscode from "vscode";
 
@@ -49,7 +46,6 @@ const listeners = new Set<(jobs: TextLayerJob[]) => void>();
 
 /**
  * Queues the given papers. Papers already waiting are not queued twice.
- * @usedBy commands/importProgress.ts, commands/registerCommands.ts, extension.ts
  * @returns a promise settled when these papers have been processed
  */
 export function queueTextLayers(
@@ -77,7 +73,6 @@ export function queueTextLayers(
 /**
  * The OCR jobs waiting or running, oldest first. Silent checks are left out:
  * they take a fraction of a second and would only make rows flicker.
- * @usedBy extension.ts (list panel), commands/textLayerQueue.ts
  * @returns a snapshot of the jobs
  */
 export function currentTextLayerJobs(): TextLayerJob[] {
@@ -93,7 +88,6 @@ export function currentTextLayerJobs(): TextLayerJob[] {
 /**
  * Calls the listener with a fresh snapshot whenever a job is queued, advances
  * a page, or finishes.
- * @usedBy extension.ts (list panel)
  * @returns a disposable that stops the notifications
  */
 export function onTextLayerJobsChanged(listener: (jobs: TextLayerJob[]) => void): vscode.Disposable {
@@ -171,7 +165,6 @@ async function runOcr(paperService: PaperService, paper: PaperRecord, options: T
 
 /**
  * Builds the message shown when a job ends.
- * @usedBy commands/textLayerQueue.ts
  * @returns the text, or undefined when the outcome is not worth interrupting for
  */
 export function describeOutcome(title: string, result: MakeSearchableResult, announceAll: boolean): string | undefined {
@@ -194,7 +187,6 @@ export function describeOutcome(title: string, result: MakeSearchableResult, ann
 
 /**
  * Builds the progress line for one page.
- * @usedBy commands/textLayerQueue.ts
  * @returns e.g. `Making "Title" searchable — reading page 3 of 17…`
  */
 export function describePage(title: string, step: TextLayerProgress): string {

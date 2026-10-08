@@ -142,7 +142,6 @@ async function applyOne(
 
 /**
  * Applies every operation for a namespace and returns its aggregated result.
- * @usedBy syncEngine
  * @returns NamespaceResult
  */
 export async function applyOperations(

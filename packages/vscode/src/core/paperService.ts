@@ -75,7 +75,6 @@ export class PaperService {
 
   /**
    * Imports a single PDF, copies it into the library, persists metadata, and emits PAPER_ADDED.
-   * @usedBy extension.ts, commands/registerCommands.ts
    * @returns the newly created PaperRecord
    */
   async addPaperFromUri(sourceUri: vscode.Uri, targetParentDir?: vscode.Uri): Promise<PaperRecord> {
@@ -121,7 +120,6 @@ export class PaperService {
   /**
    * Overwrites a paper's bibliographic fields with a freshly resolved record
    * and rewrites its BibTeX artifacts; emits PAPER_UPDATED.
-   * @usedBy commands/registerCommands.ts (labshelf.fetchMetadata)
    * @returns the updated PaperRecord, or undefined when the paper is unknown
    */
   async applyResolvedMetadata(paperId: string, metadata: ResolvedMetadata): Promise<PaperRecord | undefined> {
@@ -160,7 +158,6 @@ export class PaperService {
    * Re-runs the full extraction pipeline against a paper already in the
    * library. Recovers records that were imported while offline, before the
    * pipeline improved, or when a registry was rate-limiting.
-   * @usedBy commands/registerCommands.ts (labshelf.resolveMissingMetadata)
    * @returns the updated paper, or undefined when nothing better was found
    */
   async refreshMetadataFromPdf(paperId: string): Promise<PaperRecord | undefined> {
@@ -196,7 +193,6 @@ export class PaperService {
    * replaces paper.pdf with the result. Whatever happens, the verdict is
    * recorded on the paper (textLayer) so the library can show it; papers that
    * already have text are only marked as such.
-   * @usedBy commands/textLayerQueue.ts
    * @returns what was done, or why nothing could be
    */
   async makeSearchable(paperId: string, hooks?: TextLayerHooks): Promise<MakeSearchableResult> {
@@ -245,7 +241,6 @@ export class PaperService {
   /**
    * Records whether a paper's PDF has text of its own, without reading any page
    * optically. Used to label papers imported before text layers were tracked.
-   * @usedBy commands/textLayerQueue.ts
    * @returns the updated paper, or undefined when it is unknown or could not be checked
    */
   async checkTextLayer(paperId: string): Promise<PaperRecord | undefined> {
@@ -341,7 +336,6 @@ export class PaperService {
    * Re-checks whether a paper's PDF is on disk and, when the stored flag is
    * stale, corrects it and emits PAPER_UPDATED. hasPdf is derived, so this only
    * touches the index — never metadata.yaml.
-   * @usedBy commands/registerCommands.ts (ensurePaperPdf), extension.ts (post-sync)
    * @returns the current record and its real hasPdf, or undefined when unknown
    */
   async reconcilePdf(paperId: string): Promise<{ paper: PaperRecord; hasPdf: boolean } | undefined> {
@@ -361,7 +355,6 @@ export class PaperService {
 
   /**
    * Returns every paper whose record was never confirmed against a registry.
-   * @usedBy commands/registerCommands.ts
    * @returns papers worth re-resolving or filling in by hand
    */
   async listUnresolvedPapers(): Promise<PaperRecord[]> {
@@ -371,7 +364,6 @@ export class PaperService {
 
   /**
    * Returns all papers currently stored in the database, ordered by title.
-   * @usedBy commands/registerCommands.ts, extension.ts, ui/list/listWebviewPanel.ts
    * @returns array of PaperRecord
    */
   async listPapers(): Promise<PaperRecord[]> {
@@ -380,7 +372,6 @@ export class PaperService {
 
   /**
    * Locates a paper's PDF from its stored record. The id alone is not enough: a paper can sit in any collection folder under papers/, and moves with it.
-   * @usedBy extension.ts (AI indexer)
    * @returns URI of the paper's paper.pdf, or null when the id is unknown
    */
   async resolvePdfUri(paperId: string): Promise<vscode.Uri | null> {
@@ -395,7 +386,6 @@ export class PaperService {
 
   /**
    * Updates the read-status of one paper and emits PAPER_UPDATED; returns undefined if not found.
-   * @usedBy commands/registerCommands.ts
    * @returns updated PaperRecord or undefined
    */
   async updatePaperStatus(paperId: string, status: PaperRecord["status"]): Promise<PaperRecord | undefined> {
@@ -405,7 +395,6 @@ export class PaperService {
   /**
    * Changes the fields the user owns (reading status, tags, note) in the index and in metadata.yaml, which the index is
    * rebuilt from on every activation, and emits PAPER_UPDATED. An unchanged patch writes nothing.
-   * @usedBy ui/list/listWebviewPanel.ts
    * @returns updated PaperRecord, or undefined when the paper is unknown
    */
   async updatePaperFields(paperId: string, patch: PaperFieldsPatch): Promise<PaperRecord | undefined> {
@@ -432,7 +421,6 @@ export class PaperService {
 
   /**
    * The BibTeX entry of a paper, as written to its folder but without the local `file` line.
-   * @usedBy ui/list/listWebviewPanel.ts
    * @returns the entry text
    */
   bibtexFor(paper: PaperRecord): string {
@@ -441,7 +429,6 @@ export class PaperService {
 
   /**
    * Removes a paper from the index and optionally sends its folder to the trash; emits PAPER_DELETED.
-   * @usedBy commands/registerCommands.ts, ui/list/listWebviewPanel.ts
    * @returns true if the paper existed and was deleted, false if not found
    */
   async deletePaper(paperId: string, deleteFiles: boolean): Promise<boolean> {
@@ -469,7 +456,6 @@ export class PaperService {
    * Imports multiple PDFs or folders of PDFs, collecting per-file successes, failures, and skipped paths.
    * A single import can take ten seconds or more (OCR, registry lookups), so
    * onProgress lets the caller show which file is being worked on.
-   * @usedBy commands/importProgress.ts
    * @returns BatchImportResult with success, failed, and skipped arrays
    */
   async addPapersFromUris(
@@ -538,7 +524,6 @@ export class PaperService {
 
   /**
    * Rewrites stored paper paths after a collection folder is renamed or moved so the index stays valid.
-   * @usedBy extension.ts
    * @returns void
    */
   async relocatePapersUnder(oldDir: string, newDir: string): Promise<void> {
@@ -550,7 +535,6 @@ export class PaperService {
 
   /**
    * Drops index entries for every paper stored under dirPath, emitting PAPER_DELETED for each.
-   * @usedBy extension.ts
    * @returns void
    */
   async removePapersUnder(dirPath: string): Promise<void> {
@@ -562,7 +546,6 @@ export class PaperService {
 
   /**
    * Moves paper folders into targetDir on disk and re-points their records; papers already there are skipped.
-   * @usedBy ui/list/listWebviewPanel.ts
    * @returns the ids that moved and the per-paper failures (for example a name collision in the target)
    */
   async movePapers(paperIds: string[], targetDir: string): Promise<PaperMoveResult> {
@@ -592,7 +575,6 @@ export class PaperService {
 
   /**
    * Moves a collection folder into targetParentDir and re-points every paper stored under it.
-   * @usedBy extension.ts
    * @returns the folder's new absolute path
    */
   async moveFolder(dirPath: string, targetParentDir: string): Promise<string> {
@@ -616,7 +598,6 @@ export class PaperService {
 
   /**
    * Re-writes the BibTeX and metadata artifacts for every paper in the library.
-   * @usedBy commands/registerCommands.ts
    * @returns count of papers processed
    */
   async regenerateBibTeX(): Promise<number> {

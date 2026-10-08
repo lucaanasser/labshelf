@@ -3,9 +3,6 @@
  * which no other process can read, so the terminal signs in once on its own (same Google account and OAuth client,
  * hence the same Drive files). Storage, best first: the macOS Keychain, the freedesktop Secret Service (secret-tool),
  * and a 0600 file in the config directory. LABSHELF_TOKEN_STORE=file forces the file.
- *
- * @depends platform/dirs, platform/system
- * @dependents sync/driveAuth
  */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, promises as fs } from "node:fs";
@@ -33,7 +30,6 @@ const SERVICE = "labshelf.gdrive.tokens";
 
 /**
  * Validates stored token JSON.
- * @usedBy every TokenStore
  * @returns the tokens, or null
  */
 export function parseTokens(text: string | undefined | null): TokenData | null {
@@ -133,7 +129,6 @@ export class SecretServiceTokenStore implements TokenStore {
 
 /**
  * Picks the most secure store available.
- * @usedBy app/context
  * @returns the store
  */
 export function createTokenStore(env: NodeJS.ProcessEnv = process.env): TokenStore {

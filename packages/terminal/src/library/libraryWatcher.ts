@@ -2,9 +2,6 @@
  * Watches the library on disk so changes made elsewhere — the VS Code extension, a sync run by either app, a file
  * manager — show up in the TUI within a fraction of a second. Uses recursive fs.watch (macOS, Windows, Linux on Node
  * 20+) and falls back to polling the papers folder when recursive watching is unavailable.
- *
- * @depends library/libraryRoot
- * @dependents app/context
  */
 import { watch, type FSWatcher } from "node:fs";
 
@@ -35,7 +32,6 @@ export class LibraryWatcher {
 
   /**
    * Starts watching papers/ and the sidecar folder.
-   * @usedBy app/context
    * @returns void
    */
   start(): void {
@@ -70,7 +66,6 @@ export class LibraryWatcher {
   }
 
   /**
-   * @usedBy app/context
    * @returns void
    */
   stop(): void {

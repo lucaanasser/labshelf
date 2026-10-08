@@ -14,7 +14,6 @@ function joinPath(prefix: string, name: string): string {
 
 /**
  * Recursively scans a local directory tree, hashing every file for comparison against the manifest base.
- * @usedBy syncEngine
  * @returns Map<string, TreeNode>
  */
 export async function scanLocalTree(
@@ -70,7 +69,6 @@ const RANK_DISPLAY = 4;
  * Recursively scans a remote folder tree, registering discovered folders on the
  * resolver; folderNameMap translates remote display names to local names, and
  * nameFolder (when given) decides first, from the folder's contents.
- * @usedBy syncEngine
  * @returns Map<string, TreeNode>
  */
 export async function scanRemoteTree(

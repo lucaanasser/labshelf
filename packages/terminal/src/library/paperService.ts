@@ -7,9 +7,6 @@
  *
  * Titles are never rewritten here: Drive folders are named after titles (see core folderNames), and renaming one
  * outside a sync would make the next sync read it as a different paper.
- *
- * @depends @labshelf/core (BibTeXService, PdfImportParser, resolvers), library/*, platform/*
- * @dependents app/context, ui/app, cli/commands
  */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
@@ -80,7 +77,6 @@ const MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024;
 
 /**
  * Normalizes what the user typed in "add" into something detectIdentifiers understands (bare arXiv ids, doi: …).
- * @usedBy importIdentifier, importAny
  * @returns the identifiers found, best first
  */
 export function identifiersIn(input: string): DetectedIdentifier[] {
@@ -131,7 +127,6 @@ export class TerminalPaperService {
 
   /**
    * Changes reading status, tags and/or note of one paper; an unchanged patch writes nothing.
-   * @usedBy ui/app, cli status/tag/note
    * @returns the updated record, or undefined when the paper is unknown
    */
   async updateFields(id: string, patch: PaperFieldsPatch, options: { reload?: boolean } = {}): Promise<PaperRecord | undefined> {
@@ -154,7 +149,6 @@ export class TerminalPaperService {
 
   /**
    * Sets the status of several papers.
-   * @usedBy ui/app
    * @returns ids changed and failures
    */
   async setStatus(ids: string[], status: PaperStatus): Promise<BatchOutcome> {
@@ -163,7 +157,6 @@ export class TerminalPaperService {
 
   /**
    * Adds and removes tags on several papers, keeping each paper's other tags.
-   * @usedBy ui/app, cli tag
    * @returns ids changed and failures
    */
   async editTags(ids: string[], add: string[], remove: string[]): Promise<BatchOutcome> {
@@ -195,7 +188,6 @@ export class TerminalPaperService {
 
   /**
    * Moves paper folders into a collection; papers already there are skipped, name clashes fail.
-   * @usedBy ui/app (paste, move picker), cli mv
    * @returns ids moved and failures
    */
   async movePapers(ids: string[], targetRel: string): Promise<BatchOutcome> {
@@ -229,7 +221,6 @@ export class TerminalPaperService {
 
   /**
    * Moves paper folders to the system trash (sidecars stay, as in VS Code, so a restored paper keeps its notes).
-   * @usedBy ui/app, cli rm
    * @returns ids trashed and failures
    */
   async trashPapers(ids: string[]): Promise<BatchOutcome> {
@@ -256,7 +247,6 @@ export class TerminalPaperService {
 
   /**
    * Creates a collection folder.
-   * @usedBy ui/app, cli mkdir
    * @returns the new collection path
    */
   async createCollection(parentRel: string, name: string): Promise<string> {
@@ -271,7 +261,6 @@ export class TerminalPaperService {
 
   /**
    * Renames a collection folder.
-   * @usedBy ui/app
    * @returns the collection's new path
    */
   async renameCollection(rel: string, newName: string): Promise<string> {
@@ -291,7 +280,6 @@ export class TerminalPaperService {
 
   /**
    * Moves a collection (with everything in it) under another collection.
-   * @usedBy ui/app (paste)
    * @returns the collection's new path
    */
   async moveCollection(rel: string, targetParentRel: string): Promise<string> {
@@ -310,7 +298,6 @@ export class TerminalPaperService {
 
   /**
    * Moves a collection folder and everything in it to the trash.
-   * @usedBy ui/app
    * @returns void
    */
   async trashCollection(rel: string): Promise<void> {
@@ -333,7 +320,6 @@ export class TerminalPaperService {
   /**
    * Imports one PDF file, the way VS Code's "Add Paper" does: metadata from the file and the registries, the PDF copied
    * to <collection>/<citeKey>/paper.pdf, metadata.yaml and bib.bib written beside it.
-   * @usedBy importAny
    * @returns what happened
    */
   async importPdf(file: string, targetRel: string, options: { sourceName?: string } = {}): Promise<ImportOutcome> {
@@ -374,7 +360,6 @@ export class TerminalPaperService {
   /**
    * Imports a paper from an identifier (DOI, arXiv id, PMID, ISBN or a URL containing one). arXiv papers come with
    * their PDF; others are saved as a reference without a PDF, like the browser extension does.
-   * @usedBy importAny
    * @returns what happened
    */
   async importIdentifier(input: string, targetRel: string): Promise<ImportOutcome> {
@@ -445,7 +430,6 @@ export class TerminalPaperService {
   /**
    * Imports whatever the user typed or passed on the command line: a PDF, a folder of PDFs (recursively), a PDF URL,
    * or an identifier. Changes are announced once at the end.
-   * @usedBy ui/app (a), cli add
    * @returns one outcome per imported item
    */
   async importAny(inputs: string[], targetRel: string, onProgress?: (progress: ImportProgress) => void): Promise<ImportOutcome[]> {
@@ -500,7 +484,6 @@ export class TerminalPaperService {
 
   /**
    * BibTeX entries for papers, without the local file line (what VS Code's "Copy BibTeX" produces).
-   * @usedBy ui/app (yank), cli bib
    * @returns the entries separated by blank lines
    */
   bibtexFor(records: PaperRecord[]): string {

@@ -1,8 +1,5 @@
 /**
  * Reads collection folders from disk: the directories under papers/ that organize papers, as opposed to the folders that hold one paper each.
- *
- * @depends ui/library/folderNavigation.ts
- * @dependents ui/library/libraryTreeDataProvider.ts, ui/list/listWebviewPanel.ts
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -27,7 +24,6 @@ async function isPaperFolder(dirPath: string): Promise<boolean> {
 
 /**
  * Lists the collection folders directly inside `dirPath`, sorted by name. Unreadable directories yield an empty list.
- * @usedBy ui/library/libraryTreeDataProvider.ts, ui/list/listWebviewPanel.ts
  * @returns the child collection folders as LibraryNode objects
  */
 export async function readCollectionFolders(dirPath: string): Promise<LibraryNode[]> {
@@ -56,7 +52,6 @@ export async function readCollectionFolders(dirPath: string): Promise<LibraryNod
 
 /**
  * Lists every collection folder under `rootDir` at any depth, parents before children.
- * @usedBy ui/list/listWebviewPanel.ts (move-to picker)
  * @returns a flat, depth-first list of collection folders
  */
 export async function listAllCollectionFolders(rootDir: string): Promise<LibraryNode[]> {

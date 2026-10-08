@@ -12,9 +12,6 @@
  *  4. Otherwise the display name is kept (collections, foreign folders).
  *
  * The rank of each answer lets scanRemoteTree settle two folders claiming one name: the stronger claim keeps it.
- *
- * @depends syncManifest, provider/remoteProvider, library/paperMetadata, treeScan (RemoteFolderNamer)
- * @dependents syncEngine
  */
 import { METADATA_FILE, parsePaperMetadata } from "../../library/index.js";
 import type { RemoteProvider } from "../provider/remoteProvider.js";
@@ -30,7 +27,6 @@ export interface LibraryFolderNamerDeps {
 
 /**
  * Whether a cite key can be used as a folder name on every platform the library syncs to.
- * @usedBy createLibraryFolderNamer
  * @returns true when safe
  */
 export function isSafeFolderName(name: string): boolean {
@@ -39,7 +35,6 @@ export function isSafeFolderName(name: string): boolean {
 
 /**
  * Builds the namer for one sync run.
- * @usedBy syncEngine
  * @returns the namer passed to scanRemoteTree
  */
 export function createLibraryFolderNamer(deps: LibraryFolderNamerDeps): RemoteFolderNamer {

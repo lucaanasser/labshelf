@@ -1,9 +1,6 @@
 /**
  * Implements RemoteProvider using an injected IAuthProvider and DriveClient,
  * mapping Drive API concepts to the provider-agnostic RemoteFile interface.
- *
- * @depends sync/provider/remoteProvider, sync/provider/authProvider, googleDriveClient
- * @dependents syncController (vscode), browserSyncController (browser)
  */
 import type {
   RemoteProvider,
@@ -104,7 +101,6 @@ export class GoogleDriveProvider implements RemoteProvider {
    * The parent clause is required for the appdata root too: a bare "trashed=false" query over the
    * appDataFolder space returns files at every depth, which flattened "<paperId>/data.json" into
    * "data.json" and made the diff delete the per-paper sidecars locally.
-   * @usedBy sync/core/treeScan (scanRemoteTree)
    * @returns the folder's direct children, every page concatenated.
    */
   async list(folderId: string): Promise<RemoteFile[]> {

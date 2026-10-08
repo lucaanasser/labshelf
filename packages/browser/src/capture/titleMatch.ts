@@ -34,7 +34,6 @@ const TITLE_DICE_MIN = 0.9;
 
 /**
  * True when `a` and `b` plausibly describe the same paper.
- * @usedBy the open-access resolvers, to reject wrong-item candidates
  */
 export function sameWork(a: WorkRef, b: WorkRef, opts: SameWorkOptions = {}): boolean {
   const ta = a.title ? titleKey(a.title) : "";
@@ -62,7 +61,6 @@ export function sameWork(a: WorkRef, b: WorkRef, opts: SameWorkOptions = {}): bo
  * titles. Word bigrams (not characters, not single words) are what separates
  * near-neighbours: on single words BWA vs BWA-SW scores 0.9 and would be
  * accepted, while on word bigrams it scores ~0.78 and is rejected.
- * @usedBy sameWork
  */
 export function wordBigramDice(normA: string, normB: string): number {
   const a = wordBigrams(normA);

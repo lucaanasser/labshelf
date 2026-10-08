@@ -2,8 +2,6 @@
  * Typed wrapper around bx.storage.local for user-facing preferences.
  * The options page reads/writes here, and resolvers consult these values to
  * decide whether to attempt Sci-Hub, which mirror to use, etc.
- * @depends platform/browserApi
- * @dependents capture/resolvers, options/index, background scheduler
  */
 import { bx } from "./browserApi";
 import { PAPERS_DIR } from "@labshelf/core";
@@ -34,7 +32,6 @@ const DEFAULTS: LabShelfSettings = {
 
 /**
  * Reads the merged settings object (defaults overlaid with persisted values).
- * @usedBy resolvers/scihubResolver, resolvers/unpaywallResolver, options/index
  * @returns LabShelfSettings
  */
 export async function getSettings(): Promise<LabShelfSettings> {
@@ -45,7 +42,6 @@ export async function getSettings(): Promise<LabShelfSettings> {
 
 /**
  * Persists a partial settings patch, merging with whatever is already stored.
- * @usedBy options/index
  */
 export async function updateSettings(patch: Partial<LabShelfSettings>): Promise<void> {
   const current = await getSettings();

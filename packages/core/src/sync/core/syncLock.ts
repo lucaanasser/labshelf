@@ -41,7 +41,6 @@ const DEFAULT_HEARTBEAT_MS = 20_000;
 
 /**
  * Parses a lock file, tolerating garbage (a half-written or hand-edited file reads as no holder).
- * @usedBy SyncLock, HeldSyncLock
  * @returns the lock info, or undefined
  */
 export function parseSyncLock(text: string | undefined): SyncLockInfo | undefined {
@@ -67,7 +66,6 @@ export function parseSyncLock(text: string | undefined): SyncLockInfo | undefine
 /**
  * Acquires the sync lock of one library. One instance per (library, provider) is enough; acquire() may be called
  * repeatedly, each successful call returning its own HeldSyncLock.
- * @usedBy @labshelf/vscode syncController, @labshelf/terminal syncService
  */
 export class SyncLock {
   private readonly staleMs: number;
@@ -89,7 +87,6 @@ export class SyncLock {
 
   /**
    * Tries to take the lock once, taking over an abandoned one.
-   * @usedBy runExclusive, callers that want to report who holds the lock
    * @returns the held lock, or the current holder when it is busy
    */
   async acquire(): Promise<SyncLockAttempt> {
@@ -113,7 +110,6 @@ export class SyncLock {
 
   /**
    * Runs task while holding the lock, refreshing the heartbeat in the background and releasing it afterwards.
-   * @usedBy @labshelf/vscode syncController, @labshelf/terminal syncService
    * @returns the task's result, or the holder when the lock is busy
    */
   async runExclusive<T>(task: () => Promise<T>): Promise<{ ran: true; value: T } | { ran: false; holder: SyncLockInfo | undefined }> {
@@ -133,7 +129,6 @@ export class SyncLock {
 
   /**
    * Whether a holder stopped working: its heartbeat is too old, or it ran on this host and its process is gone.
-   * @usedBy acquire
    * @returns true when the lock can be taken over
    */
   isAbandoned(holder: SyncLockInfo): boolean {
@@ -171,7 +166,6 @@ export class HeldSyncLock {
 
   /**
    * Refreshes the heartbeat, unless another process took the lock over meanwhile.
-   * @usedBy SyncLock.runExclusive
    * @returns true while the lock is still ours
    */
   async heartbeat(): Promise<boolean> {
@@ -184,7 +178,6 @@ export class HeldSyncLock {
 
   /**
    * Removes the lock file if it is still ours.
-   * @usedBy SyncLock.runExclusive
    * @returns void
    */
   async release(): Promise<void> {

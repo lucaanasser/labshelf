@@ -18,7 +18,6 @@ const MIN_TITLE_CHARS = 20;
 
 /**
  * The library record describing the queried paper, if any.
- * @usedBy capture/captureService, background/index (library.lookup)
  */
 export function findInLibrary(records: PaperRecord[], query: PaperQuery): PaperRecord | undefined {
   const doi = query.doi?.toLowerCase();

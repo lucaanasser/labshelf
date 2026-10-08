@@ -22,7 +22,6 @@ export interface SyncRunRecord {
 
 /**
  * Flattens a SyncResult into the shared record.
- * @usedBy writeSyncRunRecord callers
  * @returns the record
  */
 export function summarizeSyncResult(result: SyncResult, app: string, host: string): SyncRunRecord {
@@ -44,7 +43,6 @@ export function summarizeSyncResult(result: SyncResult, app: string, host: strin
 
 /**
  * Writes the record next to the manifest.
- * @usedBy @labshelf/vscode syncController, @labshelf/terminal syncService
  * @returns void
  */
 export async function writeSyncRunRecord(fs: LocalFileSystem, path: string, record: SyncRunRecord): Promise<void> {
@@ -53,7 +51,6 @@ export async function writeSyncRunRecord(fs: LocalFileSystem, path: string, reco
 
 /**
  * Reads the record; a missing or unreadable file reads as "never synced".
- * @usedBy @labshelf/terminal syncService
  * @returns the record, or undefined
  */
 export async function readSyncRunRecord(fs: LocalFileSystem, path: string): Promise<SyncRunRecord | undefined> {

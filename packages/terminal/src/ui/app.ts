@@ -8,9 +8,6 @@
  *
  * The App holds UI state only; library changes go through TerminalPaperService and syncs through SyncService.
  * Rendering builds a fresh Screen per frame and the Terminal writes only the cells that changed.
- *
- * @depends app/context, library/*, sync/syncService, tui/*, ui/*
- * @dependents main
  */
 import { promises as fs } from "node:fs";
 import * as os from "node:os";
@@ -177,7 +174,6 @@ export class App {
 
   /**
    * Takes over the terminal and runs until the user quits.
-   * @usedBy main
    * @returns when the user quit
    */
   run(): Promise<void> {
@@ -242,7 +238,6 @@ export class App {
 
   /**
    * Rows of the folders pane: All papers, Unfiled (when the library root holds papers), then the folder tree.
-   * @usedBy frame, navigation, tests
    * @returns the rows
    */
   folderRows(): FolderRow[] {
@@ -275,7 +270,6 @@ export class App {
 
   /**
    * Papers of the current source (the hovered folder, or the search results), sorted and filtered.
-   * @usedBy frame, actions, tests
    * @returns the papers
    */
   papers(): PaperEntry[] {
@@ -309,7 +303,6 @@ export class App {
 
   /**
    * Index of the hovered paper; follows the paper when the list changes underneath (sort, sync, VS Code).
-   * @usedBy actions, frame, tests
    * @returns the index, -1 for an empty list
    */
   cursor(): number {
@@ -484,7 +477,6 @@ export class App {
 
   /**
    * Handles one input event (keys, paste, mouse).
-   * @usedBy Terminal listener, tests
    * @returns void
    */
   handle(event: InputEvent): void {
@@ -1297,7 +1289,6 @@ export class App {
 
   /**
    * Shows a message in the status bar for a few seconds.
-   * @usedBy actions
    * @returns void
    */
   notify(text: string, level: Message["level"] = "info"): void {
@@ -1349,7 +1340,6 @@ export class App {
 
   /**
    * Builds the next frame.
-   * @usedBy render, tests, --dump-frame
    * @returns the screen and the thumbnail to draw over it, if any
    */
   frame(): { screen: Screen; image: ImagePlan | undefined } {
@@ -1548,7 +1538,6 @@ function appName(app: string | undefined): string {
 
 /**
  * The sync part of the status bar.
- * @usedBy App.statusRight, tests
  * @returns the segment
  */
 export function syncSegment(status: SyncStatus, now: number): { text: string; style: Style } {
@@ -1573,7 +1562,6 @@ function looksLikePath(value: string): boolean {
 
 /**
  * Completes a filesystem path for the add prompt (folders and PDFs only).
- * @usedBy App.complete, tests
  * @returns the completed text and the other candidates
  */
 export async function completePath(value: string): Promise<{ completed: string; candidates: string[] }> {

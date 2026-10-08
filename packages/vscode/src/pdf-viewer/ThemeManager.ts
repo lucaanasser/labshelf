@@ -25,7 +25,6 @@ export class ThemeManager {
 
   /**
    * Maps a VS Code ColorThemeKind number to the corresponding PDF theme name.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts, pdf-viewer/ThemeManager.ts
    * @returns A PdfTheme string such as 'light', 'dark', or 'high-contrast'.
    */
   mapVsCodeTheme(kind: number): PdfTheme {
@@ -34,7 +33,6 @@ export class ThemeManager {
 
   /**
    * Resolves the effective theme name, converting 'auto' to the current VS Code theme name.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts, pdf-viewer/renderer/PdfRenderer.ts
    * @returns The resolved theme string (e.g., 'light', 'dark', 'sepia').
    */
   getEffectiveTheme(preference: string = 'auto'): string {
@@ -50,7 +48,6 @@ export class ThemeManager {
 
   /**
    * Registers a callback to be called with the new effective theme whenever the VS Code color theme changes.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns A vscode.Disposable that unregisters the listener when disposed.
    */
   onVsCodeThemeChange(callback: (effectiveTheme: string) => void): vscode.Disposable {
@@ -64,7 +61,6 @@ export class ThemeManager {
 
   /**
    * Retrieves the stored theme preference for a paper from the sidecar, defaulting to 'auto'.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns The PdfTheme preference string for the paper.
    */
   async getThemeForPaper(paperId: string): Promise<PdfTheme> {
@@ -74,7 +70,6 @@ export class ThemeManager {
 
   /**
    * Persists the given theme preference to the per-paper sidecar via PaperDataStore.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
    * @returns void
    */
   async setThemeForPaper(paperId: string, theme: PdfTheme): Promise<void> {
@@ -83,7 +78,6 @@ export class ThemeManager {
 
   /**
    * Releases the VS Code theme-change subscription and clears registered listeners.
-   * @usedBy none currently in src (no call site wires up ThemeManager disposal yet)
    * @returns void
    */
   dispose(): void {
