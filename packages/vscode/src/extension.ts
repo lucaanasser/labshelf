@@ -75,6 +75,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const papersRootUri = (): vscode.Uri | null =>
     libraryRoot ? new LibraryPaths(libraryRoot).papersRoot() : null;
 
+  // Declared before the first await: ensureSyncController runs inside the progress callback and reaches it.
+  let externalWatcher: ExternalChangeWatcher | undefined;
+
   if (libraryRoot) {
     // The Library tree is only registered once the index is open. Until then the view shows
     // "Loading your library…" (package.json viewsWelcome, keyed on labshelf.libraryLoaded) under
@@ -162,7 +165,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Changes made outside this window (the LabShelf terminal app, a sync it ran, another window) are picked up from
   // disk: re-index, drop papers whose folder is gone, and refresh the views.
-  let externalWatcher: ExternalChangeWatcher | undefined;
   function watchLibrary(root: vscode.Uri): void {
     externalWatcher?.dispose();
     externalWatcher = new ExternalChangeWatcher(new LibraryPaths(root), () => { void onExternalChange(); });
