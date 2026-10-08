@@ -10,12 +10,12 @@ import {
   libraryLayout,
   paperFiles,
   type IFileSystem,
+  type ILogger,
   type IResearchDatabase,
   type SyncResult,
   type ReaderCommandId,
 } from "@labshelf/core";
-import { PaperService } from "./core/paperService.js";
-import { WorkspaceLogger } from "./core/logger.js";
+import { PaperService, createExtensionLogger } from "./core/index.js";
 import { VscodeFileSystem } from "./storage/vscodeFileSystem.js";
 import {
   resolveLibraryRoot,
@@ -552,7 +552,7 @@ async function maybeStartAi(
 // Returns undefined when the user has turned it off, so imports skip it entirely.
 function createOcrEngine(
   context: vscode.ExtensionContext,
-  logger: WorkspaceLogger,
+  logger: ILogger,
 ): TesseractOcrEngine | undefined {
   const config = vscode.workspace.getConfiguration("labshelf");
   if (!config.get<boolean>("ocr.enabled", true)) {
@@ -589,9 +589,7 @@ async function buildServices(
   const fileSystem = createFileSystem(root);
   await ensureLibraryStructure(root, fileSystem);
   const database = await initializeDatabase(paths.indexPath(), fileSystem);
-  const logger = new WorkspaceLogger(fileSystem, paths, {
-    append: async (entry) => database.appendLog(entry),
-  });
+  const logger = createExtensionLogger(paths.appLogPath().fsPath, { append: (entry) => database.appendLog(entry) });
   const ocrEngine = createOcrEngine(context, logger);
   const pdfImportParser = new PdfImportParser(new NodePdfOpener(), { ocr: ocrEngine });
   const bibTeXService = new BibTeXService(fileSystem);

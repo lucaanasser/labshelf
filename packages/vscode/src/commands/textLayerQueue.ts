@@ -8,14 +8,13 @@
  * The jobs waiting or running are published (currentTextLayerJobs,
  * onTextLayerJobsChanged) so the library list can show them on each row.
  *
- * @depends vscode, core/paperService.ts, core/logger.ts
+ * @depends vscode, core/paperService.ts
  * @dependents commands/importProgress.ts, commands/registerCommands.ts, extension.ts
  */
 import * as vscode from "vscode";
 
-import type { PaperRecord } from "@labshelf/core";
+import type { ILogger, PaperRecord } from "@labshelf/core";
 import type { MakeSearchableResult, PaperService } from "../core/paperService.js";
-import type { WorkspaceLogger } from "../core/logger.js";
 import type { TextLayerProgress } from "../pdf/searchablePdfBuilder.js";
 
 const LOG_MODULE = "commands/textLayerQueue";
@@ -34,7 +33,7 @@ export interface TextLayerJob {
 
 export interface TextLayerQueueOptions {
   mode?: TextLayerJobMode;
-  logger?: WorkspaceLogger | undefined;
+  logger?: ILogger | undefined;
   // Also tell the user when a paper needed nothing or could not be read —
   // wanted when they asked for it, noise after an import.
   announceAll?: boolean;

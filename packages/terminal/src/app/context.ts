@@ -8,11 +8,10 @@
  */
 import * as path from "node:path";
 
-import { BibTeXService, PdfImportParser } from "@labshelf/core";
-import { NodeFileSystem } from "@labshelf/core/node";
+import { BibTeXService, Logger, PdfImportParser, type ILogger } from "@labshelf/core";
+import { FileLogSink, NodeFileSystem } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
-import { FileLogger } from "./logger.js";
 import { LibraryRoot, ensureLibraryStructure, LibraryStore, LibraryWatcher, TerminalPaperService, SidecarReader } from "../library/index.js";
 import { cacheDir } from "../platform/dirs.js";
 import { moveToTrash, openExternal } from "../platform/system.js";
@@ -25,7 +24,7 @@ import { detectImageProtocol, type ImageProtocol } from "../tui/graphics.js";
 export interface AppContext {
   paths: LibraryRoot;
   config: TerminalConfig;
-  logger: FileLogger;
+  logger: ILogger;
   store: LibraryStore;
   papers: TerminalPaperService;
   sidecars: SidecarReader;
@@ -57,7 +56,8 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const env = options.env ?? process.env;
   const paths = new LibraryRoot(root);
   await ensureLibraryStructure(paths);
-  const logger = new FileLogger(paths.layout.terminalLogPath());
+  // The TUI owns the terminal, so the log file is the only channel and there is nowhere else to report a failure.
+  const logger = new Logger([new FileLogSink(paths.layout.terminalLogPath())], { onSinkError: () => undefined });
   const store = new LibraryStore(paths);
   await store.reload();
 

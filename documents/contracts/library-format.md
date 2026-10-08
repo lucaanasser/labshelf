@@ -20,6 +20,8 @@ A LabShelf library is a folder that the user owns. Every app reads and writes th
     sync/google-drive.*            sync coordination (see sync.md, never synced)
 ```
 
+Each log file is append-only. Past 2 MiB it moves to `<name>.log.1` (one rotated file is kept, overwritten on the next rotation).
+
 The browser stores the same tree in IndexedDB under the same relative paths. `papers/…` maps to the `library` namespace, and `appdata/<paper id>/data.json` maps to `.research/papers/<paper id>/data.json`.
 
 ## Paper identity

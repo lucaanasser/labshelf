@@ -9,5 +9,6 @@ export * from "./db/index.js";
 export * from "./io/index.js";
 export * from "./sync/index.js";
 export * from "./library/index.js";
+export * from "./logging/index.js";
 export * from "./ai/index.js";
 export * from "./reader/index.js";

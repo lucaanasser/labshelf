@@ -3310,21 +3310,6 @@
   {
     "type": "dependency",
     "from": "packages/vscode/src/commands/importProgress.ts",
-    "to": "packages/vscode/src/core/logger.ts",
-    "unresolvedTo": "../core/logger.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/commands/importProgress.ts",
     "to": "packages/vscode/src/core/paperService.ts",
     "unresolvedTo": "../core/paperService.js",
     "dependencyTypes": [
@@ -3342,21 +3327,6 @@
     "from": "packages/vscode/src/commands/registerAiCommands.ts",
     "to": "packages/vscode/src/ai/service/aiService.ts",
     "unresolvedTo": "../ai/service/aiService.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/commands/registerCommands.ts",
-    "to": "packages/vscode/src/core/logger.ts",
-    "unresolvedTo": "../core/logger.js",
     "dependencyTypes": [
       "local",
       "type-only",
@@ -3432,21 +3402,6 @@
     "from": "packages/vscode/src/commands/registerCommands.ts",
     "to": "packages/vscode/src/storage/data/reindexLibrary.ts",
     "unresolvedTo": "../storage/data/reindexLibrary.js",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/commands/textLayerQueue.ts",
-    "to": "packages/vscode/src/core/logger.ts",
-    "unresolvedTo": "../core/logger.js",
     "dependencyTypes": [
       "local",
       "type-only",
@@ -3577,34 +3532,6 @@
     "from": "packages/vscode/src/extension.ts",
     "to": "packages/vscode/src/commands/textLayerQueue.ts",
     "unresolvedTo": "./commands/textLayerQueue.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/core/logger.ts",
-    "unresolvedTo": "./core/logger.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-import-past-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/vscode/src/extension.ts",
-    "to": "packages/vscode/src/core/paperService.ts",
-    "unresolvedTo": "./core/paperService.js",
     "dependencyTypes": [
       "local",
       "import"

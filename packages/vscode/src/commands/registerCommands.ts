@@ -2,11 +2,10 @@
 import * as vscode from "vscode";
 
 import type { PaperService } from "../core/paperService.js";
-import type { WorkspaceLogger } from "../core/logger.js";
 import type { ThemeManager } from "../pdf-viewer/ThemeManager.js";
 import type { AnnotationManager } from "../pdf-viewer/AnnotationManager.js";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import { type IFileSystem, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type PaperStatus, type BatchImportResult, isSafeExternalUrl, paperFiles } from "@labshelf/core";
+import { type IFileSystem, type ILogger, type IResearchDatabase, type LocalFileSystem, type PaperRecord, type PaperStatus, type BatchImportResult, isSafeExternalUrl, paperFiles } from "@labshelf/core";
 import { fetchMetadataForPaper, offerMetadataFetch, resolveMissingMetadata } from "./fetchMetadata.js";
 import { announceImport, importWithProgress } from "./importProgress.js";
 import { queueTextLayers } from "./textLayerQueue.js";
@@ -16,7 +15,7 @@ const LOG_MODULE = "commands/registerCommands";
 
 export type ActiveServices = {
   paperService: PaperService;
-  logger: WorkspaceLogger;
+  logger: ILogger;
   themeManager: ThemeManager;
   annotationManager: AnnotationManager;
   database: IResearchDatabase;
@@ -330,7 +329,7 @@ async function openPaperPdfExternal(paper: PaperRecord): Promise<void> {
 // Runs a batch import for the given URIs with a notification progress indicator, logging and surfacing any failures.
 async function runBatchImport(
   paperService: PaperService,
-  logger: WorkspaceLogger,
+  logger: ILogger,
   uris: vscode.Uri[],
 ): Promise<void> {
   const result = await importWithProgress(paperService, uris, undefined, logger);
@@ -363,7 +362,7 @@ function buildResultMessage(result: BatchImportResult): string {
 }
 
 // Wraps an async command action with error logging and a user-facing error message on failure.
-async function executeSafely(logger: WorkspaceLogger, commandName: string, action: () => Promise<void>): Promise<void> {
+async function executeSafely(logger: ILogger, commandName: string, action: () => Promise<void>): Promise<void> {
   try {
     await action();
   } catch (error) {

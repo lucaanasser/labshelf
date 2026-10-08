@@ -4,14 +4,13 @@
  * the registries can take ten seconds or more per file; without feedback that
  * is indistinguishable from a hang.
  *
- * @depends vscode, core/paperService.ts, core/logger.ts, commands/textLayerQueue.ts, @labshelf/core
+ * @depends vscode, core/paperService.ts, commands/textLayerQueue.ts, @labshelf/core
  * @dependents commands/registerCommands.ts, extension.ts
  */
 import * as vscode from "vscode";
 
-import type { BatchImportResult } from "@labshelf/core";
+import type { BatchImportResult, ILogger } from "@labshelf/core";
 import type { ImportProgress, PaperService } from "../core/paperService.js";
-import type { WorkspaceLogger } from "../core/logger.js";
 import { queueTextLayers } from "./textLayerQueue.js";
 
 const LIBRARY_VIEW_ID = "labshelf.library";
@@ -27,7 +26,7 @@ export async function importWithProgress(
   paperService: PaperService,
   uris: vscode.Uri[],
   targetParentDir?: vscode.Uri,
-  logger?: WorkspaceLogger,
+  logger?: ILogger,
 ): Promise<BatchImportResult> {
   const result = await runImport(paperService, uris, targetParentDir);
   // Scanned papers gain their text layer after they appear in the library:
