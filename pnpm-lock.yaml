@@ -24,10 +24,6 @@ importers:
         version: 8.71.1(eslint@10.12.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)
 
   packages/ai:
-    dependencies:
-      '@labshelf/core':
-        specifier: workspace:*
-        version: link:../core
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
@@ -96,12 +92,9 @@ importers:
 
   packages/core:
     dependencies:
-      pdfjs-dist:
-        specifier: ^6.3.289
-        version: 6.3.289
       yaml:
-        specifier: '*'
-        version: 2.9.0
+        specifier: ^2.7.1
+        version: 2.9.1
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
@@ -174,9 +167,6 @@ importers:
       pdfjs-dist:
         specifier: ~6.3.289
         version: 6.3.289
-      yaml:
-        specifier: ^2.7.1
-        version: 2.9.0
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
@@ -199,6 +189,9 @@ importers:
       typescript-js:
         specifier: npm:typescript@^6.0.3
         version: typescript@6.0.3
+      yaml:
+        specifier: ^2.7.1
+        version: 2.9.0
 
   packages/vscode:
     dependencies:

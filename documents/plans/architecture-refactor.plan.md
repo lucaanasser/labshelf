@@ -134,13 +134,13 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
 | S1.1 | Delete `packages/latex` | S0.4 | M · dead-code-cleaner | A1 (partly) | [ ] |
-| S1.2 | Core dead code | S0.4 | M · dead-code-cleaner | knip clean for core | [ ] |
-| S1.3 | AI dead code | S0.4, Q3 | M · dead-code-cleaner | knip clean for ai | [ ] |
-| S1.4 | Reader dead code | S0.4 | M · dead-code-cleaner | knip clean for reader | [ ] |
-| S1.5 | VS Code dead code | S0.4, Q4, Q5 | M · dead-code-cleaner | knip clean for vscode | [ ] |
-| S1.6 | Browser dead code | S0.4, Q2 | M · dead-code-cleaner | knip clean for browser | [ ] |
-| S1.7 | Terminal dead code | S0.4 | M · dead-code-cleaner | knip clean for terminal | [ ] |
-| S1.8 | Fix B1, B4, B5 | S0.4, Q7 | H · main thread | A8 for B1, B4, B5 | [ ] |
+| S1.2 | Core dead code | S0.4 | M · dead-code-cleaner | knip clean for core | [x] |
+| S1.3 | AI dead code | S0.4, Q3 | M · dead-code-cleaner | knip clean for ai | [x] |
+| S1.4 | Reader dead code | S0.4 | M · dead-code-cleaner | knip clean for reader | [x] |
+| S1.5 | VS Code dead code | S0.4, Q4, Q5 | M · dead-code-cleaner | knip clean for vscode | [x] |
+| S1.6 | Browser dead code | S0.4, Q2 | M · dead-code-cleaner | knip clean for browser | [x] |
+| S1.7 | Terminal dead code | S0.4 | M · dead-code-cleaner | knip clean for terminal | [x] |
+| S1.8 | Fix B1, B4, B5 | S0.4, Q7 | H · main thread | A8 for B1, B4, B5 | [x] |
 
 ### Session 3 — four packages
 
@@ -711,3 +711,6 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-08 S0.3 done: core and reader export TypeScript source (no `dist`); the VS Code host is bundled by esbuild (`build/host.mjs`, `out/extension.js`); the terminal alias is gone; the test tsconfigs of browser and terminal use Node16 resolution. S0.2 part 2 landed here: the six sync tests and `syncFakes.ts` are in core, and VS Code reaches the fakes through the `@labshelf/core/test-support/sync-fakes` export (core 175 tests + VS Code 360 = the 535 from before). `./node`, `./dom` and `./styles/*` are not exported yet: no file exists for them, and the steps that create the folders add the entries. Reader exports source for the same reason (it imports core source); `ai` keeps its `dist` until S2.1. Extension-host run on a library copy: activates, imports a PDF, resolves metadata, opens the reader. It found a startup bug in `activate()` (`externalWatcher` used before its declaration, which broke activation for any configured library); fixed in its own commit.
 - 2026-10-08 S0.4 done: `pnpm run lint` runs ESLint (size limits, with `eslint-suppressions.json` as the baseline: 75 known), dependency-cruiser (415 known, all `no-import-past-index`; known-violations file), knip (155 findings, warning only), the core neutral-runtime tsconfig check (30 known) and the directory-size check (10 known). Each fails on a new violation. Decisions: ESLint rules are `error` plus bulk suppressions, because suppressions keep the rule's severity; `.pnpmfile.cjs` gives the tools a TypeScript 6 JS copy, as for ts-jest; `@labshelf/ai` is not followed by dependency-cruiser until it is consumed from source (S2.1); the 30 neutral-runtime errors are web globals (`fetch`, `URL`, `TextEncoder`, timers) that need a design call in a later session.
 - 2026-10-08 S0.5 done: the VS Code package gets a `dev` script that watches the host and the reader bundle; `pnpm dev:vscode` runs both. The ignored `packages/*/coverage/` folders are deleted.
+- 2026-10-08 S1.2–S1.7 done (Q2: the four resolvers and `titleMatch.ts` stay for pdf-finding.plan.md; Q3, Q4, Q5 delete). Kept because still used: `rewritePath` (unexported), `HeldSyncLock` (unexported from the barrel), `scorePageDifficulty` and `extractTerms` in ai (the ingestion difficulty score calls them; only their barrel exports went), `shortAuthors` in the terminal. Reader constants are unexported where only their own file uses them. IndexedDB version 2 drops the `byHash` and `byFolder` indexes. A pre-existing VS Code `index.sqlite` without the later `papers` columns must be deleted once; it is a rebuildable cache.
+- 2026-10-08 S1.8 done: B1 `SyncController.setPaths` repoints the controller when the root changes and `labshelf.configureLibrary` calls `ensureSyncController`; B4 the ONNX path and the model download are gone (the hash provider is built directly, `degradedMode` and the two model events deleted); B5 `CliDriveAuth.authenticate()` keeps stored tokens or runs the login flow with the options the composition root passes. Each has a test.
+- 2026-10-08 S1.1 open: deleting `packages/latex` (needs `rm -rf` of its `node_modules` and `dist`) was denied by the permission classifier; the user runs it, then removes the `knip.json` entry, the README line and the lockfile entry.
