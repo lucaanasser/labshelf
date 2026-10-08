@@ -3,14 +3,11 @@
  *
  * Operates on POSIX-style string paths through an injected IFileSystem, so the
  * same service runs against vscode.workspace.fs and the IndexedDB filesystem.
- *
- * @depends yaml, interfaces/fileSystem, types/paperRecord
- * @dependents paperService (vscode), addPaperFlow (browser)
  */
 import YAML from "yaml";
 
-import type { IFileSystem } from "../../interfaces/fileSystem.js";
-import type { PaperRecord } from "../../types/paperRecord.js";
+import type { IFileSystem } from "../../ports/index.js";
+import type { PaperRecord } from "../../model/index.js";
 
 // POSIX-joins path segments with normalized single-slash separators.
 function posixJoin(...parts: string[]): string {

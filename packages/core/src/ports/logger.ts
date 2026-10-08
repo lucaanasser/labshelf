@@ -2,11 +2,8 @@
  * Structured logger interface used by services and adapters across platforms.
  * Concrete implementations write to a workspace log file (VS Code) or a
  * ring buffer in extension storage (browser).
- *
- * @depends types/logEntry.ts
- * @dependents paperService, syncController, capture flows
  */
-import type { LogEntry } from "../types/logEntry.js";
+import type { LogEntry } from "../model/index.js";
 
 export interface ILogger {
   log(

@@ -5,7 +5,7 @@
  */
 import YAML from 'yaml';
 
-import { BibTeXService, parseTextLayerInfo } from '@labshelf/core';
+import { BibTeXService } from '@labshelf/core';
 import type { IFileSystem, PaperRecord } from '@labshelf/core';
 
 function memoryFs(initial: Record<string, string> = {}): IFileSystem & { files: Map<string, string> } {
@@ -102,19 +102,5 @@ describe('BibTeXService.writePaperArtifacts', () => {
     const noPdf = memoryFs();
     await new BibTeXService(noPdf).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
     expect(noPdf.files.get('/lib/papers/imai1986/bib.bib')).not.toContain('file =');
-  });
-});
-
-describe('parseTextLayerInfo', () => {
-  it('accepts every known state and keeps only well-formed details', () => {
-    expect(parseTextLayerInfo({ state: 'ocr', ocrPages: 3, failedPages: -1, reason: '', checkedAt: 't', extra: 1 }))
-      .toEqual({ state: 'ocr', ocrPages: 3, checkedAt: 't' });
-    expect(parseTextLayerInfo({ state: 'failed', reason: 'no canvas' })).toEqual({ state: 'failed', reason: 'no canvas', checkedAt: '' });
-  });
-
-  it('rejects values an older version or a hand edit could leave behind', () => {
-    for (const value of [undefined, null, 'ocr', [], {}, { state: 'scanned' }, { state: 3 }]) {
-      expect(parseTextLayerInfo(value)).toBeUndefined();
-    }
   });
 });

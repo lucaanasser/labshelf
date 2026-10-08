@@ -1,10 +1,10 @@
-import { ExtensionEventBus, EVENTS } from '@labshelf/core';
+import { EventBus, EVENTS } from '@labshelf/core';
 
-describe('ExtensionEventBus', () => {
-  let eventBus: ExtensionEventBus;
+describe('EventBus', () => {
+  let eventBus: EventBus;
 
   beforeEach(() => {
-    eventBus = new ExtensionEventBus();
+    eventBus = new EventBus();
   });
 
   describe('on / emit', () => {

@@ -16,7 +16,7 @@ import { queueTextLayers } from '../../src/commands/textLayerQueue';
 function makeRequireServices(paperService?: Partial<PaperService>, logger?: Partial<WorkspaceLogger>): RequireServices {
   const ps = paperService ?? { listPapers: jest.fn(async () => []), addPapersFromUris: jest.fn(), regenerateBibTeX: jest.fn(async () => 0), reconcilePdf: jest.fn(async () => undefined) };
   const lg = logger ?? { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
-  const tm = { getThemeForPaper: jest.fn(async () => 'auto'), setThemeForPaper: jest.fn(async () => {}), isValidTheme: jest.fn(() => true), getEffectiveTheme: jest.fn(() => 'dark'), mapVsCodeTheme: jest.fn(() => 'dark'), onVsCodeThemeChange: jest.fn(() => ({ dispose: jest.fn() })), dispose: jest.fn() } as any;
+  const tm = { getThemeForPaper: jest.fn(async () => 'auto'), setThemeForPaper: jest.fn(async () => {}), getEffectiveTheme: jest.fn(() => 'dark'), mapVsCodeTheme: jest.fn(() => 'dark'), onVsCodeThemeChange: jest.fn(() => ({ dispose: jest.fn() })), dispose: jest.fn() } as any;
   const am = { createHighlight: jest.fn(), createNote: jest.fn(), getAnnotationsByPaper: jest.fn(async () => []), deleteAnnotation: jest.fn(), updateAnnotation: jest.fn(), validatePosition: jest.fn() } as any;
   const db = { listPapers: jest.fn(async () => []), upsertPaper: jest.fn(), deletePaper: jest.fn(), appendLog: jest.fn() } as any;
   const store = { getReadingState: jest.fn(async () => null), setReadingState: jest.fn(async () => {}) } as any;

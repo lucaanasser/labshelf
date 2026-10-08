@@ -1,7 +1,7 @@
 /**
  * Annotations tab: the paper's highlights and notes grouped by page, with jump, delete and Markdown export.
  */
-import type { Annotation } from "../../../types/index.js";
+import type { Annotation } from "../../../model/index.js";
 import { h, iconButton } from "./dom.js";
 import type { HostBridge } from "./hostBridge.js";
 import { icon } from "./icons.js";

@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import {
-  ExtensionEventBus,
+  EventBus,
   InMemoryResearchDatabase,
   PdfImportParser,
   BibTeXService,
@@ -53,7 +53,7 @@ const READER_COMMANDS: readonly ReaderCommandId[] = [
 /** Activates the extension, initializing services if a library is already configured. @usedBy vscode runtime. @returns void */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const fileSystemService = new FileSystemService();
-  const eventBus = new ExtensionEventBus();
+  const eventBus = new EventBus();
 
   let activeServices: ActiveServices | null = null;
   let syncController: SyncController | null = null;
@@ -517,7 +517,7 @@ function syncChangedLibrary(result: SyncResult): boolean {
 async function maybeStartAi(
   context: vscode.ExtensionContext,
   fileSystemService: FileSystemService,
-  eventBus: ExtensionEventBus,
+  eventBus: EventBus,
   services: ActiveServices,
 ): Promise<AiService | null> {
   try {
@@ -584,7 +584,7 @@ async function buildServices(
   context: vscode.ExtensionContext,
   root: vscode.Uri,
   fileSystemService: FileSystemService,
-  eventBus: ExtensionEventBus,
+  eventBus: EventBus,
 ): Promise<ActiveServices> {
   const paths = new LibraryPaths(root);
   await ensureLibraryStructure(root, fileSystemService);

@@ -1,13 +1,10 @@
 /**
  * Provider-agnostic orchestration of a sync run — scan local and remote trees,
  * diff against the manifest, apply operations, and persist.
- *
- * @depends sync/provider/remoteProvider, syncTypes, syncManifest, syncDiff, syncApply, treeScan, libraryFolderNamer, sync/provider/remotePathResolver
- * @dependents syncController (vscode), browserSyncController (browser)
  */
 import type { RemoteProvider, RemoteNamespace } from "../provider/remoteProvider.js";
+import type { LocalFileSystem } from "../../ports/index.js";
 import type {
-  LocalFileSystem,
   NamespaceResult,
   SyncResult,
 } from "./syncTypes.js";

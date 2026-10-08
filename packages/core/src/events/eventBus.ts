@@ -12,7 +12,7 @@ import type { EventName } from "./events.js";
 
 export type EventListener = (payload: unknown) => void;
 
-export class ExtensionEventBus {
+export class EventBus {
   private readonly listeners = new Map<EventName, Set<EventListener>>();
 
   /**

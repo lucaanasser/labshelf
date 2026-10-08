@@ -1,14 +1,10 @@
 /**
  * Execute classified diff operations against RemoteProvider and LocalFileSystem,
  * including keep-both conflict resolution.
- *
- * @depends syncTypes, sync/provider/remoteProvider, sync/provider/remotePathResolver,
- *          sync/util/conflictName, syncManifest, sync/util/contentHash
- * @dependents syncEngine
  */
 import type { RemoteProvider, RemoteNamespace } from "../provider/remoteProvider.js";
+import type { LocalFileSystem } from "../../ports/index.js";
 import type {
-  LocalFileSystem,
   NamespaceResult,
   SyncOperation,
 } from "./syncTypes.js";

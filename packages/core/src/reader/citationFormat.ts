@@ -1,7 +1,7 @@
 /**
  * Formats a quoted passage together with a citation of the paper it came from, in the style chosen by `labshelf.reader.citationStyle`.
  */
-import type { PaperRecord } from "../types/index.js";
+import type { PaperRecord } from "../model/index.js";
 import type { CitationStyle } from "./protocol.js";
 
 export type CitablePaper = Pick<PaperRecord, "citeKey" | "title" | "authors" | "year">;

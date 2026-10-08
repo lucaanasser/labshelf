@@ -1,10 +1,8 @@
 /**
  * Enumerate the local and remote file trees of a namespace into path-keyed maps consumed by the diff.
- *
- * @depends syncTypes, sync/provider/remoteProvider, sync/provider/remotePathResolver, sync/util/contentHash
- * @dependents syncEngine
  */
-import type { LocalFileSystem, TreeNode } from "./syncTypes.js";
+import type { LocalFileSystem } from "../../ports/index.js";
+import type { TreeNode } from "./syncTypes.js";
 import type { RemoteFile, RemoteProvider } from "../provider/remoteProvider.js";
 import type { RemotePathResolver } from "../provider/remotePathResolver.js";
 import { sha256Hex } from "../util/contentHash.js";

@@ -1,16 +1,9 @@
 /**
  * Manages create, read, update, and delete operations for paper annotations, delegating persistence to PaperDataStore and emitting events on each change.
- *
- * @depends pdf-viewer/config.ts, storage/data/paperDataStore.ts, @labshelf/core
- * @dependents pdf-viewer/PdfViewerPanel.ts, pdf-viewer/index.ts
  */
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import type { ExtensionEventBus, Annotation, AnnotationType, AnnotationColor, AnnotationPosition } from "@labshelf/core";
-import { EVENTS } from "@labshelf/core";
-import { PDF_VIEWER_CONFIG } from "./config.js";
-
-const VALID_TYPES: AnnotationType[] = ['highlight', 'note', 'comment', 'tag'];
-const VALID_COLORS = PDF_VIEWER_CONFIG.COLORS.highlight as readonly string[];
+import type { EventBus, Annotation, AnnotationType, AnnotationColor, AnnotationPosition } from "@labshelf/core";
+import { ANNOTATION_COLORS, ANNOTATION_TYPES, EVENTS } from "@labshelf/core";
 
 export class AnnotationManager {
   // Maps an annotation id to its owning paperId. Populated whenever annotations
@@ -20,7 +13,7 @@ export class AnnotationManager {
 
   constructor(
     private readonly dataStore: PaperDataStore,
-    private readonly eventBus: ExtensionEventBus,
+    private readonly eventBus: EventBus,
   ) {}
 
   /**
@@ -137,8 +130,8 @@ export class AnnotationManager {
    * @returns void
    */
   validateColor(color: string): void {
-    if (!VALID_COLORS.includes(color)) {
-      throw new Error(`Invalid annotation color: ${color}. Must be one of: ${VALID_COLORS.join(', ')}`);
+    if (!(ANNOTATION_COLORS as readonly string[]).includes(color)) {
+      throw new Error(`Invalid annotation color: ${color}. Must be one of: ${ANNOTATION_COLORS.join(', ')}`);
     }
   }
 
@@ -148,8 +141,8 @@ export class AnnotationManager {
    * @returns void
    */
   validateType(type: string): void {
-    if (!VALID_TYPES.includes(type as AnnotationType)) {
-      throw new Error(`Invalid annotation type: ${type}. Must be one of: ${VALID_TYPES.join(', ')}`);
+    if (!(ANNOTATION_TYPES as readonly string[]).includes(type)) {
+      throw new Error(`Invalid annotation type: ${type}. Must be one of: ${ANNOTATION_TYPES.join(', ')}`);
     }
   }
 

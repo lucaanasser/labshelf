@@ -10,7 +10,7 @@
 import * as vscode from 'vscode';
 import { PaperService } from '../../src/core/paperService';
 import { NodePdfOpener } from '../../src/pdf/nodePdfOpener';
-import type { IResearchDatabase, ExtensionEventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
+import type { IResearchDatabase, EventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
 import type { FileSystemService } from '../../src/storage/fileSystemService';
 import type { ILibraryPaths } from '../../src/storage/paths/libraryPaths';
 
@@ -67,7 +67,7 @@ describe('PaperService.addPaperFromUri byte safety', () => {
       upsertPaper: jest.fn(async () => {}),
       listPapers: jest.fn(async () => []),
     };
-    const mockEventBus: Partial<ExtensionEventBus> = { emit: jest.fn(), on: jest.fn() };
+    const mockEventBus: Partial<EventBus> = { emit: jest.fn(), on: jest.fn() };
     const mockFsService: Partial<FileSystemService> = { ensureDirectory: jest.fn(async () => {}) };
     const mockPaths: Partial<ILibraryPaths> = {
       papersRoot: jest.fn(() => vscode.Uri.file('/workspace/papers')),
@@ -77,7 +77,7 @@ describe('PaperService.addPaperFromUri byte safety', () => {
     const service = new PaperService(
       mockFsService as FileSystemService,
       mockDb as IResearchDatabase,
-      mockEventBus as ExtensionEventBus,
+      mockEventBus as EventBus,
       mockPaths as ILibraryPaths,
       { parse } as PdfImportParser,
       mockBibTeX as BibTeXService,

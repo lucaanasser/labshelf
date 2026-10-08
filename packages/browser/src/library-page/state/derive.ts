@@ -7,13 +7,13 @@
  * @depends @labshelf/core PaperRecord, storage FolderNode
  * @dependents library-page views and controllers
  */
-import type { PaperRecord, PaperStatus } from "@labshelf/core";
+import { PAPER_STATUSES, type PaperRecord, type PaperStatus } from "@labshelf/core";
 import type { FolderNode } from "../../storage";
 import type { SortDir, SortKey, StatusFilter } from "./libraryStore";
 
 export const ROOT = "papers";
 export const ROOT_LABEL = "All Papers";
-export const STATUSES: readonly PaperStatus[] = ["unread", "reading", "done"];
+export const STATUSES: readonly PaperStatus[] = PAPER_STATUSES;
 export const STATUS_LABEL: Record<PaperStatus, string> = { unread: "Unread", reading: "Reading", done: "Done" };
 const STATUS_ORDER: Record<PaperStatus, number> = { unread: 0, reading: 1, done: 2 };
 

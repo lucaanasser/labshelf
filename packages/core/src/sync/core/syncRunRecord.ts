@@ -2,11 +2,9 @@
  * The record of the last successful sync of a library, shared by every app that syncs it (".research/sync/
  * <providerId>.last.json"). It lets each app show when the library last synced and from where, and lets an app skip a
  * periodic run when another one just synced.
- *
- * @depends syncTypes
- * @dependents @labshelf/vscode syncController, @labshelf/terminal syncService
  */
-import type { LocalFileSystem, SyncResult } from "./syncTypes.js";
+import type { LocalFileSystem } from "../../ports/index.js";
+import type { SyncResult } from "./syncTypes.js";
 
 export interface SyncRunRecord {
   providerId: string;

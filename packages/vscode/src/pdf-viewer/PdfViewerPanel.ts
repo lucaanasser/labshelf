@@ -3,7 +3,7 @@
  */
 import * as vscode from "vscode";
 import {
-  type ExtensionEventBus,
+  type EventBus,
   type ILogger,
   type PaperRecord,
   type Annotation,
@@ -13,6 +13,7 @@ import {
   formatAnnotationsMarkdown,
   formatQuoteWithCitation,
   isSafeExternalUrl,
+  isPdfTheme,
   isWebviewMessage,
   normalizeReadingState,
   type EffectiveTheme,
@@ -40,7 +41,7 @@ export interface ReadingStateStore {
 
 export interface PdfViewerDeps {
   extensionUri: vscode.Uri;
-  eventBus: ExtensionEventBus;
+  eventBus: EventBus;
   themeManager: ThemeManager;
   annotationManager: AnnotationManager;
   readingStore?: ReadingStateStore;
@@ -291,7 +292,7 @@ export class PdfViewerPanel {
         // Superseded by saveReadingState; still accepted from older bundles.
         break;
       case "selectTheme":
-        if (themeManager.isValidTheme(msg.theme)) {
+        if (isPdfTheme(msg.theme)) {
           this._themePreference = msg.theme;
           await themeManager.setThemeForPaper(paper.id, msg.theme);
           // Send updated theme to webview without full re-render

@@ -1,12 +1,11 @@
 /**
  * Floating bubble over a text selection: five highlight colours and "copy with citation".
  */
-import type { AnnotationColor } from "../../../types/index.js";
+import { ANNOTATION_COLORS, type AnnotationColor } from "../../../model/index.js";
 import type { ReaderContext } from "./context.js";
 import { byId, clamp, h, iconButton } from "./dom.js";
 import { icon } from "./icons.js";
 
-const COLORS: readonly AnnotationColor[] = ["yellow", "green", "blue", "red", "pink"];
 const HIDE_GRACE_MS = 150;
 
 export interface SelectionInfo {
@@ -20,7 +19,7 @@ export class SelectionBubble {
 
   constructor(private readonly ctx: ReaderContext) {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
-    for (const color of COLORS) {
+    for (const color of ANNOTATION_COLORS) {
       const btn = h("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
       btn.addEventListener("click", () => this.highlight(color));
       this.el.append(btn);

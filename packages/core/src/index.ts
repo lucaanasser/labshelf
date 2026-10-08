@@ -1,12 +1,9 @@
 /**
- * Public surface of @labshelf/core — shared domain types, platform-abstracting
- * interfaces, the cross-runtime event bus, and the in-memory database fallback.
- *
- * @depends types, interfaces, events, db
- * @dependents @labshelf/vscode, @labshelf/browser
+ * Public surface of @labshelf/core — shared domain model, platform-abstracting
+ * ports, the cross-runtime event bus, and the in-memory database fallback.
  */
-export * from "./types/index.js";
-export * from "./interfaces/index.js";
+export * from "./model/index.js";
+export * from "./ports/index.js";
 export * from "./events/index.js";
 export * from "./db/index.js";
 export * from "./io/index.js";

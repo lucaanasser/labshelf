@@ -1,8 +1,5 @@
 /**
  * Structured log record shape consumed by file and database log sinks.
- *
- * @depends none
- * @dependents interfaces/logger.ts, interfaces/database.ts
  */
 export interface LogEntry {
   timestamp: string;

@@ -6,7 +6,7 @@
  */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { ExtensionEventBus } from '@labshelf/core';
+import type { EventBus } from '@labshelf/core';
 import { readCollectionFolders } from './collectionFolders.js';
 import { countPapersUnder, rootNode } from './folderNavigation.js';
 import type { LibraryNode } from './folderNavigation.js';
@@ -25,7 +25,7 @@ export class LibraryTreeDataProvider implements vscode.TreeDataProvider<LibraryN
   private _paperPaths: Promise<string[]> | null = null;
   private _refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(papersRoot: vscode.Uri | null, eventBus: ExtensionEventBus) {
+  constructor(papersRoot: vscode.Uri | null, eventBus: EventBus) {
     this._papersRoot = papersRoot;
     // A folder move emits one paper:updated per paper, so event refreshes are coalesced.
     const refresh = (): void => this._scheduleRefresh();

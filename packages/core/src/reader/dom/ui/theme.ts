@@ -1,7 +1,7 @@
 /**
  * Applies the reader theme to the chrome (CSS variables keyed on data-pdf-theme) and to the page pixels (pdf.js pageColors).
  */
-import type { PdfTheme } from "../../../types/index.js";
+import type { PdfTheme } from "../../../model/index.js";
 import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs" with { "resolution-mode": "import" };
 import { type EffectiveTheme, presetFor, toPageColors } from "../../index.js";
 

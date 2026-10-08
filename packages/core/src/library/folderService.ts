@@ -4,11 +4,8 @@
  * rename, rmdir) stay in the consuming package because their APIs diverge
  * (vscode.workspace.fs vs IndexedDbFileSystem); only the record bookkeeping is
  * shared here.
- *
- * @depends interfaces/database (subset), types/paperRecord
- * @dependents @labshelf/vscode paperService, @labshelf/browser folderController
  */
-import type { PaperRecord } from "../types/paperRecord.js";
+import type { PaperRecord } from "../model/index.js";
 
 /**
  * Minimal subset of {@link IResearchDatabase} that FolderService needs. Lets
@@ -51,8 +48,6 @@ function rewritePath(paperPath: string, oldDir: string, newDir: string, sep: str
  * Reusable folder bookkeeping over an IPaperRecordIndex. Callers stay
  * responsible for the actual directory move/delete and for emitting any
  * platform-specific events.
- *
- * @usedBy VSCode paperService.relocate/remove; browser folderController
  */
 export class FolderService {
   constructor(

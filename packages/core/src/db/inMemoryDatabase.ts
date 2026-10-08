@@ -1,12 +1,9 @@
 /**
  * Volatile in-memory implementation of IResearchDatabase for tests and
  * graceful-degradation fallback when no persistent adapter is available.
- *
- * @depends types, interfaces/database.ts
- * @dependents @labshelf/vscode extension (fallback), @labshelf/browser tests, integration tests
  */
-import type { IResearchDatabase } from "../interfaces/database.js";
-import type { LogEntry, PaperRecord } from "../types/index.js";
+import type { IResearchDatabase } from "../ports/index.js";
+import type { LogEntry, PaperRecord } from "../model/index.js";
 
 export class InMemoryResearchDatabase implements IResearchDatabase {
   private readonly papers = new Map<string, PaperRecord>();

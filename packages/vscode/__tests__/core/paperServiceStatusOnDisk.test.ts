@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { BibTeXService, ExtensionEventBus, IResearchDatabase, PaperRecord, PdfImportParser } from '@labshelf/core';
+import type { BibTeXService, EventBus, IResearchDatabase, PaperRecord, PdfImportParser } from '@labshelf/core';
 
 import { PaperService } from '../../src/core/paperService';
 import type { FileSystemService } from '../../src/storage/fileSystemService';
@@ -28,7 +28,7 @@ function makeService(onDisk: string | Error) {
   const service = new PaperService(
     fsService as FileSystemService,
     db as IResearchDatabase,
-    { emit: jest.fn(), on: jest.fn() } as unknown as ExtensionEventBus,
+    { emit: jest.fn(), on: jest.fn() } as unknown as EventBus,
     { papersRoot: () => vscode.Uri.file('/lib/papers') } as unknown as ILibraryPaths,
     {} as PdfImportParser,
     bibtex as BibTeXService,

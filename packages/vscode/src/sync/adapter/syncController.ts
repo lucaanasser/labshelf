@@ -15,7 +15,7 @@ import {
   writeSyncRunRecord,
 } from "@labshelf/core";
 import type {
-  ExtensionEventBus,
+  EventBus,
   SyncResult,
   FolderNameMaps,
   SyncLockInfo,
@@ -50,7 +50,7 @@ export class SyncController implements vscode.Disposable {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private paths: ILibraryPaths,
-    eventBus: ExtensionEventBus,
+    eventBus: EventBus,
     /** Returns a paperId → title map used to name Drive folders. */
     private readonly getPaperTitles?: () => Promise<Map<string, string>>,
   ) {

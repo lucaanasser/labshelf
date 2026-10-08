@@ -12,7 +12,7 @@
  * @dependents extension.ts, commands/registerCommands.ts
  */
 import { EVENTS } from "@labshelf/core";
-import type { ExtensionEventBus, PaperRecord } from "@labshelf/core";
+import type { EventBus, PaperRecord } from "@labshelf/core";
 
 /** The slice of the indexer reindexLibrary drives. */
 export interface ReindexableIndexer {
@@ -27,7 +27,7 @@ export interface ReindexableDatabase {
 export interface ReindexLibraryDeps {
   database: ReindexableDatabase;
   indexer: ReindexableIndexer;
-  eventBus: ExtensionEventBus;
+  eventBus: EventBus;
   // Queues a text-layer check for papers that now have a PDF but no verdict.
   queueCheck?: (papers: PaperRecord[]) => void;
 }

@@ -1,6 +1,5 @@
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
-import { PDF_VIEWER_CONFIG } from '../../src/pdf-viewer/config';
-import { THEME_PRESETS, presetFor, toPageColors } from '@labshelf/core';
+import { PDF_THEMES, THEME_PRESETS, presetFor, toPageColors } from '@labshelf/core';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
 
@@ -85,7 +84,7 @@ describe('ThemeManager', () => {
 
   describe('theme presets', () => {
     it('has exactly one page-colour preset per concrete theme', () => {
-      const concrete = PDF_VIEWER_CONFIG.THEMES.available.filter((t) => t !== 'auto').sort();
+      const concrete = PDF_THEMES.filter((t) => t !== 'auto').sort();
       expect(Object.keys(THEME_PRESETS).sort()).toEqual(concrete);
     });
 
@@ -99,22 +98,6 @@ describe('ThemeManager', () => {
 
     it('falls back to light for an unknown theme', () => {
       expect(presetFor('nope')).toEqual(THEME_PRESETS.light);
-    });
-  });
-
-  describe('isValidTheme', () => {
-    it('accepts all valid theme names', () => {
-      expect(manager.isValidTheme('auto')).toBe(true);
-      expect(manager.isValidTheme('light')).toBe(true);
-      expect(manager.isValidTheme('dark')).toBe(true);
-      expect(manager.isValidTheme('sepia')).toBe(true);
-      expect(manager.isValidTheme('high-contrast')).toBe(true);
-    });
-
-    it('rejects invalid theme names', () => {
-      expect(manager.isValidTheme('')).toBe(false);
-      expect(manager.isValidTheme('blue')).toBe(false);
-      expect(manager.isValidTheme('DARK')).toBe(false);
     });
   });
 

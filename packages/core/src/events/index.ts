@@ -6,5 +6,5 @@
  */
 export { EVENTS } from "./events.js";
 export type { EventName } from "./events.js";
-export { ExtensionEventBus } from "./eventBus.js";
+export { EventBus } from "./eventBus.js";
 export type { EventListener } from "./eventBus.js";

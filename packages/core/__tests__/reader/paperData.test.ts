@@ -4,8 +4,8 @@ import {
   normalizePaperData,
   serializePaperData,
   validateAnnotationPosition,
-  type SidecarPort,
 } from '../../src/reader/paperData';
+import type { SidecarPort } from '../../src/ports/index';
 
 function memoryPort(seed: Record<string, string> = {}): SidecarPort & { files: Record<string, string>; writes: number } {
   const port = {

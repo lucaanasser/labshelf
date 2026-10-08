@@ -5,7 +5,7 @@
  * @depends idb/db, @labshelf/core PaperRecord, yaml
  * @dependents library-page views (Phase 6), capture flow (Phase 5), storage/index
  */
-import type { PaperRecord } from "@labshelf/core";
+import { isPaperStatus, type PaperRecord } from "@labshelf/core";
 import YAML from "yaml";
 import { getDb } from "./idb/db";
 
@@ -68,7 +68,7 @@ export function recordFromYaml(yamlText: string, folderPath: string): PaperRecor
     title: str("title") ?? id,
     path: folderPath,
     citeKey: str("citekey") ?? id,
-    status: status === "reading" || status === "done" ? status : "unread",
+    status: isPaperStatus(status) ? status : "unread",
   };
   const authors = list("authors");
   if (authors.length) record.authors = authors;

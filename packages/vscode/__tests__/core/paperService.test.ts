@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { PaperService } from '../../src/core/paperService';
-import type { IResearchDatabase, ExtensionEventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
+import type { IResearchDatabase, EventBus, PdfImportParser, BibTeXService } from '@labshelf/core';
 import type { FileSystemService } from '../../src/storage/fileSystemService';
 import type { ILibraryPaths } from '../../src/storage/paths/libraryPaths';
 
@@ -39,7 +39,7 @@ function makeService(overrides: {
     appendLog: jest.fn(async () => {}),
   };
 
-  const mockEventBus: Partial<ExtensionEventBus> = {
+  const mockEventBus: Partial<EventBus> = {
     emit: jest.fn(),
     on: jest.fn(),
   };
@@ -76,7 +76,7 @@ function makeService(overrides: {
   return new PaperService(
     mockFsService as FileSystemService,
     mockDb as IResearchDatabase,
-    mockEventBus as ExtensionEventBus,
+    mockEventBus as EventBus,
     mockPaths as ILibraryPaths,
     mockParser as PdfImportParser,
     mockBibTeX as BibTeXService,

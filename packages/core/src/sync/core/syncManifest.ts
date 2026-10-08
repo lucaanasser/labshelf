@@ -1,12 +1,9 @@
 /**
  * Persist and query the per-provider sync manifest — the three-way merge base
  * mapping relative paths to their last-synced state.
- *
- * @depends syncTypes, sync/provider/remoteProvider
- * @dependents syncDiff, syncApply, syncEngine, syncController
  */
+import type { LocalFileSystem } from "../../ports/index.js";
 import type {
-  LocalFileSystem,
   ManifestData,
   ManifestEntry,
 } from "./syncTypes.js";

@@ -36,6 +36,10 @@ When this plan is done, delete it and the note at the top of `architecture.md`.
   - **BC3** the browser follows the owned-fields and status-on-disk rules (S4.2);
   - **BC4** one search language in every app (S4.4);
   - **BC5** one author format (S4.5).
+  - **BC6** one folder-name rule in every app: no empty name, slash, leading dot, control character or name over 255 characters (S3.4);
+  - **BC7** the browser normalises tags on capture like the other apps (S3.4);
+  - **BC8** VS Code skips a `metadata.yaml` whose top level is not a mapping (S3.3);
+  - **BC9** VS Code import slugs the file stem when no cite key is found (S3.4).
 
 Open questions (each one blocks only the steps named):
 
@@ -163,7 +167,7 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 
 | Id | Step | Depends on | Runner | Done when | OK |
 |---|---|---|---|---|---|
-| S3.1 | `core/src/model/` and `core/src/ports/` | S2.4 | M · module-splitter | old folders gone | [ ] |
+| S3.1 | `core/src/model/` and `core/src/ports/` | S2.4 | M · module-splitter | old folders gone | [x] |
 | S3.2 | One library layout definition | S3.1 | M · module-splitter | no hard-coded `"paper.pdf"` or `".research"` outside core | [ ] |
 | S3.3 | One `metadata.yaml` reader (BC1) | S3.1 | H+M · refactor-step | BC1 tests | [ ] |
 | S3.4 | Shared cite-key, tag, folder-name, title helpers (BC2, B3) | S3.1 | H+M · refactor-step | BC2 test, A8 for B3 | [ ] |
@@ -716,3 +720,4 @@ Every session starts from a clean tree on the plan's branch, which is the state 
 - 2026-10-08 S1.1 done: `packages/latex`, its `knip.json` entry, its README mention and its lockfile entry are gone.
 - 2026-10-08 S2.1 done: `packages/ai` lives in `core/src/ai/`, exported from the core index; vscode imports it from `@labshelf/core`. `ai` has no `normalizeTitle` (it left with the analysis code in S1.3), so no rename was needed. `heuristics/` is split into `extractors/` and `scoring/` to meet the directory limit. The dependency-cruiser baseline lost 22 `ai` entries and 7 stale ones; a browser import past `capture/index.ts` that had no baseline entry now goes through the index.
 - 2026-10-08 S2.2–S2.4 done in one commit: moving the reader files breaks the build scripts, and an emptied `packages/reader` cannot typecheck, so the build-script repoint (S2.3) and the dependency removal (S2.4) landed with the move. The reader's `shared/` and `logic/` are in `core/src/reader/`, its DOM code in `core/src/reader/dom/` (UI pieces stay in `dom/ui/` until S7.3), exposed as `@labshelf/core/dom` and `@labshelf/core/styles/*`; `main.ts` and `createVsCodeTransport` are in `packages/vscode/src/reader/` with their own webview tsconfig. The `pdf_viewer.mjs` type imports carry `resolution-mode: import`, so core keeps Node16 resolution. Core has 502 tests (208 + the reader's 294); the dependency-cruiser baseline dropped 65 entries and the neutral-runtime baseline grew from 30 to 35 (`URL`, `crypto`, timers in the moved files). The three builds pass.
+- 2026-10-08 15:28 S3.1 done: `core/src/types` is `model/` (paper record, status, text layer, annotation, PDF theme, each with its runtime list and guard) and `core/src/interfaces` is `ports/`, which also holds `LocalFileSystem`, `LocalStat`, `LockStore` and `SidecarPort`. The apps take the status, colour, annotation-type and theme lists from core; VS Code `pdf-viewer/config.ts` and `ThemeManager.isValidTheme` are gone. `ExtensionEventBus` is `EventBus` and stays in core until session 6 decides. Status sort order and status aliases still differ per app; S4.3 and S4.4 settle them. BC6–BC9 added to D7 (asked while mapping S3.3 and S3.4).

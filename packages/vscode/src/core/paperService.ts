@@ -9,10 +9,11 @@ import * as vscode from "vscode";
 
 import {
   EVENTS,
-  ExtensionEventBus,
+  EventBus,
   PdfImportParser,
   BibTeXService,
   FolderService,
+  isPaperStatus,
   isUnderDir,
   parsePaperMetadata,
 } from "@labshelf/core";
@@ -59,7 +60,7 @@ export class PaperService {
   constructor(
     private readonly fsService: FileSystemService,
     private readonly database: IResearchDatabase,
-    private readonly eventBus: ExtensionEventBus,
+    private readonly eventBus: EventBus,
     private readonly paths: ILibraryPaths,
     private readonly pdfImportParser: PdfImportParser,
     private readonly bibTeXService: BibTeXService,
@@ -315,7 +316,7 @@ export class PaperService {
   private async _statusOnDisk(paper: PaperRecord): Promise<PaperRecord["status"] | undefined> {
     try {
       const status = parsePaperMetadata(await this.fsService.readText(vscode.Uri.file(path.join(paper.path, "metadata.yaml"))))?.["status"];
-      return status === "unread" || status === "reading" || status === "done" ? status : undefined;
+      return isPaperStatus(status) ? status : undefined;
     } catch {
       return undefined;
     }

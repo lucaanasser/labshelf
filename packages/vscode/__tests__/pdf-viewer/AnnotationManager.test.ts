@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
 import { PaperDataStore } from '../../src/storage/data/paperDataStore';
 import { FileSystemService } from '../../src/storage/fileSystemService';
-import { ExtensionEventBus, EVENTS } from '@labshelf/core';
+import { EventBus, EVENTS } from '@labshelf/core';
 
 function makeFakeStore(): PaperDataStore {
   const files = new Map<string, string>();
@@ -22,7 +22,7 @@ function makeFakeStore(): PaperDataStore {
 
 async function makeManager() {
   const store = makeFakeStore();
-  const eventBus = new ExtensionEventBus();
+  const eventBus = new EventBus();
   const manager = new AnnotationManager(store, eventBus);
   return { manager, store, eventBus };
 }

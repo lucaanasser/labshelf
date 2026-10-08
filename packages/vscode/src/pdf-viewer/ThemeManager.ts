@@ -4,8 +4,7 @@
  */
 import * as vscode from "vscode";
 import type { PaperDataStore } from "../storage/data/paperDataStore.js";
-import type { PdfTheme } from "@labshelf/core";
-import { PDF_VIEWER_CONFIG } from "./config.js";
+import { isPdfTheme, type PdfTheme } from "@labshelf/core";
 
 // Mapping from VS Code ColorThemeKind to pdf theme names
 const VSCODE_THEME_MAP: Record<number, PdfTheme> = {
@@ -43,7 +42,7 @@ export class ThemeManager {
       const kind = vscode.window.activeColorTheme?.kind ?? 1;
       return this.mapVsCodeTheme(kind);
     }
-    if (PDF_VIEWER_CONFIG.THEMES.available.includes(preference as PdfTheme)) {
+    if (isPdfTheme(preference)) {
       return preference;
     }
     return 'light';
@@ -59,15 +58,6 @@ export class ThemeManager {
       const newTheme = this.mapVsCodeTheme(event.kind);
       callback(newTheme);
     });
-  }
-
-  /**
-   * Returns true when the given theme string is one of the allowed PdfTheme values.
-   * @usedBy pdf-viewer/PdfViewerPanel.ts
-   * @returns boolean — true if valid, false otherwise.
-   */
-  isValidTheme(theme: string): theme is PdfTheme {
-    return PDF_VIEWER_CONFIG.THEMES.available.includes(theme as PdfTheme);
   }
 
   // ── Per-paper preferences (sidecar-backed) ───────────────────────────────

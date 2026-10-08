@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import { isUnderDir } from '@labshelf/core';
 import type { PaperService } from '../../core/paperService.js';
 import type { TextLayerJob } from '../../commands/textLayerQueue.js';
-import type { Annotation, ExtensionEventBus, PaperRecord } from '@labshelf/core';
+import type { Annotation, EventBus, PaperRecord } from '@labshelf/core';
 import { listAllCollectionFolders, readCollectionFolders } from '../library/collectionFolders.js';
 import { buildListState, rootNode } from '../library/folderNavigation.js';
 import type { LibraryNode, PaperStats } from '../library/folderNavigation.js';
@@ -39,7 +39,7 @@ export interface SimilarPaper {
 export interface ListPanelDeps {
   extensionUri: vscode.Uri;
   paperService: PaperService;
-  eventBus: ExtensionEventBus;
+  eventBus: EventBus;
   /** Absolute path of papers/, or null while no library is configured. */
   getPapersRoot: () => string | null;
   /** Called whenever the panel shows a different folder, so the sidebar tree can follow. */

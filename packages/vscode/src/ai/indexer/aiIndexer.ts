@@ -8,7 +8,7 @@
  * @dependents extension.ts wiring
  */
 import * as vscode from "vscode";
-import type { ExtensionEventBus, IEmbeddingProvider, ILogger, IResearchDatabase } from "@labshelf/core";
+import type { EventBus, IEmbeddingProvider, ILogger, IResearchDatabase } from "@labshelf/core";
 import { EVENTS, runIngestion } from "@labshelf/core";
 import type { AiMetadataStore } from "../../db/ai/aiMetadataStore.js";
 import type { SqliteVectorStore } from "../../db/ai/sqliteVectorStore.js";
@@ -17,7 +17,7 @@ import { hashFile } from "../pdf/contentHash.js";
 
 export interface AiIndexerDependencies {
   database: IResearchDatabase;
-  eventBus: ExtensionEventBus;
+  eventBus: EventBus;
   logger: ILogger;
   embedder: IEmbeddingProvider;
   vectorStore: SqliteVectorStore;

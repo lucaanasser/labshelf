@@ -2,13 +2,10 @@
  * Maps a paper folder's metadata.yaml onto a PaperRecord with the same rules as the VS Code LibraryIndexer: the id is
  * the folder name (== cite key), the title falls back to the id, and hasPdf comes from the folder listing, never from
  * the file. Surfaces that read the library from disk share this so a paper looks the same everywhere.
- *
- * @depends yaml, types/paperRecord
- * @dependents @labshelf/terminal libraryScanner
  */
 import YAML from "yaml";
 
-import { parseTextLayerInfo, type PaperRecord } from "../types/paperRecord.js";
+import { isPaperStatus, parseTextLayerInfo, type PaperRecord } from "../model/index.js";
 
 const OPTIONAL_STRING_FIELDS = [
   "summary", "journal", "publisher", "volume", "issue", "pages", "doi", "url", "issn", "language",
@@ -25,7 +22,6 @@ export interface PaperLocation {
 
 /**
  * Parses metadata.yaml text.
- * @usedBy @labshelf/terminal libraryScanner
  * @returns the mapping, or undefined when the text is not a YAML mapping
  */
 export function parsePaperMetadata(text: string): Record<string, unknown> | undefined {
@@ -39,7 +35,6 @@ export function parsePaperMetadata(text: string): Record<string, unknown> | unde
 
 /**
  * Builds the record of one paper from its parsed metadata.yaml.
- * @usedBy @labshelf/terminal libraryScanner
  * @returns the PaperRecord
  */
 export function paperRecordFromMetadata(meta: Record<string, unknown>, location: PaperLocation): PaperRecord {
@@ -53,7 +48,7 @@ export function paperRecordFromMetadata(meta: Record<string, unknown>, location:
     title: typeof meta["title"] === "string" ? meta["title"] : location.id,
     path: location.path,
     citeKey: typeof meta["citekey"] === "string" ? meta["citekey"] : location.id,
-    status: status === "reading" || status === "done" || status === "unread" ? status : "unread",
+    status: isPaperStatus(status) ? status : "unread",
     hasPdf: location.hasPdf,
   };
   if (authors.length) { record.authors = authors; }

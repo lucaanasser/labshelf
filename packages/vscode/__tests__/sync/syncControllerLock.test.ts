@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 
-import { ExtensionEventBus } from '@labshelf/core';
+import { EventBus } from '@labshelf/core';
 import { FakeRemoteProvider } from '@labshelf/core/test-support/sync-fakes';
 
 const provider = new FakeRemoteProvider();
@@ -32,7 +32,7 @@ function context(): vscode.ExtensionContext {
 }
 
 function makeController(root: string): SyncController {
-  return new SyncController(context(), new LibraryPaths(vscode.Uri.file(root)), new ExtensionEventBus(), async () => new Map());
+  return new SyncController(context(), new LibraryPaths(vscode.Uri.file(root)), new EventBus(), async () => new Map());
 }
 
 function lockFile(root: string): string {

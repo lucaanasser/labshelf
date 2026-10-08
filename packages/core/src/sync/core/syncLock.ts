@@ -3,24 +3,8 @@
  * the same manifest file, so two runs at once would race on the manifest and on the files themselves. The lock is a
  * small JSON file created exclusively next to the manifest; a holder refreshes its heartbeat while it works, and a lock
  * whose heartbeat stopped (crash, killed process) is taken over.
- *
- * @depends none (storage injected through LockStore)
- * @dependents @labshelf/vscode syncController, @labshelf/terminal syncService
  */
-
-/** Minimal file operations the lock needs; the create must be atomic (O_EXCL). */
-export interface LockStore {
-  /**
-   * Creates the file with the given text, complete, in one step (e.g. write a temp file, then link() it into place);
-   * resolves false when it already exists. A reader must never see the file empty or half written.
-   */
-  createExclusive(path: string, text: string): Promise<boolean>;
-  /** The file's text, or undefined when it does not exist. */
-  read(path: string): Promise<string | undefined>;
-  write(path: string, text: string): Promise<void>;
-  /** Removes the file; a missing file is not an error. */
-  remove(path: string): Promise<void>;
-}
+import type { LockStore } from "../../ports/index.js";
 
 /** Who is syncing: shown to the other app while it waits. */
 export interface SyncLockOwner {

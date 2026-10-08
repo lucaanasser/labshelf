@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { ExtensionEventBus, EVENTS } from '@labshelf/core';
+import { EventBus, EVENTS } from '@labshelf/core';
 import { PdfViewerPanel, type PdfViewerDeps } from '../../src/pdf-viewer/PdfViewerPanel';
 import { ThemeManager } from '../../src/pdf-viewer/ThemeManager';
 import { AnnotationManager } from '../../src/pdf-viewer/AnnotationManager';
@@ -65,7 +65,7 @@ describe('PdfViewerPanel', () => {
 
   function makeDeps(overrides: Partial<PdfViewerDeps> = {}) {
     const store = makeFakeStore();
-    const eventBus = new ExtensionEventBus();
+    const eventBus = new EventBus();
     const themeManager = new ThemeManager(store);
     const annotationManager = new AnnotationManager(store, eventBus);
     const logger = { log: jest.fn(async () => {}) } as any;

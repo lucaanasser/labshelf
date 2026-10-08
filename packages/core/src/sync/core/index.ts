@@ -1,8 +1,5 @@
 /**
  * Barrel re-export for all sync/core public symbols.
- *
- * @depends syncTypes, syncManifest, treeScan, syncDiff, syncApply, syncEngine, folderNames, libraryFolderNamer, syncLock, syncRunRecord
- * @dependents sync/index, downstream sync controllers
  */
 export type {
   ManifestEntry,
@@ -12,8 +9,6 @@ export type {
   SyncOperation,
   NamespaceResult,
   SyncResult,
-  LocalStat,
-  LocalFileSystem,
 } from "./syncTypes.js";
 export { SyncManifest } from "./syncManifest.js";
 export { scanLocalTree, scanRemoteTree } from "./treeScan.js";
@@ -27,6 +22,6 @@ export { SyncEngine } from "./syncEngine.js";
 export type { SyncEngineDeps, NamespaceRoots, FolderNameMaps } from "./syncEngine.js";
 export { buildLibraryFolderNames, driveFolderName } from "./folderNames.js";
 export { SyncLock, parseSyncLock } from "./syncLock.js";
-export type { LockStore, SyncLockOwner, SyncLockInfo, SyncLockOptions, SyncLockAttempt } from "./syncLock.js";
+export type { SyncLockOwner, SyncLockInfo, SyncLockOptions, SyncLockAttempt } from "./syncLock.js";
 export { summarizeSyncResult, writeSyncRunRecord, readSyncRunRecord } from "./syncRunRecord.js";
 export type { SyncRunRecord } from "./syncRunRecord.js";

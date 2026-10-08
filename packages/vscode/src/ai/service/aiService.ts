@@ -10,7 +10,7 @@
 import type {
   AiPaperMetadata,
   ClaimSearchResult,
-  ExtensionEventBus,
+  EventBus,
   IEmbeddingProvider,
   ILogger,
   ReadingEvent,
@@ -38,7 +38,7 @@ export interface AiServiceDependencies {
   readingEvents: ReadingEventsStore;
   indexer: AiIndexer;
   queue: IndexerQueue;
-  eventBus: ExtensionEventBus;
+  eventBus: EventBus;
   logger: ILogger;
 }
 

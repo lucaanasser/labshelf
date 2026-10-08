@@ -11,6 +11,8 @@
  * @dependents ui/list/template.script.ts
  */
 
+import { ANNOTATION_COLORS } from '@labshelf/core';
+
 /**
  * Returns the tab-body JavaScript source. Like its host script it avoids template literals and backslashes.
  * @usedBy ui/list/template.script.ts
@@ -93,7 +95,7 @@ export function detailTabsScriptFragment(): string {
   }
 
   // ── Annotations tab ───────────────────────────────────────────────────────
-  var ANN_COLORS = ['yellow', 'green', 'blue', 'red', 'pink'];
+  var ANN_COLORS = ${JSON.stringify(ANNOTATION_COLORS)};
   function annText(a) { return String(a.content || '').trim(); }
   function filteredAnnotations(all) {
     var f = view.annFilter.toLowerCase(), c = view.annColor;

@@ -5,9 +5,6 @@
  * Paths are POSIX-style relative or absolute strings — never platform URI
  * objects — so the same services run on top of vscode.workspace.fs and
  * IndexedDB without leaking platform details into core.
- *
- * @depends none
- * @dependents bibtexService, paperService (planned), logger adapters
  */
 export interface IFileSystem {
   /** Creates a directory (and any parents) at the given path, idempotent. */

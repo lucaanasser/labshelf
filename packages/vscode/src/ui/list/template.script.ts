@@ -6,6 +6,7 @@
  * @depends ui/list/template.icons.ts, ui/list/template.menu.script.ts, ui/list/template.detail.script.ts, ui/list/template.detail.tabs.script.ts
  * @dependents ui/list/template.ts
  */
+import { PAPER_STATUSES } from '@labshelf/core';
 import { secIcon } from './template.icons.js';
 import { menuScriptFragment } from './template.menu.script.js';
 import { detailScriptFragment } from './template.detail.script.js';
@@ -30,7 +31,7 @@ export function buildListScript(nonce: string): string {
   const vscode = acquireVsCodeApi();
   const ICON = ${icons};
   const DRAG_MIME = 'application/x-labshelf-papers';
-  const STATUSES = ['unread', 'reading', 'done'];
+  const STATUSES = ${JSON.stringify(PAPER_STATUSES)};
   const STATUS_ORDER = { unread: 0, reading: 1, done: 2 };
   const STATUS_LABEL = { unread: 'Unread', reading: 'Reading', done: 'Done' };
   const NL = String.fromCharCode(10);

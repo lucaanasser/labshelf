@@ -3,7 +3,8 @@
  * plus a platform-free store over it. VS Code keeps it at <library>/.research/papers/<id>/data.json and the browser at
  * IndexedDB path appdata/<id>/data.json; the sync "appdata" namespace maps one onto the other, so the format must not drift.
  */
-import type { Annotation, AnnotationColor, AnnotationPosition, PdfTheme } from "../types/index.js";
+import { ANNOTATION_COLORS, isPdfTheme, type Annotation, type AnnotationColor, type AnnotationPosition, type PdfTheme } from "../model/index.js";
+import type { SidecarPort } from "../ports/index.js";
 import { normalizeReadingState, type ReadingState } from "./readingState.js";
 
 export interface PaperData {
@@ -13,21 +14,11 @@ export interface PaperData {
   reading?: ReadingState;
 }
 
-const PDF_THEMES: readonly PdfTheme[] = ["auto", "light", "dark", "sepia", "high-contrast"];
-const ANNOTATION_COLORS: readonly AnnotationColor[] = ["yellow", "green", "blue", "red", "pink"];
-
 /**
  * @returns the sidecar of a paper that has never been opened.
  */
 export function emptyPaperData(): PaperData {
   return { annotations: [], theme: "auto" };
-}
-
-/**
- * @returns true when `value` is one of the reader themes.
- */
-export function isPdfTheme(value: unknown): value is PdfTheme {
-  return PDF_THEMES.includes(value as PdfTheme);
 }
 
 /**
@@ -99,13 +90,6 @@ export function validateAnnotationPosition(pos: unknown): AnnotationPosition {
     throw new Error("Position values must be normalized (0.0-1.0) and width/height must be positive");
   }
   return { x, y, width, height };
-}
-
-/** Where a platform keeps one sidecar per paper. */
-export interface SidecarPort {
-  /** The sidecar text, or null when the paper has none yet. */
-  read(paperId: string): Promise<string | null>;
-  write(paperId: string, text: string): Promise<void>;
 }
 
 export interface PaperDataStoreOptions {

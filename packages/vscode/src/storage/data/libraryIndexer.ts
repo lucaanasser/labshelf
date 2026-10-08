@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import YAML from "yaml";
 
 import type { PaperRecord, IResearchDatabase } from "@labshelf/core";
-import { parseTextLayerInfo } from "@labshelf/core";
+import { isPaperStatus, parseTextLayerInfo } from "@labshelf/core";
 import { FileSystemService } from "../fileSystemService.js";
 import type { ILibraryPaths } from "../paths/libraryPaths.js";
 
@@ -85,7 +85,7 @@ export class LibraryIndexer {
       title: typeof meta.title === "string" ? meta.title : id,
       path: folder.fsPath,
       citeKey: typeof meta.citekey === "string" ? meta.citekey : id,
-      status: isStatus(meta.status) ? meta.status : "unread",
+      status: isPaperStatus(meta.status) ? meta.status : "unread",
       hasPdf,
       ...(parseAuthors(meta.authors)),
       ...(typeof meta.year === "number" ? { year: meta.year } : {}),
@@ -102,11 +102,6 @@ export class LibraryIndexer {
 function basename(uri: vscode.Uri): string {
   const parts = uri.fsPath.split(/[\\/]/).filter(Boolean);
   return parts[parts.length - 1] ?? "";
-}
-
-// Type guard that checks whether a value is a valid PaperRecord status string.
-function isStatus(v: unknown): v is PaperRecord["status"] {
-  return v === "unread" || v === "reading" || v === "done";
 }
 
 // Extracts a string array from a metadata authors field, returning an empty object if the field is absent.
