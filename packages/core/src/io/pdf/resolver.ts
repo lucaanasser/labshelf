@@ -181,6 +181,10 @@ export async function searchOnlineByText(query: string): Promise<ResolvedMetadat
 
 // A title shorter than this proves nothing when found inside a page of text.
 const MIN_TITLE_WORDS_IN_PAGE = 4;
+// Up to this many significant words, every one must be printed: on a page about
+// "non-equilibrium dynamics", the chapter "Non equilibrium critical dynamics"
+// matches three words of four, and the missing one is what makes it another work.
+const SHORT_TITLE_WORDS = 6;
 
 // Finds where in the query a title is printed: the first run of words, about as
 // long as the title, holding most of its words. Returns 0 when the query is
@@ -196,7 +200,7 @@ function titlePosition(title: string, queryWords: string[]): number | undefined 
   }
 
   const span = titleWords.size + Math.max(2, Math.floor(titleWords.size / 2));
-  const needed = Math.ceil(titleWords.size * TITLE_MATCH_THRESHOLD);
+  const needed = titleWords.size <= SHORT_TITLE_WORDS ? titleWords.size : Math.ceil(titleWords.size * TITLE_MATCH_THRESHOLD);
   for (let start = 0; start < queryWords.length; start += 1) {
     if (!titleWords.has(queryWords[start]!)) {
       continue;

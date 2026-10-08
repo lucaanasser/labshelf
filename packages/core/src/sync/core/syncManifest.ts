@@ -51,6 +51,7 @@ export class SyncManifest {
         const parsed = JSON.parse(text) as ManifestData;
         if (parsed?.namespaces?.library && parsed.namespaces.appdata) {
           data = { providerId, namespaces: parsed.namespaces };
+          if (parsed.roots && typeof parsed.roots === "object") { data.roots = { ...parsed.roots }; }
         }
       } catch {
         // Corrupt manifest: fall back to empty, sync rebuilds it.
@@ -93,6 +94,33 @@ export class SyncManifest {
    */
   delete(ns: RemoteNamespace, path: string): void {
     delete this.data.namespaces[ns][path];
+  }
+
+  /**
+   * The remote root folder id the namespace was last synced against, when recorded.
+   * @usedBy syncEngine
+   * @returns the id, or undefined (manifests written before roots were recorded)
+   */
+  rootId(ns: RemoteNamespace): string | undefined {
+    return this.data.roots?.[ns];
+  }
+
+  /**
+   * Records the remote root folder id of a namespace.
+   * @usedBy syncEngine
+   * @returns void
+   */
+  setRootId(ns: RemoteNamespace, id: string): void {
+    this.data.roots = { ...(this.data.roots ?? {}), [ns]: id };
+  }
+
+  /**
+   * Forgets every entry of a namespace, so the next diff treats both sides as new (nothing is deleted).
+   * @usedBy syncEngine
+   * @returns void
+   */
+  clearNamespace(ns: RemoteNamespace): void {
+    this.data.namespaces[ns] = {};
   }
 
   /**

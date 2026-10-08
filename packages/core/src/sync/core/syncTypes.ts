@@ -21,6 +21,11 @@ export interface ManifestEntry {
 export interface ManifestData {
   providerId: string;
   namespaces: Record<RemoteNamespace, Record<string, ManifestEntry>>;
+  /**
+   * Remote root folder id each namespace was synced against. A different root (another account or OAuth client, or a
+   * Drive folder that was replaced) means the entries describe some other remote and must not drive deletions.
+   */
+  roots?: Partial<Record<RemoteNamespace, string>>;
 }
 
 /** Classification of a single path in the three-way diff. */
@@ -63,6 +68,8 @@ export interface NamespaceResult {
   deletedLocal: number;
   deletedRemote: number;
   conflicts: string[];
+  /** True when the manifest did not describe this remote and the run started over as a first sync (no deletions). */
+  rebased?: boolean;
 }
 
 /** Aggregated result of a full sync run. */

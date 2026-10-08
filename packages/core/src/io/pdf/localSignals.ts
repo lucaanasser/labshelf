@@ -55,8 +55,9 @@ export function titleFromPlainText(text: string): string | undefined {
     // A stamp running up the margin leaves a stray symbol or digit at the start
     // of each line it crosses ("= EFFICIENT ALGORITHMS", "5 GRAPH SEARCH").
     .map((line) => line.trim().replace(/^[^A-Za-zÀ-ÿ\s]{1,2}\s+(?=\S{3,})/, ""))
-    // OCR turns rules, logos and margin stamps into one- or two-letter specks.
-    .filter((line) => line.length >= 4)
+    // OCR turns rules, logos and margin stamps into one- or two-letter specks,
+    // or into symbol soup ("[| | [_] [| -") that would split a title in two.
+    .filter((line) => line.length >= 4 && mostlyLetters(line))
     .slice(0, 30);
 
   for (let start = 0; start < lines.length; start += 1) {
@@ -92,6 +93,11 @@ function looksLikeTitleLine(line: string): boolean {
   return letters >= line.replace(/\s/g, "").length * 0.8;
 }
 
+function mostlyLetters(line: string): boolean {
+  const visible = line.replace(/\s/g, "").length;
+  return (line.match(/[a-zà-ÿ]/gi) ?? []).length >= visible * 0.5;
+}
+
 // Names separated by commas, or carrying affiliation markers.
 function looksLikeByline(line: string): boolean {
   const commas = (line.match(/,/g) ?? []).length;
@@ -100,7 +106,26 @@ function looksLikeByline(line: string): boolean {
   if (commas >= 2 && capitalized >= words * 0.6) {
     return true;
   }
-  return /[*†‡§¹²³]|\b[A-Z]\.\s?[A-Z][a-z]+/.test(line) && capitalized >= words * 0.6;
+  if (/[*†‡§¹²³]|\b[A-Z]\.\s?[A-Z][a-z]+/.test(line) && capitalized >= words * 0.6) {
+    return true;
+  }
+  return namesJoinedByAnd(line);
+}
+
+const NAME_WORD = /^[A-ZÀ-Þ][a-zà-ÿ'’-]+[*†‡§¹²³0-9,]*$/;
+const INITIAL = /^[A-ZÀ-Þ]\.?[*†‡§¹²³0-9,]*$/;
+const CONNECTIVE = /^(and|&|e|y|und|et)$/i;
+
+// "Ville Mustonen and Michael Lassig": nothing but capitalised names and
+// initials around a connective. Title-cased titles keep their lowercase
+// function words ("for", "of"), so they do not pass for one.
+function namesJoinedByAnd(line: string): boolean {
+  const words = line.trim().split(/\s+/);
+  if (words.length < 3 || words.length > 14 || !words.some((word) => CONNECTIVE.test(word))) {
+    return false;
+  }
+  const names = words.filter((word) => !CONNECTIVE.test(word));
+  return names.length >= 2 && names.every((word) => NAME_WORD.test(word) || INITIAL.test(word));
 }
 
 /**

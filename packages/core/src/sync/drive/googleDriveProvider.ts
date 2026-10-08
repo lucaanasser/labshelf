@@ -16,6 +16,7 @@ import { DriveClient } from "./googleDriveClient.js";
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const LIST_FIELDS = "files(id,name,mimeType,modifiedTime,size)";
+const APPDATA_ROOT_ID = "appDataFolder";
 
 // Converts a raw DriveFile response to the provider-agnostic RemoteFile shape.
 function toRemoteFile(f: DriveFile): RemoteFile {
@@ -35,6 +36,10 @@ function toRemoteFile(f: DriveFile): RemoteFile {
 export class GoogleDriveProvider implements RemoteProvider {
   readonly id = "google-drive";
   readonly displayName = "Google Drive";
+
+  // Folders that live in the hidden appDataFolder space. Drive only returns their children when the
+  // query names that space, so every folder discovered or created under the appdata root is recorded here.
+  private readonly appdataFolderIds = new Set<string>([APPDATA_ROOT_ID]);
 
   constructor(
     private readonly auth: IAuthProvider,
@@ -86,19 +91,25 @@ export class GoogleDriveProvider implements RemoteProvider {
     // Any child creation uses parents: ['appDataFolder'].
     void result; // we only need to confirm access
     return {
-      id: "appDataFolder",
-      name: "appDataFolder",
+      id: APPDATA_ROOT_ID,
+      name: APPDATA_ROOT_ID,
       isFolder: true,
       modifiedTime: new Date().toISOString(),
     };
   }
 
+  /**
+   * Lists the direct children of a folder in the Drive space that holds it.
+   * The parent clause is required for the appdata root too: a bare "trashed=false" query over the
+   * appDataFolder space returns files at every depth, which flattened "<paperId>/data.json" into
+   * "data.json" and made the diff delete the per-paper sidecars locally.
+   * @usedBy sync/core/treeScan (scanRemoteTree)
+   * @returns the folder's direct children, every page concatenated.
+   */
   async list(folderId: string): Promise<RemoteFile[]> {
-    const isAppData = folderId === "appDataFolder";
-    const q = isAppData
-      ? "trashed=false"
-      : `'${folderId}' in parents and trashed=false`;
-    const spaces = isAppData ? "appDataFolder" : "drive";
+    const inAppdata = this.appdataFolderIds.has(folderId);
+    const q = `'${folderId}' in parents and trashed=false`;
+    const spaces = inAppdata ? "appDataFolder" : "drive";
 
     const files: RemoteFile[] = [];
     let pageToken: string | undefined;
@@ -114,12 +125,18 @@ export class GoogleDriveProvider implements RemoteProvider {
       pageToken = result.nextPageToken;
     } while (pageToken);
 
+    if (inAppdata) {
+      for (const f of files) {
+        if (f.isFolder) { this.appdataFolderIds.add(f.id); }
+      }
+    }
     return files;
   }
 
   async createFolder(parentId: string, name: string): Promise<RemoteFile> {
-    const created = await this.client.createFolder(name, [parentId]);
-    return toRemoteFile(created);
+    const created = toRemoteFile(await this.client.createFolder(name, [parentId]));
+    if (this.appdataFolderIds.has(parentId)) { this.appdataFolderIds.add(created.id); }
+    return created;
   }
 
   async upload(

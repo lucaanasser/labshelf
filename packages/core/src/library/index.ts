@@ -1,7 +1,7 @@
 /**
  * Barrel re-export for the library helpers (collection folder bookkeeping).
  *
- * @depends folderService
+ * @depends folderService, paperMetadata
  * @dependents @labshelf/core index, @labshelf/vscode, @labshelf/browser
  */
 export {
@@ -14,3 +14,5 @@ export type {
   FolderRelocation,
   FolderRemoval,
 } from "./folderService.js";
+export { paperRecordFromMetadata, parsePaperMetadata } from "./paperMetadata.js";
+export type { PaperLocation } from "./paperMetadata.js";

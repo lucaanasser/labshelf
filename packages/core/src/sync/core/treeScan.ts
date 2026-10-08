@@ -5,7 +5,7 @@
  * @dependents syncEngine
  */
 import type { LocalFileSystem, TreeNode } from "./syncTypes.js";
-import type { RemoteProvider } from "../provider/remoteProvider.js";
+import type { RemoteFile, RemoteProvider } from "../provider/remoteProvider.js";
 import type { RemotePathResolver } from "../provider/remotePathResolver.js";
 import { sha256Hex } from "../util/contentHash.js";
 
@@ -52,9 +52,26 @@ export async function scanLocalTree(
   return tree;
 }
 
+/** A proposed local name for a remote folder; a lower rank is a stronger claim on the name. */
+export interface FolderNaming {
+  name: string;
+  rank: number;
+}
+
+/**
+ * Decides the local name of a remote folder from the folder and what it directly holds; undefined falls back to the
+ * display-name translation.
+ */
+export type RemoteFolderNamer = (folder: RemoteFile, children: RemoteFile[]) => Promise<FolderNaming | undefined>;
+
+// Ranks of the fallbacks applied by scanRemoteTree itself.
+const RANK_NAME_MAP = 3;
+const RANK_DISPLAY = 4;
+
 /**
  * Recursively scans a remote folder tree, registering discovered folders on the
- * resolver; folderNameMap translates remote display names to local names.
+ * resolver; folderNameMap translates remote display names to local names, and
+ * nameFolder (when given) decides first, from the folder's contents.
  * @usedBy syncEngine
  * @returns Map<string, TreeNode>
  */
@@ -63,26 +80,50 @@ export async function scanRemoteTree(
   rootId: string,
   resolver: RemotePathResolver,
   folderNameMap?: Map<string, string>,
+  nameFolder?: RemoteFolderNamer,
 ): Promise<Map<string, TreeNode>> {
   const tree = new Map<string, TreeNode>();
 
-  async function walk(folderId: string, relDir: string): Promise<void> {
-    const children = await provider.list(folderId);
-    for (const child of children) {
-      const localName = (child.isFolder ? folderNameMap?.get(child.name) : undefined) ?? child.name;
+  async function walk(folderId: string, relDir: string, listed?: RemoteFile[]): Promise<void> {
+    const children = listed ?? await provider.list(folderId);
+    // Two remote folders must never share a local name — their files would be merged and one paper would overwrite
+    // the other. Folders with the strongest claim (rank) take their name first; a later claimant falls back to its
+    // display name, then to the display name plus part of its id.
+    const taken = new Set(children.filter((c) => !c.isFolder).map((c) => c.name));
+    const folders: Array<{ folder: RemoteFile; kids: RemoteFile[] | undefined; naming: FolderNaming }> = [];
+    for (const folder of children.filter((c) => c.isFolder)) {
+      // The namer needs the folder's contents; listing them here is the listing walk() would do anyway.
+      const kids = nameFolder ? await provider.list(folder.id) : undefined;
+      const mapped = folderNameMap?.get(folder.name);
+      const naming = (kids ? await nameFolder!(folder, kids) : undefined)
+        ?? (mapped ? { name: mapped, rank: RANK_NAME_MAP } : { name: folder.name, rank: RANK_DISPLAY });
+      folders.push({ folder, kids, naming });
+    }
+    folders.sort((a, b) => a.naming.rank - b.naming.rank);
+    for (const { folder, kids, naming } of folders) {
+      let localName = naming.name;
+      if (taken.has(localName)) { localName = folder.name; }
+      if (taken.has(localName)) { localName = `${folder.name} (${folder.id.slice(-6)})`; }
+      taken.add(localName);
       const rel = joinPath(relDir, localName);
-      if (child.isFolder) {
-        resolver.register(rel, child.id);
-        await walk(child.id, rel);
-      } else {
-        const node: TreeNode = {
-          path: rel,
-          modifiedTime: child.modifiedTime,
-          remoteId: child.id,
-        };
-        if (child.size !== undefined) {
-          node.size = child.size;
-        }
+      resolver.register(rel, folder.id);
+      await walk(folder.id, rel, kids);
+    }
+    for (const child of children) {
+      if (child.isFolder) { continue; }
+      const rel = joinPath(relDir, child.name);
+      const node: TreeNode = {
+        path: rel,
+        modifiedTime: child.modifiedTime,
+        remoteId: child.id,
+      };
+      if (child.size !== undefined) {
+        node.size = child.size;
+      }
+      // Drive allows two files with one name in a folder (left behind by the old appdata listing,
+      // which uploaded a second data.json beside the first). Keep the newest, the last one written.
+      const seen = tree.get(rel);
+      if (!seen || seen.modifiedTime < child.modifiedTime) {
         tree.set(rel, node);
       }
     }

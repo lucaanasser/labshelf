@@ -4,7 +4,8 @@
  * @depends paperRecord, annotation, batchImport, logEntry
  * @dependents interfaces/index.ts, @labshelf/core index, downstream packages
  */
-export type { PaperStatus, PaperRecord } from "./paperRecord.js";
+export type { PaperStatus, PaperRecord, TextLayerState, TextLayerInfo } from "./paperRecord.js";
+export { parseTextLayerInfo } from "./paperRecord.js";
 export type {
   AnnotationPosition,
   AnnotationType,

@@ -2,7 +2,7 @@
  * Provider-agnostic orchestration of a sync run — scan local and remote trees,
  * diff against the manifest, apply operations, and persist.
  *
- * @depends sync/provider/remoteProvider, syncTypes, syncManifest, syncDiff, syncApply, treeScan, sync/provider/remotePathResolver
+ * @depends sync/provider/remoteProvider, syncTypes, syncManifest, syncDiff, syncApply, treeScan, libraryFolderNamer, sync/provider/remotePathResolver
  * @dependents syncController (vscode), browserSyncController (browser)
  */
 import type { RemoteProvider, RemoteNamespace } from "../provider/remoteProvider.js";
@@ -16,6 +16,7 @@ import { diffNamespace } from "./syncDiff.js";
 import { applyOperations } from "./syncApply.js";
 import { scanLocalTree, scanRemoteTree } from "./treeScan.js";
 import { RemotePathResolver } from "../provider/remotePathResolver.js";
+import { createLibraryFolderNamer } from "./libraryFolderNamer.js";
 
 /** Maps each namespace to its absolute local root directory. */
 export type NamespaceRoots = Record<RemoteNamespace, string>;
@@ -63,11 +64,26 @@ export class SyncEngine {
 
     const names = ns === "library" ? libraryFolderNames : undefined;
     const resolver = new RemotePathResolver(provider, root.id, [], names?.localToRemote);
-    const remoteTree = await scanRemoteTree(provider, root.id, resolver, names?.remoteToLocal);
+    // Paper folders are matched to local ones by what they hold, not only by their (title) name.
+    const namer = ns === "library"
+      ? createLibraryFolderNamer({ provider, manifest, ...(names ? { titles: names.remoteToLocal } : {}) })
+      : undefined;
+    const remoteTree = await scanRemoteTree(provider, root.id, resolver, names?.remoteToLocal, namer);
     const localTree = await scanLocalTree(fs, roots[ns]);
 
+    // The manifest only means "deleted on the other side" for the remote it was built against. Another account or
+    // OAuth client (Drive's drive.file and appDataFolder are private to each) or a replaced Drive folder shows up as a
+    // different root id; a manifest from before roots were recorded falls back to "the remote is suddenly empty".
+    // Either would otherwise turn every synced file into a local deletion.
+    const knownRoot = manifest.rootId(ns);
+    const rebased = knownRoot !== undefined
+      ? knownRoot !== root.id
+      : remoteTree.size === 0 && manifest.paths(ns).length > 0;
+    if (rebased) { manifest.clearNamespace(ns); }
+    manifest.setRootId(ns, root.id);
+
     const ops = diffNamespace(ns, localTree, remoteTree, manifest);
-    return applyOperations(
+    const result = await applyOperations(
       {
         namespace: ns,
         provider,
@@ -79,6 +95,7 @@ export class SyncEngine {
       },
       ops,
     );
+    return rebased ? { ...result, rebased: true } : result;
   }
 
   /**

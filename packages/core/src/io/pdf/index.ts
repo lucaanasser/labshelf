@@ -65,7 +65,7 @@ export {
   publisherMetadataFromInfo,
   describeFallback,
 } from "./localSignals.js";
-export { mergeMetadata, completeness, SOURCE_TRUST } from "./merge.js";
+export { mergeMetadata, completeness, tidyCitationFields, SOURCE_TRUST } from "./merge.js";
 export type { MetadataSource, MergedMetadata } from "./merge.js";
 export {
   resolveOnlineMetadata,
